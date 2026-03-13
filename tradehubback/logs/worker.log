@@ -1,0 +1,24 @@
+2026-03-13 15:21:20,665 Worker rq:worker:47b995a6febe4a7fac46d8e3b15ef981 started with PID 2165450, version 1.15.1
+2026-03-13 15:21:20,665 Subscribing to channel rq:pubsub:47b995a6febe4a7fac46d8e3b15ef981
+2026-03-13 15:21:20,666 *** Listening on home-bora-Masaüstü-istoc.com-tradehubback:short, home-bora-Masaüstü-istoc.com-tradehubback:default, home-bora-Masaüstü-istoc.com-tradehubback:long...
+2026-03-13 15:21:20,666 Cleaning registries for queue: home-bora-Masaüstü-istoc.com-tradehubback:short
+2026-03-13 15:21:20,667 Cleaning registries for queue: home-bora-Masaüstü-istoc.com-tradehubback:default
+2026-03-13 15:21:20,668 Cleaning registries for queue: home-bora-Masaüstü-istoc.com-tradehubback:long
+2026-03-13 15:22:42,911 home-bora-Masaüstü-istoc.com-tradehubback:default: frappe.utils.background_jobs.execute_job(event=None, is_async=True, job_name='frappe.core.doctype.user.user.create_contact', kwargs={'user': <User: bora.aydeger@turksab.com>, 'ignore_mandatory': True}, method='frappe.core.doctype.user.user.create_contact', site='tradehub.localhost', user='Administrator') (tradehub.localhost::a9ace61d-ae22-4ce0-a487-8e9b3d90dfd0)
+2026-03-13 15:22:43,567 home-bora-Masaüstü-istoc.com-tradehubback:default: Job OK (tradehub.localhost::a9ace61d-ae22-4ce0-a487-8e9b3d90dfd0)
+2026-03-13 15:22:43,567 Result is kept for 600 seconds
+2026-03-13 15:22:43,572 home-bora-Masaüstü-istoc.com-tradehubback:default: frappe.utils.background_jobs.execute_job(event=None, is_async=True, job_name='frappe.core.doctype.user.user.update_gravatar', kwargs={'name': 'bora.aydeger@turksab.com'}, method='frappe.core.doctype.user.user.update_gravatar', site='tradehub.localhost', user='Administrator') (tradehub.localhost::ce7efef4-87df-460a-8469-6052b5547eda)
+2026-03-13 15:22:43,900 home-bora-Masaüstü-istoc.com-tradehubback:default: Job OK (tradehub.localhost::ce7efef4-87df-460a-8469-6052b5547eda)
+2026-03-13 15:22:43,900 Result is kept for 600 seconds
+2026-03-13 15:23:21,292 Worker 47b995a6febe4a7fac46d8e3b15ef981 [PID 2165450]: warm shut down requested
+2026-03-13 15:24:17,977 Worker rq:worker:d182bdc0291c485ca19472b492f38723 started with PID 2184038, version 1.15.1
+2026-03-13 15:24:17,977 Subscribing to channel rq:pubsub:d182bdc0291c485ca19472b492f38723
+2026-03-13 15:24:17,977 *** Listening on home-bora-Masaüstü-istoc.com-tradehubback:short, home-bora-Masaüstü-istoc.com-tradehubback:default, home-bora-Masaüstü-istoc.com-tradehubback:long...
+2026-03-13 15:30:18,706 home-bora-Masaüstü-istoc.com-tradehubback:default: frappe.utils.background_jobs.execute_job(event=None, is_async=True, job_name='frappe.core.doctype.scheduled_job_type.scheduled_job_type.run_scheduled_jo..., kwargs={'job_type': 'erpnext.manufacturing.doctype.bom_update_log.bom_update_log.r..., method='frappe.core.doctype.scheduled_job_type.scheduled_job_type.run_scheduled_jo..., site='tradehub.localhost', user='Administrator') (tradehub.localhost::scheduled_job::erpnext.manufacturing.doctype.bom_update_log.bom_update_log.resume_bom_cost_update_jobs)
+2026-03-13 15:30:18,892 home-bora-Masaüstü-istoc.com-tradehubback:default: Job OK (tradehub.localhost::scheduled_job::erpnext.manufacturing.doctype.bom_update_log.bom_update_log.resume_bom_cost_update_jobs)
+2026-03-13 15:30:18,892 Result is kept for 600 seconds
+2026-03-13 15:30:18,895 home-bora-Masaüstü-istoc.com-tradehubback:default: frappe.utils.background_jobs.execute_job(event=None, is_async=True, job_name='frappe.core.doctype.scheduled_job_type.scheduled_job_type.run_scheduled_jo..., kwargs={'job_type': 'erpnext.accounts.doctype.gl_entry.gl_entry.rename_gle_sle_doc..., method='frappe.core.doctype.scheduled_job_type.scheduled_job_type.run_scheduled_jo..., site='tradehub.localhost', user='Administrator') (tradehub.localhost::scheduled_job::erpnext.accounts.doctype.gl_entry.gl_entry.rename_gle_sle_docs)
+2026-03-13 15:30:19,059 home-bora-Masaüstü-istoc.com-tradehubback:default: Job OK (tradehub.localhost::scheduled_job::erpnext.accounts.doctype.gl_entry.gl_entry.rename_gle_sle_docs)
+2026-03-13 15:30:19,059 Result is kept for 600 seconds
+2026-03-13 15:35:42,479 Worker d182bdc0291c485ca19472b492f38723 [PID 2184038]: warm shut down requested
+2026-03-13 15:35:42,480 Unsubscribing from channel rq:pubsub:d182bdc0291c485ca19472b492f38723
