@@ -8,7 +8,7 @@
  * Interactivity powered by Alpine.js (imageGallery component registered in alpine.ts).
  */
 
-import { getMockProduct } from '../../data/mockProduct';
+import { getCurrentProduct } from '../../alpine/product';
 import { t } from '../../i18n';
 import { ProductAttributes } from './ProductAttributes';
 
@@ -72,7 +72,7 @@ export const LIGHTBOX_THUMB_SIZE = 76;
 export const LIGHTBOX_THUMB_GAP = 10;
 
 export function ProductImageGallery(): string {
-  const mockProduct = getMockProduct();
+  const mockProduct = getCurrentProduct();
   const images = mockProduct.images;
   const needsScroll = images.length > 4;
   const firstImage = images[0];

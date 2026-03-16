@@ -3,9 +3,9 @@
  * Renders the "Ozellikler" tab content with Key Attributes and Packaging tables.
  */
 
-import { getMockProduct } from '../../data/mockProduct';
+import { getCurrentProduct } from '../../alpine/product';
 import { t } from '../../i18n';
-const mockProduct = getMockProduct();
+// Product loaded lazily via getCurrentProduct() inside functions
 
 function buildTableRows(specs: { key: string; value: string }[]): string {
   const rows: string[] = [];
@@ -22,19 +22,20 @@ function buildTableRows(specs: { key: string; value: string }[]): string {
 }
 
 export function AttributesTabContent(): string {
+  const p = getCurrentProduct();
   return `
     <div id="pd-tab-attributes">
       <h3 class="text-lg font-bold mb-4" style="color: var(--pd-title-color, #111827);">${t('product.keyAttributes')}</h3>
       <table class="pd-attrs-table">
         <tbody>
-          ${buildTableRows(mockProduct.specs)}
+          ${buildTableRows(p.specs)}
         </tbody>
       </table>
 
       <h3 class="text-lg font-bold mb-4 mt-8" style="color: var(--pd-title-color, #111827);">${t('product.packagingDelivery')}</h3>
       <table class="pd-attrs-table">
         <tbody>
-          ${buildTableRows(mockProduct.packagingSpecs)}
+          ${buildTableRows(p.packagingSpecs)}
         </tbody>
       </table>
 
@@ -51,13 +52,13 @@ export function AttributesTabContent(): string {
             <thead>
               <tr>
                 <th>${t('product.leadTimeQty')}</th>
-                ${mockProduct.leadTimeRanges.map(r => `<th>${r.quantityRange}</th>`).join('')}
+                ${p.leadTimeRanges.map(r => `<th>${r.quantityRange}</th>`).join('')}
               </tr>
             </thead>
             <tbody>
               <tr>
                 <td class="pd-attrs-key">${t('product.leadTimeDays')}</td>
-                ${mockProduct.leadTimeRanges.map(r => `<td class="pd-attrs-val">${r.days}</td>`).join('')}
+                ${p.leadTimeRanges.map(r => `<td class="pd-attrs-val">${r.days}</td>`).join('')}
               </tr>
             </tbody>
           </table>
@@ -67,7 +68,7 @@ export function AttributesTabContent(): string {
       <!-- Customization Options -->
       <div class="mt-8 pt-6" style="border-top: 1px solid var(--pd-spec-border, #e5e5e5);">
         <h3 class="text-lg font-bold mb-4" style="color: var(--pd-title-color, #111827);">${t('product.customizationOptions')}</h3>
-        ${mockProduct.customizationOptions.map(opt => `
+        ${p.customizationOptions.map(opt => `
           <div class="flex items-baseline gap-2 mb-2 text-sm">
             <strong style="color: var(--pd-spec-value-color, #111827);">${opt.name}</strong>
             <span style="color: var(--pd-spec-key-color, #6b7280);">${opt.priceAddon}</span>

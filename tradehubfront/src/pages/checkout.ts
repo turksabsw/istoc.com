@@ -26,7 +26,7 @@ import { startAlpine } from '../alpine'
 
 // Checkout components
 import { CheckoutHeader, CheckoutLayout, ShippingAddressForm, OrderSummary, PaymentMethodSection, ItemsDeliverySection, OrderProtectionModal, OrderReviewModal } from '../components/checkout'
-import { protectionSummaryItems, tradeAssuranceText, modalSections, paymentIcons, infoBoxBullets, mockCoupons } from '../data/mockCheckout'
+import { protectionSummaryItems, tradeAssuranceText, modalSections, paymentIcons, infoBoxBullets } from '../data/mockCheckout'
 import { cartStore } from '../components/cart/state/CartStore'
 import type { OrderSummary as OrderSummaryData } from '../types/checkout'
 import type { CartProduct, CartSku } from '../types/cart'
@@ -35,16 +35,43 @@ import { initStickyHeights } from '../utils/stickyHeights'
 import { orderStore } from '../components/orders/state/OrderStore'
 import type { Order } from '../types/order'
 
-// Expose mock coupons for Alpine component
-(window as unknown as Record<string, unknown>).__mockCoupons = mockCoupons;
+// Expose coupons array for Alpine component (populated from API in future)
+(window as unknown as Record<string, unknown>).__mockCoupons = [];
 
-// CartStore'dan checkout order summary oluştur
-cartStore.load();
-if (cartStore.hasSelectedSkuMoqViolation()) {
-  window.location.replace('/pages/cart.html');
+// Sample mode detection
+const isSampleMode = new URLSearchParams(window.location.search).get('mode') === 'sample';
+
+interface SampleOrderData {
+  productId: string;
+  title: string;
+  supplierName: string;
+  samplePrice: number;
+  unit: string;
+  color: { id: string; label: string; imageUrl?: string } | null;
+  quantity: number;
 }
 
-const cartSummary = cartStore.getSummary();
+let sampleOrderData: SampleOrderData | null = null;
+
+if (isSampleMode) {
+  try {
+    const raw = localStorage.getItem('tradehub_sample_order');
+    if (raw) sampleOrderData = JSON.parse(raw) as SampleOrderData;
+  } catch { /* ignore */ }
+  if (!sampleOrderData) {
+    window.location.replace('/');
+  }
+}
+
+// CartStore'dan checkout order summary oluştur
+if (!isSampleMode) {
+  cartStore.load();
+  if (cartStore.hasSelectedSkuMoqViolation()) {
+    window.location.replace('/pages/cart.html');
+  }
+}
+
+const cartSummary = isSampleMode ? null : cartStore.getSummary();
 
 function formatMonthDay(date: Date): string {
   return date.toLocaleDateString('en-US', { month: 'short', day: '2-digit' });
@@ -83,7 +110,42 @@ function buildProductCard(product: CartProduct): { card: CheckoutDeliveryOrderGr
   };
 }
 
+function buildSampleDeliveryOrders(): CheckoutDeliveryOrderGroup[] {
+  if (!sampleOrderData) return [];
+  const now = new Date();
+  const sellerId = sampleOrderData.supplierName.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+  const start1 = addDays(now, 10);
+  const end1 = addDays(now, 24);
+
+  return [{
+    orderId: 'order-sample',
+    orderLabel: t('cart.sampleOrder') || 'Sample Order',
+    sellerId,
+    sellerName: sampleOrderData.supplierName,
+    methods: [{
+      id: `method-sample-1`,
+      etaLabel: `Estimated delivery by ${formatMonthDay(start1)}-${formatMonthDay(end1)}`,
+      shippingFee: 5,
+      isDefault: true,
+    }],
+    products: [{
+      id: sampleOrderData.productId,
+      title: sampleOrderData.title,
+      moqLabel: `${t('cart.sampleMaxNote')}`,
+      image: sampleOrderData.color?.imageUrl || '',
+      skuLines: [{
+        id: `sample-${sampleOrderData.productId}`,
+        image: sampleOrderData.color?.imageUrl || '',
+        variantText: sampleOrderData.color ? `${t('cart.colorLabel')}: ${sampleOrderData.color.label}` : '',
+        unitPrice: sampleOrderData.samplePrice,
+        quantity: 1,
+      }],
+    }],
+  }];
+}
+
 function buildDeliveryOrders(): CheckoutDeliveryOrderGroup[] {
+  if (!cartSummary) return [];
   const suppliers = cartStore.getSuppliers();
   const selectedSuppliers = suppliers
     .map((supplier) => {
@@ -137,7 +199,7 @@ function buildDeliveryOrders(): CheckoutDeliveryOrderGroup[] {
   });
 }
 
-const checkoutDeliveryOrders = buildDeliveryOrders();
+const checkoutDeliveryOrders = isSampleMode ? buildSampleDeliveryOrders() : buildDeliveryOrders();
 const defaultShippingFee = Number(
   checkoutDeliveryOrders.reduce((sum, order) => {
     const defaultMethod = order.methods.find((method) => method.isDefault) ?? order.methods[0];
@@ -145,14 +207,25 @@ const defaultShippingFee = Number(
   }, 0).toFixed(2),
 );
 
-const checkoutOrderSummary: OrderSummaryData = {
-  itemCount: cartSummary.selectedCount || cartSummary.items.reduce((s, i) => s + i.quantity, 0),
-  thumbnails: cartSummary.items.map(i => ({ image: i.image, quantity: i.quantity })),
-  itemSubtotal: cartSummary.productSubtotal,
+const sampleSubtotal = sampleOrderData ? sampleOrderData.samplePrice * sampleOrderData.quantity : 0;
+
+const checkoutOrderSummary: OrderSummaryData = isSampleMode ? {
+  itemCount: 1,
+  thumbnails: sampleOrderData?.color?.imageUrl ? [{ image: sampleOrderData.color.imageUrl, quantity: 1 }] : [],
+  itemSubtotal: sampleSubtotal,
   shipping: defaultShippingFee,
-  subtotal: cartSummary.productSubtotal + defaultShippingFee - cartSummary.discount,
+  subtotal: sampleSubtotal + defaultShippingFee,
   processingFee: 0,
-  total: cartSummary.productSubtotal + defaultShippingFee - cartSummary.discount,
+  total: sampleSubtotal + defaultShippingFee,
+  currency: 'USD',
+} : {
+  itemCount: cartSummary!.selectedCount || cartSummary!.items.reduce((s, i) => s + i.quantity, 0),
+  thumbnails: cartSummary!.items.map(i => ({ image: i.image, quantity: i.quantity })),
+  itemSubtotal: cartSummary!.productSubtotal,
+  shipping: defaultShippingFee,
+  subtotal: cartSummary!.productSubtotal + defaultShippingFee - cartSummary!.discount,
+  processingFee: 0,
+  total: cartSummary!.productSubtotal + defaultShippingFee - cartSummary!.discount,
   currency: 'USD',
 };
 
@@ -382,6 +455,11 @@ window.addEventListener('checkout:confirm-order', () => {
 
   orderStore.load();
   orderStore.addOrders(newOrders);
+
+  // Sample order verisi temizle
+  if (isSampleMode) {
+    localStorage.removeItem('tradehub_sample_order');
+  }
 
   const orderNumbers = newOrders.map((o) => o.orderNumber).join(',');
 

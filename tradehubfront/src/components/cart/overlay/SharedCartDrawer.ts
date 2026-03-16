@@ -133,7 +133,7 @@ function getTotals(): {
   const totalQty = Array.from(state.colorQuantities.values()).reduce((acc, qty) => acc + qty, 0);
   const tierIndex = getActiveTierIndex(totalQty);
   const activePrice = state.mode === 'sample'
-    ? (state.item?.samplePrice ?? 30)
+    ? (state.item?.samplePrice ?? 0)
     : (state.item?.priceTiers[tierIndex]?.price ?? 0);
   const itemSubtotal = activePrice * totalQty;
   const shippingCost = state.item?.shippingOptions[state.selectedShippingIndex]?.cost ?? 0;
@@ -232,7 +232,7 @@ function renderPriceSectionHtml(totals: ReturnType<typeof getTotals>): string {
     return `
       <div class="mb-5 pb-5 border-b border-border-default">
         <p class="text-sm text-text-secondary mb-1">${t('cart.sampleMaxNote')}</p>
-        <p class="text-[22px] font-bold text-text-heading">${formatPrice('$' + (state.item.samplePrice ?? 30).toFixed(2))} <span class="text-base font-normal text-text-tertiary">${t('cart.perUnit')}</span></p>
+        <p class="text-[22px] font-bold text-text-heading">${formatPrice('$' + (state.item.samplePrice ?? 0).toFixed(2))} <span class="text-base font-normal text-text-tertiary">${t('cart.perUnit')}</span></p>
       </div>
     `;
   }
@@ -535,7 +535,7 @@ function dispatchCartAdd(): void {
   }));
 }
 
-function openDrawer(itemId?: string, mode: 'cart' | 'sample' = 'cart'): void {
+function openDrawer(itemId?: string, mode: 'cart' | 'sample' = 'cart', preselectedColorLabel?: string): void {
   const item = itemId ? productsById.get(itemId) : Array.from(productsById.values())[0];
   if (!item) return;
 
@@ -545,6 +545,16 @@ function openDrawer(itemId?: string, mode: 'cart' | 'sample' = 'cart'): void {
   state.previewColorIndex = 0;
   state.footerExpanded = false;
   state.colorQuantities = new Map(item.colors.map((color) => [color.id, 0]));
+
+  // Pre-select the color that was clicked in the variant selector
+  if (preselectedColorLabel && item.colors.length > 0) {
+    const normalizedLabel = preselectedColorLabel.toLowerCase().trim();
+    const matchIndex = item.colors.findIndex(c => c.label.toLowerCase().trim() === normalizedLabel);
+    if (matchIndex >= 0) {
+      state.previewColorIndex = matchIndex;
+      state.colorQuantities.set(item.colors[matchIndex].id, 1);
+    }
+  }
 
   const heading = document.getElementById('shared-cart-heading');
   if (heading) {
@@ -796,11 +806,24 @@ export function initSharedCartDrawer(items: CartDrawerItemModel[]): void {
         return;
       }
 
-      if (state.mode === 'sample') {
-        // Sample mode: go directly to checkout (same as Alibaba "Order sample" flow)
+      if (state.mode === 'sample' && state.item) {
+        // Sample mode: save sample order separately and go to checkout
+        const item = state.item;
+        const selectedColor = Array.from(state.colorQuantities.entries()).find(([, qty]) => qty > 0);
+        const color = selectedColor ? item.colors.find(c => c.id === selectedColor[0]) : null;
+        const sampleOrder = {
+          productId: item.id,
+          title: item.title,
+          supplierName: item.supplierName,
+          samplePrice: item.samplePrice ?? 0,
+          unit: item.unit,
+          color: color ? { id: color.id, label: color.label, imageUrl: color.imageUrl } : null,
+          quantity: 1,
+        };
+        localStorage.setItem('tradehub_sample_order', JSON.stringify(sampleOrder));
         applyDrawerTransform(false);
         const base = (typeof import.meta !== 'undefined' ? import.meta.env?.BASE_URL : undefined) || '/';
-        window.location.href = `${base}pages/order/checkout.html`;
+        window.location.href = `${base}pages/order/checkout.html?mode=sample`;
       } else {
         dispatchCartAdd();
         applyDrawerTransform(false);
@@ -833,8 +856,8 @@ export function initSharedCartDrawer(items: CartDrawerItemModel[]): void {
   });
 }
 
-export function openSharedCartDrawer(itemId?: string, mode: 'cart' | 'sample' = 'cart'): void {
-  openDrawer(itemId, mode);
+export function openSharedCartDrawer(itemId?: string, mode: 'cart' | 'sample' = 'cart', preselectedColorLabel?: string): void {
+  openDrawer(itemId, mode, preselectedColorLabel);
 }
 
 export function setSharedCartItems(items: CartDrawerItemModel[]): void {

@@ -373,6 +373,7 @@ const tr = {
       sampleVariations: 'Numune varyasyonları',
       sampleMaxQty: 'Bu numunenin maksimum sipariş miktarı 1 adettir',
       sampleMaxNote: 'Numuneler için maksimum sipariş miktarı: 1 adet',
+      sampleOrder: 'Numune Siparişi',
       perUnit: '/adet',
       price: 'Fiyat',
       productTotal: 'Ürün toplamı',
