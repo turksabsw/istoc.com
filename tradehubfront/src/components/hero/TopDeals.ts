@@ -8,7 +8,9 @@ import Swiper from 'swiper';
 import { Navigation } from 'swiper/modules';
 import 'swiper/swiper-bundle.css';
 import { t } from '../../i18n';
-import { formatPrice } from '../../utils/currency';
+import { formatStartingPrice } from '../../utils/currency';
+import { searchListings } from '../../services/listingService';
+import { initCurrency } from '../../services/currencyService';
 
 interface TopDealCard {
   name: string;
@@ -22,82 +24,8 @@ interface TopDealCard {
   imageSrc: string;
 }
 
-const topDealCards: TopDealCard[] = [
-  {
-    name: 'Wireless Bluetooth Headphones',
-    href: '/pages/product-detail.html',
-    price: '$12.50',
-    originalPrice: '$25.00',
-    moqCount: 2,
-    moqUnitKey: 'topDeals.pieces',
-    badge: 'Top picks',
-    badgeKey: 'topDeals.topPicks',
-    imageSrc: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=400&h=400&q=80',
-  },
-  {
-    name: 'Smart Fitness Watch',
-    href: '/pages/product-detail.html',
-    price: '$8.99',
-    originalPrice: '$18.00',
-    moqCount: 5,
-    moqUnitKey: 'topDeals.pieces',
-    imageSrc: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=400&h=400&q=80',
-  },
-  {
-    name: 'Waterproof Travel Backpack',
-    href: '/pages/product-detail.html',
-    price: '$6.80',
-    originalPrice: '$15.50',
-    moqCount: 10,
-    moqUnitKey: 'topDeals.pieces',
-    imageSrc: 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?auto=format&fit=crop&w=400&h=400&q=80',
-  },
-  {
-    name: 'Running Sports Sneakers',
-    href: '/pages/product-detail.html',
-    price: '$9.20',
-    originalPrice: '$22.00',
-    moqCount: 5,
-    moqUnitKey: 'topDeals.pairs',
-    imageSrc: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=400&h=400&q=80',
-  },
-  {
-    name: 'Polarized UV Sunglasses',
-    href: '/pages/product-detail.html',
-    price: '$3.50',
-    originalPrice: '$8.99',
-    moqCount: 20,
-    moqUnitKey: 'topDeals.pieces',
-    imageSrc: 'https://images.unsplash.com/photo-1511499767150-a48a237f0083?auto=format&fit=crop&w=400&h=400&q=80',
-  },
-  {
-    name: '10000mAh Power Bank',
-    href: '/pages/product-detail.html',
-    price: '$7.20',
-    originalPrice: '$14.00',
-    moqCount: 10,
-    moqUnitKey: 'topDeals.pieces',
-    imageSrc: 'https://images.unsplash.com/photo-1585386959984-a4155224a1ad?auto=format&fit=crop&w=400&h=400&q=80',
-  },
-  {
-    name: 'Portable Bluetooth Speaker',
-    href: '/pages/product-detail.html',
-    price: '$5.60',
-    originalPrice: '$12.00',
-    moqCount: 10,
-    moqUnitKey: 'topDeals.pieces',
-    imageSrc: 'https://images.unsplash.com/photo-1608043152269-423dbba4e7e1?auto=format&fit=crop&w=400&h=400&q=80',
-  },
-  {
-    name: 'Energy Saving LED Bulb',
-    href: '/pages/product-detail.html',
-    price: '$1.20',
-    originalPrice: '$3.50',
-    moqCount: 50,
-    moqUnitKey: 'topDeals.pieces',
-    imageSrc: 'https://images.unsplash.com/photo-1572569511254-d8f925fe2cbb?auto=format&fit=crop&w=400&h=400&q=80',
-  },
-];
+// Empty — populated from API in initTopDeals()
+const topDealCards: TopDealCard[] = [];
 
 function renderDealImage(card: TopDealCard): string {
   return `
@@ -156,7 +84,7 @@ function renderDealSlide(card: TopDealCard): string {
             <span
               class="text-(length:--text-product-price) font-bold leading-none"
               style="color: var(--topdeals-price-color, #dc2626); font-size: var(--text-product-price, 15px);"
-            >${formatPrice(card.price)}</span>
+            >${formatStartingPrice(card.price)}</span>
           </span>
         </div>
 
@@ -208,6 +136,38 @@ export function initTopDeals(): void {
       },
     },
   });
+
+  // Load real products from API
+  initCurrency().then(() => searchListings({ is_featured: true, page_size: 8 })).then(result => {
+    if (result.products.length > 0) {
+      // Hide empty state
+      const emptyState = document.getElementById('top-deals-empty');
+      if (emptyState) emptyState.style.display = 'none';
+
+      const wrapper = document.querySelector('#top-deals-swiper .swiper-wrapper');
+      if (wrapper) {
+        wrapper.innerHTML = result.products.map(p => {
+          const card: TopDealCard = {
+            name: p.name,
+            href: p.href || `/pages/product-detail.html?id=${p.id}`,
+            price: p.price,
+            originalPrice: p.originalPrice || '',
+            moqCount: parseInt(p.moq) || 1,
+            moqUnitKey: 'topDeals.pieces',
+            badge: p.sellingPoint || undefined,
+            badgeKey: undefined,
+            imageSrc: p.imageSrc || '',
+          };
+          return renderDealSlide(card);
+        }).join('');
+        // Reinit swiper
+        const swiperEl = document.querySelector('#top-deals-swiper') as HTMLElement;
+        if (swiperEl && (swiperEl as any).swiper) {
+          (swiperEl as any).swiper.update();
+        }
+      }
+    }
+  }).catch(err => console.warn('[TopDeals] API load failed:', err));
 }
 
 export function TopDeals(): string {
@@ -236,11 +196,21 @@ export function TopDeals(): string {
 
         <!-- Swiper slider -->
         <div class="group/topdeals relative">
-          <div class="swiper topdeals-swiper overflow-hidden" aria-label="Top deal products">
+          <div id="top-deals-swiper" class="swiper topdeals-swiper overflow-hidden" aria-label="Top deal products">
             <div class="swiper-wrapper">
-              ${topDealCards.map(card => renderDealSlide(card)).join('')}
+              ${topDealCards.length > 0 ? topDealCards.map(card => renderDealSlide(card)).join('') : ''}
             </div>
           </div>
+          ${topDealCards.length === 0 ? `
+          <div id="top-deals-empty" class="flex items-center justify-center py-12">
+            <div class="text-center">
+              <svg class="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+              </svg>
+              <p class="text-sm text-gray-400">Yak\u0131nda yeni \u00fcr\u00fcnler eklenecek</p>
+            </div>
+          </div>
+          ` : ''}
 
           <!-- Navigation arrows -->
           <button

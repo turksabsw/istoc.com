@@ -3,11 +3,11 @@
  * Renders product specs as a grid (first 6) + list (remaining).
  */
 
-import { getMockProduct } from '../../data/mockProduct';
+import { getCurrentProduct } from '../../alpine/product';
 import { t } from '../../i18n';
 
 export function ProductAttributes(): string {
-  const mockProduct = getMockProduct();
+  const mockProduct = getCurrentProduct();
   const specs = mockProduct.specs;
   const gridSpecs = specs.slice(0, 6);
   const listSpecs = specs.slice(6);

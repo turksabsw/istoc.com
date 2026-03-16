@@ -13,7 +13,7 @@ import Swiper from 'swiper';
 import { Navigation, EffectCoverflow } from 'swiper/modules';
 import 'swiper/swiper-bundle.css';
 import { t } from '../../i18n';
-import type { TailoredCategory } from '../../data/mockTailoredSelections';
+import type { TailoredCategory } from '../../types/tailoredSelections';
 
 function renderCategorySlide(category: TailoredCategory, index: number): string {
   return `

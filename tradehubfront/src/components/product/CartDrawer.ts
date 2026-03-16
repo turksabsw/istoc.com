@@ -1,5 +1,4 @@
-import { getMockProduct } from '../../data/mockProduct';
-const mockProduct = getMockProduct();
+import { getCurrentProduct } from '../../alpine/product';
 import type { ProductDetail } from '../../types/product';
 import {
   SharedCartDrawer,
@@ -87,21 +86,22 @@ function toDrawerItem(product: ProductDetail, context?: CartDrawerContext | null
     priceTiers: tiers,
     colors: toColors(product),
     shippingOptions: toShippingOptions(product),
+    samplePrice: product.samplePrice,
   };
 }
 
 function buildActiveItem(): CartDrawerItemModel {
-  return toDrawerItem(mockProduct, currentContext);
+  return toDrawerItem(getCurrentProduct(), currentContext);
 }
 
 export function setCartDrawerContext(context: CartDrawerContext | null): void {
   currentContext = context;
 }
 
-export function openCartDrawer(): void {
+export function openCartDrawer(preselectedColorLabel?: string): void {
   const item = buildActiveItem();
   initSharedCartDrawer([item]);
-  openSharedCartDrawer(item.id);
+  openSharedCartDrawer(item.id, 'cart', preselectedColorLabel);
 }
 
 export function CartDrawer(): string {

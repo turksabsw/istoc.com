@@ -373,6 +373,7 @@ const en = {
       sampleVariations: 'Sample variations',
       sampleMaxQty: 'Maximum order quantity for this sample is 1 piece',
       sampleMaxNote: 'Maximum order quantity for samples: 1 piece',
+      sampleOrder: 'Sample Order',
       perUnit: '/pc',
       price: 'Price',
       productTotal: 'Product total',

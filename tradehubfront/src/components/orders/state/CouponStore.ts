@@ -4,9 +4,6 @@
  */
 
 import {
-  mockCoupons,
-  mockCreditHistory,
-  mockCreditBalance,
   type CouponData,
   type CreditHistoryEntry,
 } from '../../../data/mockCheckout';
@@ -36,11 +33,11 @@ export class CouponStore {
       }
     } catch { /* corrupted data — start fresh */ }
 
-    // Seed on first-ever load
+    // Seed on first-ever load (empty — real data comes from API)
     if (!localStorage.getItem(SEED_FLAG)) {
-      this.coupons = [...mockCoupons];
-      this.creditBalance = mockCreditBalance;
-      this.creditHistory = [...mockCreditHistory];
+      this.coupons = [];
+      this.creditBalance = 0;
+      this.creditHistory = [];
       localStorage.setItem(SEED_FLAG, '1');
       this.save();
     }

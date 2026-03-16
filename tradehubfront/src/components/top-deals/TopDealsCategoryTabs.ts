@@ -6,12 +6,18 @@
  */
 
 import { t } from '../../i18n';
-import { getTopDealCategories } from '../../data/mockTopDeals';
 
-export function TopDealsCategoryTabs(): string {
-  const categories = getTopDealCategories();
+export interface CategoryTabItem {
+  id: string;
+  labelKey: string;
+}
 
-  const tabsHtml = categories.map(cat => `
+export function TopDealsCategoryTabs(categories?: CategoryTabItem[]): string {
+  const cats: CategoryTabItem[] = categories && categories.length > 0
+    ? categories
+    : [{ id: 'all', labelKey: 'topDealsPage.tabAll' }];
+
+  const tabsHtml = cats.map(cat => `
     <button
       type="button"
       class="top-deals-tab flex-shrink-0 whitespace-nowrap px-4 py-3 text-sm transition-colors border-b-[3px] border-transparent"
@@ -24,7 +30,7 @@ export function TopDealsCategoryTabs(): string {
   `).join('');
 
   // Bottom sheet category list items
-  const sheetItemsHtml = categories.map(cat => `
+  const sheetItemsHtml = cats.map(cat => `
     <button
       type="button"
       class="flex items-center w-full px-5 py-4 text-left transition-colors border-b border-gray-50 active:bg-gray-50"

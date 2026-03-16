@@ -1,5 +1,7 @@
 import { isLoggedIn, getUser } from '../../utils/auth';
 import { t } from '../../i18n';
+import { searchListings } from '../../services/listingService';
+import { initCurrency } from '../../services/currencyService';
 
 interface SubcategoryGroup {
   title: string;
@@ -495,13 +497,13 @@ function renderMiddleColumn(): string {
         <div class="flex flex-wrap justify-between">
           <a href="#" class="block w-[calc(50%-5.5px)] group">
             <div class="w-full h-[105px] overflow-hidden rounded flex items-center justify-center" style="background-color: var(--mfr-sample-img-bg, #f5f5f5)">
-              <img src="https://picsum.photos/seed/sample1/160/105" alt="${t('mfr.popularProducts')}" class="max-w-full max-h-full object-contain group-hover:scale-105 transition-transform duration-300">
+              <img src="" id="mfr-sample-img-1" alt="${t('mfr.popularProducts')}" class="max-w-full max-h-full object-contain group-hover:scale-105 transition-transform duration-300">
             </div>
             <p class="w-full h-8 min-h-[32px] mt-1 text-sm leading-4 text-center overflow-hidden text-ellipsis" style="color: var(--mfr-sample-label-color, #666666)" title="${t('mfr.popularProducts')}">${t('mfr.popularProducts')}</p>
           </a>
           <a href="#" class="block w-[calc(50%-5.5px)] group">
             <div class="w-full h-[105px] overflow-hidden rounded flex items-center justify-center" style="background-color: var(--mfr-sample-img-bg, #f5f5f5)">
-              <img src="https://picsum.photos/seed/sample2/160/105" alt="${t('mfr.newArrivals')}" class="max-w-full max-h-full object-contain group-hover:scale-105 transition-transform duration-300">
+              <img src="" id="mfr-sample-img-2" alt="${t('mfr.newArrivals')}" class="max-w-full max-h-full object-contain group-hover:scale-105 transition-transform duration-300">
             </div>
             <p class="w-full h-8 min-h-[32px] mt-1 text-sm leading-4 text-center overflow-hidden text-ellipsis" style="color: var(--mfr-sample-label-color, #666666)" title="${t('mfr.newArrivals')}">${t('mfr.newArrivals')}</p>
           </a>
@@ -514,13 +516,13 @@ function renderMiddleColumn(): string {
         <div class="flex flex-wrap justify-between">
           <a href="#" class="block w-[calc(50%-5.5px)] group">
             <div class="w-full h-[105px] overflow-hidden rounded flex items-center justify-center" style="background-color: var(--mfr-sample-img-bg, #f5f5f5)">
-              <img src="https://picsum.photos/seed/sample3/160/105" alt="${t('mfr.bestSellers')}" class="max-w-full max-h-full object-contain group-hover:scale-105 transition-transform duration-300">
+              <img src="" id="mfr-sample-img-3" alt="${t('mfr.bestSellers')}" class="max-w-full max-h-full object-contain group-hover:scale-105 transition-transform duration-300">
             </div>
             <p class="w-full h-8 min-h-[32px] mt-1 text-sm leading-4 text-center overflow-hidden text-ellipsis" style="color: var(--mfr-sample-label-color, #666666)" title="${t('mfr.bestSellers')}">${t('mfr.bestSellers')}</p>
           </a>
           <a href="#" class="block w-[calc(50%-5.5px)] group">
             <div class="w-full h-[105px] overflow-hidden rounded flex items-center justify-center" style="background-color: var(--mfr-sample-img-bg, #f5f5f5)">
-              <img src="https://picsum.photos/seed/sample4/160/105" alt="${t('mfr.campaigns')}" class="max-w-full max-h-full object-contain group-hover:scale-105 transition-transform duration-300">
+              <img src="" id="mfr-sample-img-4" alt="${t('mfr.campaigns')}" class="max-w-full max-h-full object-contain group-hover:scale-105 transition-transform duration-300">
             </div>
             <p class="w-full h-8 min-h-[32px] mt-1 text-sm leading-4 text-center overflow-hidden text-ellipsis" style="color: var(--mfr-sample-label-color, #666666)" title="${t('mfr.campaigns')}">${t('mfr.campaigns')}</p>
           </a>

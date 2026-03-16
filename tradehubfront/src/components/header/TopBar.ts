@@ -339,7 +339,7 @@ function renderLanguageCurrencySelector(): string {
       <svg class="w-4 h-4" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
         <path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9.004 9.004 0 0 0 8.716-6.747M12 21a9.004 9.004 0 0 1-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 0 1 7.843 4.582M12 3a8.997 8.997 0 0 0-7.843 4.582m15.686 0A11.953 11.953 0 0 1 12 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0 1 21 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0 1 12 16.5a17.92 17.92 0 0 1-8.716-4.247m0 0A8.959 8.959 0 0 1 3 12c0-1.177.227-2.302.637-3.332" />
       </svg>
-      <span class="font-medium truncate" data-i18n="header.englishUsd" id="lang-currency-label">${t('header.englishUsd')}</span>
+      <span class="font-medium truncate" id="lang-currency-label">${getCurrentLang() === 'tr' ? 'Türkçe' : 'English'}-${getSelectedCurrency().code}</span>
     </button>
 
     <!-- Language & Currency Popover -->
@@ -803,7 +803,7 @@ function renderMobileDrawer(): string {
             <!-- Currency pills -->
             <div class="flex flex-wrap gap-2">
               ${getCurrencyOptions().map((currency, i) => `
-                <button type="button" class="px-3 py-1.5 text-xs font-medium rounded-full border transition-colors ${i === 0 ? 'border-primary-500 text-primary-600 bg-primary-50 dark:border-primary-400 dark:text-primary-400 dark:bg-primary-900/20' : 'border-gray-300 text-gray-600 dark:border-gray-600 dark:text-gray-400 hover:border-gray-400 dark:hover:border-gray-500'}">
+                <button type="button" data-currency-pill="${currency.code}" class="px-3 py-1.5 text-xs font-medium rounded-full border transition-colors ${i === 0 ? 'border-primary-500 text-primary-600 bg-primary-50 dark:border-primary-400 dark:text-primary-400 dark:bg-primary-900/20' : 'border-gray-300 text-gray-600 dark:border-gray-600 dark:text-gray-400 hover:border-gray-400 dark:hover:border-gray-500'}">
                   ${currency.code === 'TRY' ? 'TL' : currency.symbol}
                 </button>
               `).join('')}
@@ -1470,6 +1470,12 @@ export function initLanguageSelector(): void {
 
   if (currencySelect) {
     currencySelect.value = getSelectedCurrency().code;
+
+    // Auto-apply currency change on selection (no Save button needed)
+    currencySelect.addEventListener('change', () => {
+      setSelectedCurrency(currencySelect.value);
+      window.location.reload();
+    });
   }
 
   // Desktop popover "Save" button — applies language + currency, then refreshes
@@ -1496,6 +1502,17 @@ export function initLanguageSelector(): void {
       const lang = langMap[val || ''] || 'en';
       localStorage.setItem('i18nextLng', lang);
       window.location.reload();
+    });
+  });
+
+  // Mobile currency pills — save + refresh on click
+  document.querySelectorAll<HTMLButtonElement>('[data-currency-pill]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const code = btn.getAttribute('data-currency-pill');
+      if (code) {
+        setSelectedCurrency(code);
+        window.location.reload();
+      }
     });
   });
 }

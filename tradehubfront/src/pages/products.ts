@@ -40,8 +40,9 @@ import {
 } from '../components/products'
 import { ShippingModal, initShippingModal } from '../components/product'
 
-import { getMockProductListingCards } from '../data/mockProductListing'
-const mockProductListingCards = getMockProductListingCards();
+import { searchListings } from '../services/listingService'
+import { initCurrency } from '../services/currencyService'
+import type { ProductListingCard } from '../types/productListing'
 
 // Category data for ID → name mapping
 import { megaCategories } from '../components/header'
@@ -76,7 +77,7 @@ function resolveKeyword(): string {
   if (queryParam) {
     return escapeHtml(queryParam.replace(/\+/g, ' '));
   }
-  return 'laptop backpack';
+  return '';
 }
 
 const searchKeyword = resolveKeyword();
@@ -114,7 +115,7 @@ appEl.innerHTML = `
       <div class="container-boxed">
         ${Breadcrumb(productsBreadcrumb)}
         <!-- Search Header (keyword, product count, sorting, view toggle) -->
-        ${SearchHeader({ keyword: searchKeyword })}
+        ${SearchHeader({ keyword: searchKeyword, totalProducts: 0 })}
 
         <!-- Active Filter Chips -->
         <div id="active-filter-chips" x-data="filterChips" class="flex flex-wrap gap-2 mb-3 empty:hidden"></div>
@@ -126,8 +127,8 @@ appEl.innerHTML = `
             ${FilterSidebar()}
           </div>
 
-          <!-- Product Grid -->
-          ${ProductListingGrid()}
+          <!-- Product Grid (starts empty, filled by API) -->
+          ${ProductListingGrid([])}
         </div>
       </div>
     </section>
@@ -209,19 +210,73 @@ document.addEventListener('view-mode-change', (e: Event) => {
   setGridViewMode((e as CustomEvent).detail.mode);
 });
 
-// Initialize listing cart drawer
-initListingCartDrawer(mockProductListingCards);
+// Initialize shipping modal
 initShippingModal();
 
-// Initialize filter engine: connects filters + sorting to product grid
-// Note: Alpine $dispatch events (filter-change, sort-change, view-mode-change)
-// bubble through the DOM and reach these document-level listeners.
+// Filter engine reference
 let engine: ReturnType<typeof initFilterEngine> | null = null;
-engine = initFilterEngine({
-  products: mockProductListingCards,
-  onUpdate: (filtered, count) => {
-    rerenderProductGrid(filtered);
-    updateSearchHeader({ totalProducts: count });
-    if (engine) updateFilterChips(engine.getState());
-  },
+
+// Show loading state in grid
+const loadingGrid = document.querySelector<HTMLElement>('.product-grid');
+if (loadingGrid) {
+  loadingGrid.innerHTML = `
+    <div class="col-span-full flex items-center justify-center py-16">
+      <div class="flex flex-col items-center gap-3">
+        <div class="w-8 h-8 border-3 border-primary border-t-transparent rounded-full animate-spin"></div>
+        <span class="text-sm text-text-muted">Ürünler yükleniyor...</span>
+      </div>
+    </div>
+  `;
+}
+
+// Initialize currency, then load data from API
+const searchParams = {
+  query: queryParam || undefined,
+  category: categoryParam || undefined,
+  page: 1,
+  page_size: 40,
+};
+
+initCurrency().then(() => searchListings(searchParams)).then(result => {
+  const products = result.products;
+
+  // Render products
+  rerenderProductGrid(products);
+
+  // Update search header with real counts
+  updateSearchHeader({
+    totalProducts: result.searchHeader.totalProducts,
+    keyword: result.searchHeader.keyword || searchKeyword || undefined,
+  });
+
+  // Initialize filter engine with real data
+  engine = initFilterEngine({
+    products,
+    onUpdate: (filtered: ProductListingCard[], count: number) => {
+      rerenderProductGrid(filtered);
+      updateSearchHeader({ totalProducts: count });
+      if (engine) updateFilterChips(engine.getState());
+    },
+  });
+
+  // Initialize listing cart drawer with real data
+  initListingCartDrawer(products);
+
+  // Re-init product sliders for new cards
+  initProductSliders();
+
+  console.info('[products] Loaded', products.length, 'listings from API');
+}).catch(err => {
+  console.error('[products] Failed to load listings from API:', err);
+  // Show error state
+  if (loadingGrid) {
+    loadingGrid.innerHTML = `
+      <div class="col-span-full flex items-center justify-center py-16">
+        <div class="text-center">
+          <p class="text-text-muted mb-2">Ürünler yüklenemedi</p>
+          <button onclick="window.location.reload()" class="text-sm text-primary hover:underline">Tekrar dene</button>
+        </div>
+      </div>
+    `;
+  }
 });

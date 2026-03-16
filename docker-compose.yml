@@ -34,6 +34,7 @@ services:
       - ./tradehubback/sites:/home/frappe/frappe-bench/sites
       - ./tradehubback/sites/common_site_config.docker.json:/home/frappe/frappe-bench/sites/common_site_config.json
       - ./tradehubback/frappe_wsgi.py:/home/frappe/frappe-bench/frappe_wsgi.py
+      - ./tradehubback/apps/tradehub:/home/frappe/frappe-bench/apps/tradehub
       - backend-logs:/home/frappe/frappe-bench/logs
     depends_on:
       db:
@@ -74,6 +75,7 @@ services:
     volumes:
       - ./tradehubback/sites:/home/frappe/frappe-bench/sites
       - ./tradehubback/sites/common_site_config.docker.json:/home/frappe/frappe-bench/sites/common_site_config.json
+      - ./tradehubback/apps/tradehub:/home/frappe/frappe-bench/apps/tradehub
       - backend-logs:/home/frappe/frappe-bench/logs
     depends_on:
       - redis-queue
@@ -91,6 +93,7 @@ services:
     volumes:
       - ./tradehubback/sites:/home/frappe/frappe-bench/sites
       - ./tradehubback/sites/common_site_config.docker.json:/home/frappe/frappe-bench/sites/common_site_config.json
+      - ./tradehubback/apps/tradehub:/home/frappe/frappe-bench/apps/tradehub
       - backend-logs:/home/frappe/frappe-bench/logs
     depends_on:
       - redis-queue
@@ -109,7 +112,7 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-changeme}
       MYSQL_DATABASE: ${DB_NAME:-_a442feea467abfcc}
-      MYSQL_USER: frappe
+      MYSQL_USER: _a442feea467abfcc
       MYSQL_PASSWORD: ${DB_PASSWORD:-rCN4UEwX6mG2wWui}
     ports:
       - "${DB_PORT:-3308}:3306"

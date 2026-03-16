@@ -6,15 +6,15 @@
  * with data-attribute-driven JS initialization.
  */
 
-import { getMockProduct } from '../../data/mockProduct';
+import { getCurrentProduct } from '../../alpine/product';
 import { t } from '../../i18n';
 import { formatPrice } from '../../utils/currency';
 import type { ProductVariant } from '../../types/product';
-import { openShippingModal } from './CartDrawer';
+import { openShippingModal, openCartDrawer } from './CartDrawer';
 import { openLoginModal } from './LoginModal';
 import { renderStars } from './ProductReviews';
 
-const mockProduct = getMockProduct();
+// Product loaded lazily — getCurrentProduct() called inside functions
 
 /* ── Reusable SVG fragments ──────────────────────────── */
 
@@ -113,7 +113,7 @@ function renderVariantSection(variant: ProductVariant): string {
    ══════════════════════════════════════════════════════ */
 
 export function MobileProductLayout(): string {
-  const p = mockProduct;
+  const p = getCurrentProduct();
 
   // ── Sections 1-5: Gallery, Badges, Price, Sample, Title ──
 
@@ -167,12 +167,12 @@ export function MobileProductLayout(): string {
     </div>
   `;
 
-  const sampleSection = `
+  const sampleSection = p.samplePrice ? `
     <div id="pdm-sample-row" class="flex items-center justify-between px-4 py-2.5 max-[374px]:px-3 max-[374px]:py-2 bg-surface text-[13px] max-[374px]:text-xs text-text-body">
-      <span>${t('product.samplePrice')}: <strong>${formatPrice('$' + (p.samplePrice?.toFixed(2) ?? '30.00'))}</strong></span>
-      <button type="button" data-order-sample="${mockProduct.id}" class="pdm-sample-btn px-[18px] py-1.5 max-[374px]:px-3.5 max-[374px]:py-[5px] border border-[#333] rounded-[20px] text-[13px] max-[374px]:text-xs font-medium bg-surface cursor-pointer text-text-body">${t('cart.orderSample')}</button>
+      <span>${t('product.samplePrice')}: <strong>${formatPrice('$' + p.samplePrice.toFixed(2))}</strong></span>
+      <button type="button" data-order-sample="${p.id}" class="pdm-sample-btn px-[18px] py-1.5 max-[374px]:px-3.5 max-[374px]:py-[5px] border border-[#333] rounded-[20px] text-[13px] max-[374px]:text-xs font-medium bg-surface cursor-pointer text-text-body">${t('cart.orderSample')}</button>
     </div>
-  `;
+  ` : '';
 
   const titleSection = `
     <div id="pdm-title-section" class="flex flex-col gap-1 pt-3.5 px-4 pb-1.5 max-[374px]:pt-3 max-[374px]:px-3 max-[374px]:pb-1.5 bg-surface">
@@ -202,11 +202,11 @@ export function MobileProductLayout(): string {
     sheetId: 'shipping-modal',  // special: opens existing ShippingModal
     previewHtml: `
       <div id="pdm-ship-preview" class="px-4 pb-3.5 text-[13px] text-text-body leading-[1.6]">
-        <div class="pdm-ship-method font-semibold text-text-heading">${p.shipping[0].method}</div>
-        <div class="pdm-ship-detail flex gap-4 mt-1">
+        <div class="pdm-ship-method font-semibold text-text-heading">${p.shipping[0]?.method || t('product.shippingLabel')}</div>
+        ${p.shipping[0] ? `<div class="pdm-ship-detail flex gap-4 mt-1">
           <span class="text-text-muted">${t('product.estimatedCost')}: <strong>${p.shipping[0].cost}</strong></span>
           <span class="text-text-muted">${t('product.duration')}: <strong>${p.shipping[0].estimatedDays}</strong></span>
-        </div>
+        </div>` : ''}
       </div>
     `,
   });
@@ -633,6 +633,9 @@ function initVariantSelection(): void {
       if (!btn) return;
       colorBody.querySelectorAll('.pdm-color-thumb').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
+      // Open cart drawer with selected color
+      const label = btn.getAttribute('data-label') || btn.getAttribute('title') || '';
+      openCartDrawer(label);
     });
   }
 
@@ -643,6 +646,8 @@ function initVariantSelection(): void {
       if (!btn) return;
       group.querySelectorAll('.pdm-variant-pill').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
+      // Open cart drawer
+      openCartDrawer();
     });
   });
 }

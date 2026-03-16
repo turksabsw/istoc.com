@@ -17,5 +17,14 @@
         "required": [],
         "idx": 2,
         "version": "15.101.0"
+    },
+    "tradehub": {
+        "resolution": {
+            "commit_hash": null,
+            "branch": null
+        },
+        "required": [],
+        "idx": 3,
+        "version": "0.0.1"
     }
 }
