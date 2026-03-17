@@ -1,0 +1,16 @@
+2026-03-17 08:45:49,807 ERROR frappe Error while inserting deferred Error Log record: Error Log jra4ri50ft: '<strong>Title</strong>' (Module import failed for Seller Profile, the DocType you're trying to open might be deleted.
+Error: No module named 'tradehub_core.tradehub_core.doctype.seller_profile.seller_profile') will get truncated, as max characters allowed is 140
+Site: tradehub.localhost
+Form Dict: {}
+2026-03-17 08:45:49,808 ERROR frappe Error while inserting deferred Error Log record: Error Log jraboi6gq7: '<strong>Title</strong>' (Module import failed for Seller Profile, the DocType you're trying to open might be deleted.
+Error: No module named 'tradehub_core.tradehub_core.doctype.seller_profile.seller_profile') will get truncated, as max characters allowed is 140
+Site: tradehub.localhost
+Form Dict: {}
+2026-03-17 08:45:49,809 ERROR frappe Error while inserting deferred Error Log record: Error Log jral0lapoa: '<strong>Title</strong>' (Module import failed for Seller Category, the DocType you're trying to open might be deleted.
+Error: No module named 'tradehub_core.tradehub_core.doctype.seller_category.seller_category') will get truncated, as max characters allowed is 140
+Site: tradehub.localhost
+Form Dict: {}
+2026-03-17 08:45:49,810 ERROR frappe Error while inserting deferred Error Log record: Error Log jraebjoa1g: '<strong>Title</strong>' (Module import failed for Seller Profile, the DocType you're trying to open might be deleted.
+Error: No module named 'tradehub_core.tradehub_core.doctype.seller_profile.seller_profile') will get truncated, as max characters allowed is 140
+Site: tradehub.localhost
+Form Dict: {}
