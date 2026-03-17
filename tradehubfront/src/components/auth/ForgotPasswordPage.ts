@@ -1,13 +1,11 @@
 /**
  * ForgotPasswordPage Component
- * 3-step password reset flow:
- *   Step 1: "Hesabınızı bulun" — Email/username input
- *   Step 2: "Kimliğinizi doğrulayın" — 6-digit OTP verification
- *   Step 3: "Şifrenizi yenileyin" — New password with requirements
+ * 2-step password reset flow (email link based):
+ *   Step 1: "Hesabınızı bulun" — Email input
+ *   Step 2: "Email Gönderildi" — Confirmation with resend option
  *
  * Uses Alpine.js x-data="forgotPasswordPage" for step navigation and form state.
- * Uses a minimal layout (logo header + centered card on gray bg),
- * matching the Alibaba forgot-password style.
+ * Uses a minimal layout (logo header + centered card on gray bg).
  */
 
 import { getBaseUrl } from './AuthLayout';
@@ -15,15 +13,12 @@ import { t } from '../../i18n';
 
 /* ── Types ──────────────────────────────────────────── */
 
-export type ForgotPasswordStep = 'find-account' | 'verify-code' | 'reset-password';
+export type ForgotPasswordStep = 'find-account' | 'link-sent';
 
 export interface ForgotPasswordState {
   step: ForgotPasswordStep;
   email: string;
-  otp: string[];
-  countdownSeconds: number;
-  countdownInterval: number | null;
-  canResend: boolean;
+  loading: boolean;
 }
 
 /* ── Helper ─────────────────────────────────────────── */
@@ -103,11 +98,15 @@ function StepFindAccount(): string {
 
         <button
           type="submit"
-          :disabled="!email.trim()"
+          :disabled="!email.trim() || loading"
           disabled
           class="w-full h-12 th-btn th-btn-pill disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          <span data-i18n="auth.forgot.continue">${t('auth.forgot.continue')}</span>
+          <span x-show="!loading" data-i18n="auth.forgot.continue">${t('auth.forgot.continue')}</span>
+          <span x-show="loading" x-cloak class="inline-flex items-center gap-2">
+            <svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+            <span data-i18n="common.loading">${t('common.loading')}</span>
+          </span>
         </button>
       </form>
 
@@ -118,128 +117,48 @@ function StepFindAccount(): string {
   `;
 }
 
-/* ── Step 2: Kimliğinizi doğrulayın ─────────────────── */
+/* ── Step 2: Email Gönderildi ───────────────────────── */
 
-function StepVerifyCode(): string {
-  const otpInputs = Array.from({ length: 6 }, (_, i) => `
-    <input
-      type="text"
-      inputmode="numeric"
-      pattern="[0-9]*"
-      maxlength="1"
-      data-fp-otp-index="${i}"
-      class="w-10 h-12 sm:w-12 sm:h-14 md:w-14 md:h-16 text-center text-lg sm:text-xl md:text-2xl font-bold
-             rounded-lg border-2 border-gray-200
-             bg-white text-gray-900
-             auth-otp-focus
-             transition-all duration-200 outline-none"
-      placeholder=""
-      autocomplete="one-time-code"
-      aria-label="${t('auth.forgot.otpDigitLabel')} ${i + 1}"
-    />
-  `).join('');
-
+function StepLinkSent(): string {
+  const baseUrl = getBaseUrl();
   return `
-    <div x-show="step === 'verify-code'" x-cloak>
-      <h1 class="text-2xl font-bold text-gray-900 text-center mb-3" data-i18n="auth.forgot.verifyIdentity">${t('auth.forgot.verifyIdentity')}</h1>
-      <p class="text-sm text-gray-500 text-center mb-1" data-i18n="auth.forgot.otpDesc">${t('auth.forgot.otpDesc')}</p>
-      <p class="text-sm font-bold text-gray-900 text-center mb-8" x-text="maskedEmail"></p>
-
-      <!-- OTP Inputs -->
-      <div x-ref="otpContainer"
-           @input="handleOtpInput($event)"
-           @keydown="handleOtpKeydown($event)"
-           @paste="handleOtpPaste($event)"
-           class="flex justify-center gap-1.5 sm:gap-2 md:gap-3 mb-6">
-        ${otpInputs}
-      </div>
-
-      <!-- OTP Error -->
-      <p class="text-sm text-red-600 text-center mb-4" x-show="otpError" x-cloak data-i18n="auth.forgot.invalidCode">${t('auth.forgot.invalidCode')}</p>
-
-      <!-- Resend -->
-      <div class="text-center mb-6">
-        <button
-          type="button"
-          :disabled="countdown > 0"
-          @click="resendCode()"
-          class="w-full h-12 border border-gray-300 rounded-full text-sm text-gray-500 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          <span data-i18n="auth.forgot.resendCode">${t('auth.forgot.resendCode')}</span> <span x-show="countdown > 0">(<span x-text="countdown"></span> ${t('auth.forgot.secondsAbbr')})</span>
-        </button>
-      </div>
-
-      <!-- ID Verification Link -->
-      <div class="text-center mb-12">
-        <a href="javascript:void(0)" class="text-sm font-medium text-gray-900 underline hover:no-underline">
-          <span data-i18n="auth.forgot.verifyWithId">${t('auth.forgot.verifyWithId')}</span>
-        </a>
-      </div>
-
-      <div class="flex justify-end">
-        ${supportLink}
-      </div>
-    </div>
-  `;
-}
-
-/* ── Step 3: Şifrenizi yenileyin ────────────────────── */
-
-function StepResetPassword(): string {
-  return `
-    <div x-show="step === 'reset-password'" x-cloak>
-      <h1 class="text-2xl font-bold text-gray-900 text-center mb-8" data-i18n="auth.forgot.resetPassword">${t('auth.forgot.resetPassword')}</h1>
-
-      <form @submit.prevent="submitReset()" class="space-y-5">
-        <!-- New Password -->
-        <div class="relative">
-          <label for="fp-new-password" class="sr-only" data-i18n="auth.forgot.newPassword">${t('auth.forgot.newPassword')}</label>
-          <input
-            :type="showPassword ? 'text' : 'password'"
-            id="fp-new-password"
-            name="new-password"
-            x-ref="newPassword"
-            @input="validatePassword()"
-            class="w-full h-12 px-4 pr-12 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 auth-input-focus transition-colors"
-            placeholder="${t('auth.forgot.newPassword')}" data-i18n-placeholder="auth.forgot.newPassword"
-            required
-            autocomplete="new-password"
-          />
-          <button
-            type="button"
-            @click="showPassword = !showPassword"
-            class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
-            aria-label="${t('auth.forgot.showHidePassword')}" data-i18n-aria-label="auth.forgot.showHidePassword"
-          >
-            <!-- Eye closed (password hidden) -->
-            <svg x-show="!showPassword" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88"/>
-            </svg>
-            <!-- Eye open (password visible) -->
-            <svg x-show="showPassword" x-cloak class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z"/>
-              <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/>
-            </svg>
-          </button>
+    <div x-show="step === 'link-sent'" x-cloak>
+      <div class="text-center">
+        <!-- Email sent icon -->
+        <div class="mx-auto mb-6 w-16 h-16 rounded-full bg-green-100 flex items-center justify-center">
+          <svg class="w-8 h-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75"/>
+          </svg>
         </div>
 
-        <!-- Password Requirements -->
-        <ul class="space-y-1.5 text-sm text-gray-500 list-disc pl-5">
-          <li :style="reqStyle(reqLength)" data-i18n="auth.forgot.passwordLength">${t('auth.forgot.passwordLength')}</li>
-          <li :style="reqStyle(reqChars)" data-i18n="auth.forgot.passwordComplexity">${t('auth.forgot.passwordComplexity')}</li>
-          <li :style="reqStyle(reqEmoji)" data-i18n="auth.forgot.passwordNoEmoji">${t('auth.forgot.passwordNoEmoji')}</li>
-        </ul>
+        <h1 class="text-2xl font-bold text-gray-900 mb-3" data-i18n="auth.forgot.emailSentTitle">${t('auth.forgot.emailSentTitle')}</h1>
+        <p class="text-sm text-gray-500 mb-2" data-i18n="auth.forgot.emailSentDesc">${t('auth.forgot.emailSentDesc')}</p>
+        <p class="text-sm font-bold text-gray-900 mb-8" x-text="maskedEmail"></p>
 
-        <!-- Submit -->
-        <button
-          type="submit"
-          :disabled="!passwordValid"
-          disabled
-          class="w-full h-12 th-btn th-btn-pill disabled:opacity-50 disabled:cursor-not-allowed"
+        <!-- Back to login -->
+        <a
+          href="${baseUrl}pages/auth/login.html"
+          class="inline-block w-full h-12 leading-[3rem] text-center th-btn th-btn-pill no-underline"
         >
-          <span data-i18n="auth.forgot.resetAndLogin">${t('auth.forgot.resetAndLogin')}</span>
-        </button>
-      </form>
+          <span data-i18n="auth.forgot.backToLogin">${t('auth.forgot.backToLogin')}</span>
+        </a>
+
+        <!-- Resend link -->
+        <div class="mt-6">
+          <button
+            type="button"
+            @click="resendLink()"
+            :disabled="loading"
+            class="text-sm font-medium text-gray-900 underline hover:no-underline disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <span data-i18n="auth.forgot.resendEmail">${t('auth.forgot.resendEmail')}</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="mt-12 flex justify-end">
+        ${supportLink}
+      </div>
     </div>
   `;
 }
@@ -253,8 +172,7 @@ export function ForgotPasswordPage(): string {
       ${ForgotPasswordHeader()}
       ${ForgotPasswordCard(`
         ${StepFindAccount()}
-        ${StepVerifyCode()}
-        ${StepResetPassword()}
+        ${StepLinkSent()}
       `)}
     </div>
   `;

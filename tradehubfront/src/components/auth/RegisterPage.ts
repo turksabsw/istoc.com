@@ -32,7 +32,7 @@ export function escapeHtml(str: string): string {
 /* ── Types ──────────────────────────────────────────── */
 
 /** Registration flow steps */
-export type RegisterStep = 'account-type' | 'email' | 'otp' | 'setup';
+export type RegisterStep = 'account-type' | 'email' | 'otp' | 'setup' | 'supplier-setup';
 
 export interface RegisterPageOptions {
   /** Initial step (defaults to 'account-type') */
@@ -150,6 +150,12 @@ export function RegisterPage(initialStep: RegisterStep = 'account-type'): string
             <p id="register-email-error" x-show="emailError" x-cloak class="mt-1 text-sm text-red-500" data-i18n="auth.register.emailError">
               ${t('auth.register.emailError')}
             </p>
+            <p x-show="emailExistsError" x-cloak class="mt-1 text-sm text-red-500">
+              ${t('auth.register.emailExistsError')}
+            </p>
+            <p x-show="emailDisabledError" x-cloak class="mt-1 text-sm text-red-500">
+              ${t('auth.register.emailDisabledError')}
+            </p>
           </div>
 
           <!-- Continue Button -->
@@ -185,6 +191,11 @@ export function RegisterPage(initialStep: RegisterStep = 'account-type'): string
       <!-- Step 4: Account Setup (dynamically rendered for child component re-init) -->
       <div id="register-step-setup" class="register-step"
         x-show="currentStep === 'setup'" x-cloak x-ref="setupContainer">
+      </div>
+
+      <!-- Step 5: Supplier Setup (dynamically rendered for supplier registration) -->
+      <div id="register-step-supplier-setup" class="register-step"
+        x-show="currentStep === 'supplier-setup'" x-cloak x-ref="supplierSetupContainer">
       </div>
     </div>
   `;

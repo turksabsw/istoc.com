@@ -7,6 +7,7 @@ import '../style.css'
 import { initFlowbite } from 'flowbite'
 import { t } from '../i18n'
 import { startAlpine } from '../alpine'
+import { requireAuth } from '../utils/auth-guard'
 
 import { TopBar, initMobileDrawer, initHeaderCart } from '../components/header'
 import { initLanguageSelector } from '../components/header/TopBar'
@@ -15,6 +16,9 @@ import { FooterLinks } from '../components/footer'
 import { FloatingPanel, initFloatingPanel } from '../components/floating'
 import { renderSidebar, initSidebar } from '../components/sidebar'
 import { SettingsLayout, initSettingsLayout } from '../components/settings'
+
+// Block page until auth is confirmed
+await requireAuth();
 
 const appEl = document.querySelector<HTMLDivElement>('#app')!;
 appEl.classList.add('relative');

@@ -6,6 +6,11 @@
  */
 
 import { t } from '../../i18n';
+import { validatePassword, isPasswordValid, type PasswordValidation } from '../../utils/password-validation';
+
+// Re-export for backward compatibility
+export { validatePassword, isPasswordValid };
+export type PasswordRequirements = PasswordValidation;
 
 /* ── Types ──────────────────────────────────────────── */
 
@@ -47,13 +52,6 @@ export interface AccountSetupFormState {
   passwordRequirements: PasswordRequirements;
   /** Whether form is valid */
   isValid: boolean;
-}
-
-export interface PasswordRequirements {
-  minLength: boolean;
-  hasUppercase: boolean;
-  hasLowercase: boolean;
-  hasNumber: boolean;
 }
 
 /* ── Country Options ────────────────────────────────── */
@@ -331,28 +329,6 @@ function renderCountryOptions(selectedCode: string): string {
 /* ── Helper Functions ────────────────────────────────── */
 
 /**
- * Validate password against requirements
- */
-export function validatePassword(password: string): PasswordRequirements {
-  return {
-    minLength: password.length >= 8,
-    hasUppercase: /[A-Z]/.test(password),
-    hasLowercase: /[a-z]/.test(password),
-    hasNumber: /[0-9]/.test(password),
-  };
-}
-
-/**
- * Check if all password requirements are met
- */
-export function isPasswordValid(requirements: PasswordRequirements): boolean {
-  return requirements.minLength &&
-         requirements.hasUppercase &&
-         requirements.hasLowercase &&
-         requirements.hasNumber;
-}
-
-/**
  * Get a country by its code
  */
 export function getCountryByCode(code: string): CountryOption | undefined {
@@ -557,7 +533,7 @@ export function initAccountSetupForm(options: AccountSetupFormOptions = {}): Acc
 
   // Update overall form validity
   function updateFormValidity(): void {
-    const hasValidPassword = isPasswordValid(state.passwordRequirements);
+    const hasValidPassword = isPasswordValid(state.data.password);
     const hasFirstName = state.data.firstName.length > 0;
     const hasLastName = state.data.lastName.length > 0;
     const hasCountry = state.data.country !== null;

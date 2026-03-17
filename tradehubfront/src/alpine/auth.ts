@@ -25,7 +25,26 @@ import {
   maskEmail,
   type ForgotPasswordStep,
 } from '../components/auth/ForgotPasswordPage'
-import { getBaseUrl } from '../components/auth/AuthLayout'
+import {
+  checkEmailExists,
+  sendRegistrationOtp,
+  verifyRegistrationOtp,
+  register,
+  login,
+  getSessionUser,
+  getRedirectUrl,
+  forgotPassword,
+  resetPassword,
+  completeRegistrationApplication,
+} from '../utils/auth'
+import {
+  SupplierSetupForm,
+  initSupplierSetupForm,
+  type SupplierSetupFormData,
+} from '../components/auth/SupplierSetupForm'
+import { validatePassword, isPasswordValid } from '../utils/password-validation'
+
+/* ── Register Page ──────────────────────────────────── */
 
 Alpine.data('registerPage', () => ({
   currentStep: 'account-type' as RegisterStep,
@@ -33,7 +52,12 @@ Alpine.data('registerPage', () => ({
   email: '',
   emailValid: false,
   emailError: false,
+  emailExistsError: false,
+  emailDisabledError: false,
+  loading: false,
   otpState: null as EmailVerificationState | null,
+  registration_token: '',
+  seller_application: '',
 
   init() {
     // Read initial step from data attribute if provided
@@ -42,14 +66,18 @@ Alpine.data('registerPage', () => ({
       this.currentStep = initialStep;
     }
 
+    // Check URL for ?type=supplier to pre-select supplier
+    const urlType = new URLSearchParams(window.location.search).get('type');
+    const defaultType: AccountType = urlType === 'supplier' ? 'supplier' : 'buyer';
+
     // Initialize account type selector (child component delegation)
     initAccountTypeSelector({
-      defaultType: 'buyer',
+      defaultType,
       onTypeSelect: (type: AccountType) => {
         this.accountType = type;
       }
     });
-    this.accountType = getSelectedAccountType() || 'buyer';
+    this.accountType = getSelectedAccountType() || defaultType;
 
     // Listen for programmatic navigation via navigateToStep()
     (this.$el as HTMLElement).addEventListener('register-navigate', ((e: CustomEvent) => {
@@ -64,10 +92,12 @@ Alpine.data('registerPage', () => ({
     this.emailValid = emailRegex.test(value);
     if (this.emailValid) {
       this.emailError = false;
+      this.emailExistsError = false;
+      this.emailDisabledError = false;
     }
   },
 
-  submitEmail() {
+  async submitEmail() {
     const input = (this.$refs as Record<string, HTMLInputElement>).emailInput;
     const value = input?.value.trim() || '';
 
@@ -77,7 +107,38 @@ Alpine.data('registerPage', () => ({
     }
 
     this.email = value;
-    this.goToStep('otp');
+    this.loading = true;
+    this.emailExistsError = false;
+    this.emailDisabledError = false;
+
+    try {
+      // 1. Check if email already registered
+      const { exists, disabled } = await checkEmailExists(value);
+      if (exists) {
+        if (disabled) {
+          this.emailDisabledError = true;
+        } else {
+          this.emailExistsError = true;
+        }
+        this.loading = false;
+        return;
+      }
+
+      // 2. Send OTP to email
+      await sendRegistrationOtp(value);
+
+      // 3. Navigate to OTP step
+      this.goToStep('otp');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : '';
+      if (msg === 'RATE_LIMIT') {
+        showToast({ message: t('common.rateLimitError'), type: 'error' });
+      } else {
+        showToast({ message: msg || t('common.error'), type: 'error' });
+      }
+    } finally {
+      this.loading = false;
+    }
   },
 
   goToStep(step: RegisterStep) {
@@ -107,11 +168,20 @@ Alpine.data('registerPage', () => ({
           }
           this.otpState = initEmailVerification({
             email: this.email,
-            onComplete: () => {
+            onVerify: async (otp: string) => {
+              // Verify OTP against backend and get registration_token
+              const result = await verifyRegistrationOtp(this.email, otp);
+              this.registration_token = result.registration_token;
               this.goToStep('setup');
             },
-            onResend: () => {
-              // In production, resend OTP via backend
+            onResend: async () => {
+              try {
+                await sendRegistrationOtp(this.email);
+                showToast({ message: t('auth.otpResent'), type: 'success' });
+              } catch (err) {
+                const msg = err instanceof Error ? err.message : t('common.error');
+                showToast({ message: msg, type: 'error' });
+              }
             },
             onBack: () => {
               this.goToStep('email');
@@ -127,13 +197,70 @@ Alpine.data('registerPage', () => ({
           }
           initAccountSetupForm({
             defaultCountry: 'TR',
-            onSubmit: (formData: AccountSetupFormData) => {
-              if (this.accountType) {
-                this.$dispatch('register-complete', {
-                  accountType: this.accountType,
+            onSubmit: async (formData: AccountSetupFormData) => {
+              if (!this.accountType) return;
+
+              try {
+                // Register user with registration_token
+                const result = await register({
                   email: this.email,
-                  formData
+                  password: formData.password,
+                  first_name: formData.firstName,
+                  last_name: formData.lastName,
+                  account_type: this.accountType,
+                  phone: '',
+                  country: 'Turkey',
+                  accept_terms: true,
+                  accept_kvkk: true,
+                  registration_token: this.registration_token,
                 });
+
+                // Auto-login
+                await login(this.email, formData.password);
+                const user = await getSessionUser();
+
+                if (user) {
+                  // Supplier with seller_application → go to supplier setup form
+                  if (this.accountType === 'supplier' && result.seller_application) {
+                    this.seller_application = result.seller_application;
+                    this.goToStep('supplier-setup');
+                  } else {
+                    window.location.href = getRedirectUrl(user);
+                  }
+                } else {
+                  // Session check failed after login — redirect to homepage as fallback
+                  window.location.href = '/';
+                }
+              } catch (err) {
+                const msg = err instanceof Error ? err.message : t('common.error');
+                showToast({ message: msg, type: 'error' });
+              }
+            }
+          });
+          break;
+        }
+        case 'supplier-setup': {
+          const container = (this.$refs as Record<string, HTMLElement>).supplierSetupContainer;
+          if (container) {
+            container.innerHTML = SupplierSetupForm();
+          }
+          initSupplierSetupForm({
+            onSubmit: async (formData: SupplierSetupFormData) => {
+              try {
+                await completeRegistrationApplication({
+                  seller_application: this.seller_application,
+                  ...formData,
+                });
+                window.location.href = '/pages/seller/application-pending.html';
+              } catch (err) {
+                const msg = err instanceof Error ? err.message : t('common.error');
+                showToast({ message: msg, type: 'error' });
+                // Re-enable submit button
+                const btn = document.getElementById('ss-next-btn') as HTMLButtonElement | null;
+                if (btn) {
+                  btn.disabled = false;
+                  btn.textContent = t('auth.supplierSetup.submit');
+                }
               }
             }
           });
@@ -144,184 +271,87 @@ Alpine.data('registerPage', () => ({
   },
 }));
 
+/* ── Forgot Password Page ───────────────────────────── */
+
 Alpine.data('forgotPasswordPage', () => ({
   step: 'find-account' as ForgotPasswordStep,
   email: '',
-  otp: ['', '', '', '', '', ''] as string[],
-  countdown: 0,
-  otpError: false,
-  showPassword: false,
-  passwordValid: false,
-  reqLength: null as boolean | null,
-  reqChars: null as boolean | null,
-  reqEmoji: null as boolean | null,
-  _timerInterval: null as ReturnType<typeof setInterval> | null,
+  loading: false,
 
   get maskedEmail(): string {
     return maskEmail(this.email);
   },
 
-  submitFindAccount() {
+  async submitFindAccount() {
     const trimmed = this.email.trim();
     if (!trimmed) return;
 
-    this.step = 'verify-code';
-    this.startCountdown();
+    this.loading = true;
 
-    this.$nextTick(() => {
-      const container = (this.$refs as Record<string, HTMLElement>).otpContainer;
-      if (container) {
-        const first = container.querySelector('[data-fp-otp-index="0"]') as HTMLInputElement;
-        first?.focus();
-      }
-    });
-  },
-
-  handleOtpInput(event: Event) {
-    const input = event.target as HTMLInputElement;
-    const idx = parseInt(input.dataset.fpOtpIndex || '', 10);
-    if (isNaN(idx)) return;
-
-    const value = input.value.replace(/\D/g, '');
-    if (value.length === 1) {
-      this.otp[idx] = value;
-      input.value = value;
-      // Auto-focus next
-      if (idx < 5) {
-        const container = (this.$refs as Record<string, HTMLElement>).otpContainer;
-        const next = container?.querySelector(`[data-fp-otp-index="${idx + 1}"]`) as HTMLInputElement;
-        next?.focus();
-      }
-    } else {
-      this.otp[idx] = '';
-      input.value = '';
-    }
-
-    this.otpError = false;
-
-    // Auto-proceed when all 6 digits entered
-    if (this.otp.every((d: string) => d !== '')) {
-      setTimeout(() => {
-        this.step = 'reset-password';
-        this.stopCountdown();
-        this.$nextTick(() => {
-          const pwInput = (this.$refs as Record<string, HTMLInputElement>).newPassword;
-          pwInput?.focus();
-        });
-      }, 300);
+    try {
+      // Always returns success (email enumeration protection)
+      await forgotPassword(trimmed);
+      this.step = 'link-sent';
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : t('common.error');
+      showToast({ message: msg, type: 'error' });
+    } finally {
+      this.loading = false;
     }
   },
 
-  handleOtpPaste(event: ClipboardEvent) {
-    event.preventDefault();
-    const pasted = event.clipboardData?.getData('text') || '';
-    const digits = pasted.replace(/\D/g, '').slice(0, 6);
-    const container = (this.$refs as Record<string, HTMLElement>).otpContainer;
-    if (!container) return;
+  async resendLink() {
+    if (this.loading) return;
+    this.loading = true;
 
-    for (let i = 0; i < 6; i++) {
-      this.otp[i] = digits[i] || '';
-      const el = container.querySelector(`[data-fp-otp-index="${i}"]`) as HTMLInputElement;
-      if (el) el.value = digits[i] || '';
+    try {
+      await forgotPassword(this.email.trim());
+      showToast({ message: t('auth.forgot.linkResent'), type: 'success' });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : t('common.error');
+      showToast({ message: msg, type: 'error' });
+    } finally {
+      this.loading = false;
     }
+  },
+}));
 
-    if (digits.length > 0) {
-      const focusIdx = Math.min(digits.length - 1, 5);
-      const focusEl = container.querySelector(`[data-fp-otp-index="${focusIdx}"]`) as HTMLInputElement;
-      focusEl?.focus();
-    }
+/* ── Reset Password Page ────────────────────────────── */
 
-    if (this.otp.every((d: string) => d !== '')) {
-      setTimeout(() => {
-        this.step = 'reset-password';
-        this.stopCountdown();
-      }, 300);
+Alpine.data('resetPasswordPage', () => ({
+  step: 'form' as 'form' | 'success' | 'error',
+  key: '',
+  showPassword: false,
+  passwordValid: false,
+  loading: false,
+  error: '',
+  reqMinLength: null as boolean | null,
+  reqUppercase: null as boolean | null,
+  reqLowercase: null as boolean | null,
+  reqNumber: null as boolean | null,
+
+  init() {
+    // Read key from URL
+    const params = new URLSearchParams(window.location.search);
+    this.key = params.get('key') || '';
+
+    if (!this.key) {
+      this.error = t('auth.reset.invalidLinkDesc');
+      this.step = 'error';
     }
   },
 
-  handleOtpKeydown(event: KeyboardEvent) {
-    const input = event.target as HTMLInputElement;
-    const idx = parseInt(input.dataset.fpOtpIndex || '', 10);
-    if (isNaN(idx)) return;
-
-    const container = (this.$refs as Record<string, HTMLElement>).otpContainer;
-    if (!container) return;
-
-    if (event.key === 'Backspace' && !input.value && idx > 0) {
-      const prev = container.querySelector(`[data-fp-otp-index="${idx - 1}"]`) as HTMLInputElement;
-      prev?.focus();
-    }
-    if (event.key === 'ArrowLeft' && idx > 0) {
-      event.preventDefault();
-      const prev = container.querySelector(`[data-fp-otp-index="${idx - 1}"]`) as HTMLInputElement;
-      prev?.focus();
-    }
-    if (event.key === 'ArrowRight' && idx < 5) {
-      event.preventDefault();
-      const next = container.querySelector(`[data-fp-otp-index="${idx + 1}"]`) as HTMLInputElement;
-      next?.focus();
-    }
-  },
-
-  resendCode() {
-    if (this.countdown > 0) return;
-
-    // Reset OTP
-    this.otp = ['', '', '', '', '', ''];
-    const container = (this.$refs as Record<string, HTMLElement>).otpContainer;
-    if (container) {
-      container.querySelectorAll<HTMLInputElement>('[data-fp-otp-index]').forEach(i => { i.value = ''; });
-    }
-    this.otpError = false;
-    this.startCountdown();
-
-    if (container) {
-      const first = container.querySelector('[data-fp-otp-index="0"]') as HTMLInputElement;
-      first?.focus();
-    }
-  },
-
-  startCountdown() {
-    this.stopCountdown();
-    this.countdown = 60;
-    this._timerInterval = setInterval(() => {
-      this.countdown--;
-      if (this.countdown <= 0) {
-        this.stopCountdown();
-      }
-    }, 1000);
-  },
-
-  stopCountdown() {
-    if (this._timerInterval) {
-      clearInterval(this._timerInterval);
-      this._timerInterval = null;
-    }
-  },
-
-  validatePassword() {
+  onPasswordInput() {
     const pw = (this.$refs as Record<string, HTMLInputElement>).newPassword?.value || '';
     const touched = pw.length > 0;
+    const v = validatePassword(pw);
 
-    // Rule 1: 6-20 characters
-    const lengthOk = pw.length >= 6 && pw.length <= 20;
-    this.reqLength = touched ? lengthOk : null;
+    this.reqMinLength = touched ? v.minLength : null;
+    this.reqUppercase = touched ? v.hasUppercase : null;
+    this.reqLowercase = touched ? v.hasLowercase : null;
+    this.reqNumber = touched ? v.hasNumber : null;
 
-    // Rule 2: At least 2 of: letters, digits, special chars
-    const hasLetters = /[a-zA-Z]/.test(pw);
-    const hasDigits = /[0-9]/.test(pw);
-    const hasSpecial = /[^a-zA-Z0-9\s]/.test(pw);
-    const typesCount = [hasLetters, hasDigits, hasSpecial].filter(Boolean).length;
-    const charsOk = typesCount >= 2;
-    this.reqChars = touched ? charsOk : null;
-
-    // Rule 3: No emoji
-    const emojiRegex = /[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F1E0}-\u{1F1FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/u;
-    const noEmoji = !emojiRegex.test(pw);
-    this.reqEmoji = touched ? noEmoji : null;
-
-    // Enable/disable submit
-    this.passwordValid = lengthOk && charsOk && noEmoji;
+    this.passwordValid = isPasswordValid(pw);
   },
 
   reqStyle(valid: boolean | null): string {
@@ -329,16 +359,22 @@ Alpine.data('forgotPasswordPage', () => ({
     return valid ? 'color: #16a34a' : 'color: #dc2626';
   },
 
-  submitReset() {
-    if (!this.passwordValid) return;
-    const baseUrl = getBaseUrl();
-    showToast({ message: t('auth.forgot.passwordUpdated'), type: 'success' });
-    setTimeout(() => {
-      window.location.href = `${baseUrl}pages/auth/login.html`;
-    }, 1500);
-  },
+  async submitReset() {
+    if (!this.passwordValid || this.loading) return;
 
-  destroy() {
-    this.stopCountdown();
+    const pw = (this.$refs as Record<string, HTMLInputElement>).newPassword?.value || '';
+    this.loading = true;
+    this.error = '';
+
+    try {
+      await resetPassword(this.key, pw);
+      this.step = 'success';
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : t('auth.reset.genericError');
+      this.error = msg;
+      this.step = 'error';
+    } finally {
+      this.loading = false;
+    }
   },
 }));

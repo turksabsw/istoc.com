@@ -90,29 +90,29 @@ function renderProfileHeader(): string {
       <div class="flex items-center gap-5 max-sm:flex-col max-sm:items-start min-w-0">
         <div class="relative flex-shrink-0">
           <div class="w-[72px] h-[72px] max-sm:w-[60px] max-sm:h-[60px] rounded-full flex items-center justify-center border-3 border-primary-200" style="background:linear-gradient(135deg, var(--color-primary-400, #e6b212) 0%, var(--color-primary-500, #cc9900) 100%)">
-            <span class="text-[32px] max-sm:text-[26px] font-bold text-white lowercase leading-none">m</span>
+            <span class="text-[32px] max-sm:text-[26px] font-bold text-white lowercase leading-none" x-text="userInitial || '?'"></span>
           </div>
           <button class="absolute -bottom-0.5 -left-0.5 w-7 h-7 max-sm:w-6 max-sm:h-6 rounded-full bg-white border border-border-default flex items-center justify-center cursor-pointer transition-all hover:bg-surface-raised" style="color:var(--color-text-muted, #666666)" title="${t('settings.changePhoto')}">
             ${ICONS.camera}
           </button>
         </div>
         <div class="flex flex-col gap-1 min-w-0">
-          <h2 class="text-lg max-sm:text-base font-bold mb-1 m-0" style="color:var(--color-text-heading, #111827)">Metin K.</h2>
+          <h2 class="text-lg max-sm:text-base font-bold mb-1 m-0" style="color:var(--color-text-heading, #111827)" x-text="userName || '...'"></h2>
           <div class="flex items-center gap-2 text-[13px] max-sm:text-xs flex-wrap">
             <span class="min-w-[110px] max-sm:min-w-0 flex-shrink-0" style="color:var(--color-text-placeholder, #999999)">${t('settings.emailLayoutLabel')}</span>
-            <span class="font-mono truncate" style="color:var(--color-text-body, #333333)">met***@gmail.com</span>
+            <span class="font-mono truncate" style="color:var(--color-text-body, #333333)" x-text="userEmail || '...'"></span>
             <button class="inline-flex items-center justify-center w-6 h-6 border-none bg-none rounded cursor-pointer transition-all hover:bg-surface-raised flex-shrink-0" style="color:var(--color-text-placeholder, #999999)" title="${t('settings.changeEmailNav')}">${ICONS.edit}</button>
           </div>
           <div class="flex items-center gap-2 text-[13px] max-sm:text-xs flex-wrap">
             <span class="min-w-[110px] max-sm:min-w-0 flex-shrink-0" style="color:var(--color-text-placeholder, #999999)">${t('settings.membershipNumber')}</span>
-            <span class="font-mono truncate" style="color:var(--color-text-body, #333333)">tr29243492599miuy</span>
+            <span class="font-mono truncate" style="color:var(--color-text-body, #333333)" x-text="memberId || '...'"></span>
             <button x-ref="copyBtn" @click="copyMemberId()" class="inline-flex items-center justify-center w-6 h-6 border-none bg-none rounded cursor-pointer transition-all hover:bg-surface-raised flex-shrink-0" style="color:var(--color-text-placeholder, #999999)" title="${t('settings.copyTooltip')}">${ICONS.copy}</button>
           </div>
         </div>
       </div>
       <div class="flex items-center gap-4 flex-shrink-0 max-lg:w-full">
         <a href="#profilim" class="inline-flex items-center justify-center px-6 max-sm:px-3 h-10 rounded-full text-sm max-sm:text-[13px] font-semibold no-underline transition-all whitespace-nowrap text-white max-lg:flex-1 max-lg:text-center" style="background:var(--color-text-heading)">${t('settings.editProfile')}</a>
-        <a href="/pages/auth/login.html" class="inline-flex items-center justify-center px-6 max-sm:px-3 h-10 rounded-full text-sm max-sm:text-[13px] font-semibold no-underline transition-all whitespace-nowrap bg-none hover:underline max-lg:flex-1 max-lg:text-center" style="color:var(--color-text-body, #333333)">${t('settings.signOut')}</a>
+        <button @click="handleLogout()" class="inline-flex items-center justify-center px-6 max-sm:px-3 h-10 rounded-full text-sm max-sm:text-[13px] font-semibold no-underline transition-all whitespace-nowrap bg-none hover:underline max-lg:flex-1 max-lg:text-center cursor-pointer border-none" style="color:var(--color-text-body, #333333)">${t('settings.signOut')}</button>
       </div>
     </div>
   `;
@@ -139,7 +139,7 @@ function getSecurityCard(): SettingsCard {
     title: t('settings.accountSecurityTitle'),
     items: [
       { label: t('settings.changePasswordNav'), href: '#sifre' },
-      { label: t('settings.changeEmailNav'), href: '#eposta-degistir', rightText: 'met***@gmail.com' },
+      { label: t('settings.changeEmailNav'), href: '#eposta-degistir' },
       { label: t('settings.changePhoneNav'), href: '#telefon' },
       { label: t('settings.deleteAccountNav'), href: '#hesabi-sil' },
     ],
