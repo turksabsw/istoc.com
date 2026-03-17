@@ -167,6 +167,42 @@ export async function getShippingMethods(listingId?: string) {
 }
 
 
+// ── Price Range Helper ──
+
+function derivePriceRange(
+  raw: any,
+  priceTiers: PriceTier[],
+  variants: ProductVariant[],
+  baseCur: string,
+): { priceMin?: number; priceMax?: number } {
+  // 1. Collect all variant option prices
+  const variantPrices: number[] = []
+  for (const v of variants) {
+    for (const o of v.options) {
+      if (o.price && o.price > 0) variantPrices.push(o.price)
+    }
+  }
+
+  // 2. If variants have prices, use min/max from those
+  if (variantPrices.length >= 2) {
+    return { priceMin: Math.min(...variantPrices), priceMax: Math.max(...variantPrices) }
+  }
+
+  // 3. If price tiers exist, use min/max from tier prices
+  if (priceTiers.length >= 2) {
+    const tierPrices = priceTiers.map(t => t.price)
+    return { priceMin: Math.min(...tierPrices), priceMax: Math.max(...tierPrices) }
+  }
+
+  // 4. Fallback: single selling price
+  if (raw.sellingPrice) {
+    const sp = convertPrice(raw.sellingPrice, baseCur)
+    return { priceMin: sp, priceMax: sp }
+  }
+
+  return {}
+}
+
 // ── Mappers: Frappe response → Frontend TypeScript interfaces ──
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -238,6 +274,7 @@ function mapListingDetail(raw: any): ProductDetail {
     minQty: t.minQty,
     maxQty: t.maxQty,
     price: convertPrice(t.price, baseCur),
+    basePrice: t.price,
     currency: selectedCur.code,
   }))
 
@@ -259,6 +296,9 @@ function mapListingDetail(raw: any): ProductDetail {
         value: o.value,
         thumbnail: o.image || undefined,
         available: o.available !== false,
+        price: o.price ? convertPrice(o.price, baseCur) : undefined,
+        priceAddon: o.priceAddon ? convertPrice(o.priceAddon, baseCur) : 0,
+        basePriceAddon: o.priceAddon || 0,
       })),
     }
   })
@@ -280,6 +320,8 @@ function mapListingDetail(raw: any): ProductDetail {
     method: s.method,
     estimatedDays: s.estimatedDays || '',
     cost: typeof s.cost === 'number' ? formatPrice(s.cost, s.currency || baseCur) : String(s.cost || ''),
+    baseCost: typeof s.cost === 'number' ? s.cost : 0,
+    baseCurrency: s.currency || baseCur,
   }))
 
   // Map supplier
@@ -324,6 +366,7 @@ function mapListingDetail(raw: any): ProductDetail {
     category: raw.category || [],
     images,
     priceTiers,
+    ...derivePriceRange(raw, priceTiers, variants, baseCur),
     moq: raw.moq || 1,
     unit: raw.unit || 'adet',
     leadTime: raw.leadTime || '',
@@ -332,15 +375,26 @@ function mapListingDetail(raw: any): ProductDetail {
     specs,
     packagingSpecs,
     description: raw.description || '',
-    packaging: '',
+    packaging: packagingSpecs.length > 0
+      ? `<table class="w-full text-sm"><tbody>${packagingSpecs.map((s, i) =>
+          `<tr style="${i < packagingSpecs.length - 1 ? 'border-bottom: 1px solid var(--pd-spec-border, #e5e5e5);' : ''}">
+            <td class="py-2.5 font-medium" style="color: var(--pd-spec-key-color, #6b7280); width: 35%; padding-left: 12px;">${s.key}</td>
+            <td class="py-2.5 pl-4" style="color: var(--pd-spec-value-color, #111827);">${s.value}</td>
+          </tr>`).join('')}</tbody></table>`
+      : '',
     rating: raw.rating || 0,
     reviewCount: raw.reviewCount || 0,
     orderCount: raw.orderCount ? Number(raw.orderCount).toLocaleString('tr-TR') : '0',
     reviews: [],
     samplePrice: raw.samplePrice ? convertPrice(raw.samplePrice, baseCur) : undefined,
+    baseSamplePrice: raw.samplePrice || undefined,
+    baseCurrency: baseCur,
     supplier,
     faq: [],
-    leadTimeRanges: [],
+    leadTimeRanges: (raw.leadTimeRanges || []).map((r: any) => ({
+      quantityRange: r.quantityRange || '',
+      days: r.days || '',
+    })),
     customizationOptions,
     reviewCategoryRatings: [],
     storeReviewCount: 0,

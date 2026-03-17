@@ -6,6 +6,7 @@ import {
 } from '../data/mockCheckout'
 import type { SavedAddress } from '../types/checkout'
 import { getUser, isLoggedIn } from '../utils/auth'
+import { formatCurrency } from '../services/currencyService'
 
 interface CheckoutDeliveryMethod {
   id: string;
@@ -164,7 +165,7 @@ Alpine.data('checkoutOrderSummary', (props?: { itemSubtotal?: number; discount?:
   itemSubtotal: Number(props?.itemSubtotal ?? 0),
   discount: Number(props?.discount ?? 0),
   shippingFee: Number(props?.initialShippingFee ?? 0),
-  currency: props?.currency ?? 'USD',
+  currency: props?.currency ?? 'TRY',
 
   // Coupon state
   couponCode: '',
@@ -234,7 +235,7 @@ Alpine.data('checkoutOrderSummary', (props?: { itemSubtotal?: number; discount?:
   },
 
   formatMoney(value: number): string {
-    return `${this.currency} ${value.toFixed(2)}`;
+    return formatCurrency(value, this.currency);
   },
 }));
 

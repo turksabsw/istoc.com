@@ -1,14 +1,21 @@
 import type { ProductImageKind } from '../../../types/productListing';
 import { cartStore } from '../state/CartStore';
-import type { CartSupplier, CartProduct, CartSku } from '../../../types/cart';
+import type { CartSku } from '../../../types/cart';
 import { t } from '../../../i18n';
-import { formatPrice } from '../../../utils/currency';
+import { formatCurrency, getSelectedCurrencyInfo } from '../../../services/currencyService';
+
+/** Format an already-converted price with the user's selected currency symbol & locale */
+function fmtPrice(amount: number): string {
+  const info = getSelectedCurrencyInfo();
+  return formatCurrency(amount, info.code);
+}
 
 export interface CartDrawerTierModel {
   minQty: number;
   maxQty: number | null;
   price: number;
   originalPrice?: number;
+  basePrice: number;
 }
 
 export interface CartDrawerShippingOption {
@@ -17,6 +24,8 @@ export interface CartDrawerShippingOption {
   estimatedDays: string;
   cost: number;
   costText: string;
+  baseCost: number;
+  baseCurrency: string;
 }
 
 export interface CartDrawerColorModel {
@@ -25,6 +34,26 @@ export interface CartDrawerColorModel {
   colorHex: string;
   imageKind: ProductImageKind;
   imageUrl?: string;
+  price?: number;
+  priceAddon?: number;
+  basePriceAddon?: number;
+}
+
+export interface CartDrawerVariantGroup {
+  type: 'color' | 'size' | 'material';
+  label: string;
+  options: CartDrawerVariantOption[];
+}
+
+export interface CartDrawerVariantOption {
+  id: string;
+  label: string;
+  value: string;
+  thumbnail?: string;
+  available: boolean;
+  price?: number;
+  priceAddon?: number;
+  basePriceAddon?: number;
 }
 
 export interface CartDrawerItemModel {
@@ -35,9 +64,13 @@ export interface CartDrawerItemModel {
   moq: number;
   imageKind: ProductImageKind;
   priceTiers: CartDrawerTierModel[];
+  priceMin?: number;
+  priceMax?: number;
   colors: CartDrawerColorModel[];
+  variantGroups?: CartDrawerVariantGroup[];
   shippingOptions: CartDrawerShippingOption[];
   samplePrice?: number;
+  baseCurrency: string;
 }
 
 interface DrawerState {
@@ -47,6 +80,9 @@ interface DrawerState {
   colorQuantities: Map<string, number>;
   previewColorIndex: number;
   footerExpanded: boolean;
+  selectedVariants: Map<string, string>; // groupLabel → selected optionId
+  selectedColorId: string; // multi-variant mode: single selected color
+  combinedQuantity: number; // multi-variant mode: single quantity
 }
 
 interface CartMemoryItem {
@@ -78,6 +114,9 @@ const state: DrawerState = {
   colorQuantities: new Map(),
   previewColorIndex: 0,
   footerExpanded: false,
+  selectedVariants: new Map(),
+  selectedColorId: '',
+  combinedQuantity: 0,
 };
 
 const cartMemory = new Map<string, CartMemoryItem>();
@@ -121,6 +160,53 @@ function getActiveTierIndex(totalQty: number): number {
   return 0;
 }
 
+function isMultiVariant(): boolean {
+  return (state.item?.variantGroups?.length ?? 0) > 0;
+}
+
+function getVariantAddonTotal(): number {
+  if (!state.item) return 0;
+  let addon = 0;
+
+  if (isMultiVariant()) {
+    // Color addon
+    if (state.selectedColorId) {
+      const color = state.item.colors.find(c => c.id === state.selectedColorId);
+      if (color?.priceAddon) addon += color.priceAddon;
+    }
+    // Variant group addons
+    for (const [, optionId] of state.selectedVariants) {
+      for (const group of state.item.variantGroups ?? []) {
+        const opt = group.options.find(o => o.id === optionId);
+        if (opt?.priceAddon) addon += opt.priceAddon;
+      }
+    }
+  }
+  // Single-variant mode: addon is computed per-color row in renderSingleVariantColors
+
+  return addon;
+}
+
+function getBaseVariantAddonTotal(): number {
+  if (!state.item) return 0;
+  let addon = 0;
+
+  if (isMultiVariant()) {
+    if (state.selectedColorId) {
+      const color = state.item.colors.find(c => c.id === state.selectedColorId);
+      if (color?.basePriceAddon) addon += color.basePriceAddon;
+    }
+    for (const [, optionId] of state.selectedVariants) {
+      for (const group of state.item.variantGroups ?? []) {
+        const opt = group.options.find(o => o.id === optionId);
+        if (opt?.basePriceAddon) addon += opt.basePriceAddon;
+      }
+    }
+  }
+
+  return addon;
+}
+
 function getTotals(): {
   totalQty: number;
   activePrice: number;
@@ -130,15 +216,41 @@ function getTotals(): {
   grandTotal: number;
   variationCount: number;
 } {
-  const totalQty = Array.from(state.colorQuantities.values()).reduce((acc, qty) => acc + qty, 0);
+  const multi = isMultiVariant();
+  const totalQty = multi
+    ? state.combinedQuantity
+    : Array.from(state.colorQuantities.values()).reduce((acc, qty) => acc + qty, 0);
   const tierIndex = getActiveTierIndex(totalQty);
-  const activePrice = state.mode === 'sample'
-    ? (state.item?.samplePrice ?? 0)
-    : (state.item?.priceTiers[tierIndex]?.price ?? 0);
-  const itemSubtotal = activePrice * totalQty;
+
+  let activePrice: number;
+  if (state.mode === 'sample') {
+    activePrice = state.item?.samplePrice ?? 0;
+  } else if (multi) {
+    // Multi-variant mode: tier price + sum of selected variant addons
+    const tierPrice = state.item?.priceTiers[tierIndex]?.price ?? 0;
+    const variantAddon = getVariantAddonTotal();
+    activePrice = tierPrice + variantAddon;
+  } else {
+    activePrice = state.item?.priceTiers[tierIndex]?.price ?? 0;
+  }
+  // In single-variant mode, each color may have a different addon, so compute subtotal per-color
+  let itemSubtotal: number;
+  if (!multi && state.item && state.mode !== 'sample') {
+    itemSubtotal = 0;
+    for (const [colorId, qty] of state.colorQuantities) {
+      if (qty <= 0) continue;
+      const color = state.item.colors.find(c => c.id === colorId);
+      const colorAddon = color?.priceAddon ?? 0;
+      itemSubtotal += (activePrice + colorAddon) * qty;
+    }
+  } else {
+    itemSubtotal = activePrice * totalQty;
+  }
   const shippingCost = state.item?.shippingOptions[state.selectedShippingIndex]?.cost ?? 0;
-  const grandTotal = itemSubtotal + shippingCost;
-  const variationCount = Array.from(state.colorQuantities.values()).filter((qty) => qty > 0).length;
+  const grandTotal = totalQty > 0 ? itemSubtotal + shippingCost : 0;
+  const variationCount = multi
+    ? (state.combinedQuantity > 0 ? 1 : 0)
+    : Array.from(state.colorQuantities.values()).filter((qty) => qty > 0).length;
   return { totalQty, activePrice, tierIndex, itemSubtotal, shippingCost, grandTotal, variationCount };
 }
 
@@ -226,56 +338,143 @@ function showSampleMaxToast(): void {
   setTimeout(() => toast.remove(), 2800);
 }
 
+function isPriceRangeMode(): boolean {
+  if (!state.item) return false;
+  // Price range mode: no tiers OR only 1 tier (single price), and has min/max range
+  const hasTiers = state.item.priceTiers.length > 1;
+  const hasRange = state.item.priceMin !== undefined && state.item.priceMax !== undefined && state.item.priceMin !== state.item.priceMax;
+  return !hasTiers && hasRange;
+}
+
 function renderPriceSectionHtml(totals: ReturnType<typeof getTotals>): string {
   if (!state.item) return '';
   if (state.mode === 'sample') {
     return `
       <div class="mb-5 pb-5 border-b border-border-default">
         <p class="text-sm text-text-secondary mb-1">${t('cart.sampleMaxNote')}</p>
-        <p class="text-[22px] font-bold text-text-heading">${formatPrice('$' + (state.item.samplePrice ?? 0).toFixed(2))} <span class="text-base font-normal text-text-tertiary">${t('cart.perUnit')}</span></p>
+        <p class="text-[22px] font-bold text-text-heading">${fmtPrice((state.item.samplePrice ?? 0))} <span class="text-base font-normal text-text-tertiary">${t('cart.perUnit')}</span></p>
       </div>
     `;
   }
+
+  // PRICE RANGE MODE (Alibaba style: $130-169, MOQ: 1)
+  if (isPriceRangeMode()) {
+    return `
+      <div class="pb-5 mb-5 border-b border-border-default">
+        <p class="text-sm text-text-tertiary mb-1">${t('product.minOrderLabel') || 'Minimum Sipariş Miktarı'}: ${state.item.moq} ${state.item.unit}</p>
+        <p class="text-[26px] font-bold text-error-500">${fmtPrice(state.item.priceMin!)}-${fmtPrice(state.item.priceMax!)}</p>
+      </div>
+    `;
+  }
+
+  // TIER MODE (wholesale: 200-399 = $50, 400-599 = $40, 600+ = $30)
   return `
     <div class="grid grid-cols-3 gap-6 pb-5 mb-5 border-b border-border-default">
       ${state.item.priceTiers.map((tier, index) => {
     const activeClass = index === totals.tierIndex ? 'text-error-500' : 'text-text-heading';
     return `<div class="cart-tier-item" data-tier-index="${index}">
           <p class="text-sm text-text-tertiary">${formatTierLabel(tier, state.item!.unit)}</p>
-          <p class="mt-1 text-[22px] font-bold ${activeClass}">${formatPrice('$' + tier.price.toFixed(2))}</p>
+          <p class="mt-1 text-[22px] font-bold ${activeClass}">${fmtPrice(tier.price)}</p>
         </div>`;
   }).join('')}
     </div>
   `;
 }
 
-function renderDrawerBody(): void {
-  const { body } = getDrawerElements();
-  if (!body || !state.item) return;
+function renderVariantPillGroup(group: CartDrawerVariantGroup): string {
+  const selectedId = state.selectedVariants.get(group.label) || '';
+  return `
+    <div class="mb-5 pb-5 border-b border-border-default" data-variant-group="${escapeHtml(group.label)}">
+      <h5 class="text-sm font-bold text-text-heading mb-3">${escapeHtml(group.label)}</h5>
+      <div class="flex flex-wrap gap-2">
+        ${group.options.map(opt => {
+    const isSelected = opt.id === selectedId;
+    const disabledClass = !opt.available ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer';
+    const selectedClass = isSelected
+      ? 'border-primary-500 bg-primary-50 text-primary-700 font-semibold'
+      : 'border-border-default bg-surface text-text-body hover:bg-surface-raised';
+    const addonLabel = opt.priceAddon && opt.priceAddon > 0 ? ` +${fmtPrice(opt.priceAddon)}` : '';
+    return `
+            <button type="button"
+              class="cart-variant-option px-4 py-2 rounded-full border text-sm transition-colors ${selectedClass} ${disabledClass}"
+              data-variant-group-label="${escapeHtml(group.label)}"
+              data-variant-option-id="${escapeHtml(opt.id)}"
+              data-variant-option-label="${escapeHtml(opt.label)}"
+              ${opt.price ? `data-variant-option-price="${opt.price}"` : ''}
+              ${!opt.available ? 'disabled' : ''}
+            >${escapeHtml(opt.label)}${addonLabel ? `<span class="text-xs text-text-tertiary ml-1">${addonLabel}</span>` : ''}</button>`;
+  }).join('')}
+      </div>
+    </div>
+  `;
+}
 
-  const totals = getTotals();
-  const priceSection = renderPriceSectionHtml(totals);
+function renderColorThumbSelector(): string {
+  if (!state.item || state.item.colors.length === 0) return '';
 
-  body.innerHTML = `
-    <h4 class="text-base font-bold text-text-heading leading-tight mb-4">${escapeHtml(state.item.title)}</h4>
+  const selectedColor = state.item.colors.find(c => c.id === state.selectedColorId);
+  const selectedLabel = selectedColor?.label || '';
+  const selectedAddonText = selectedColor?.priceAddon && selectedColor.priceAddon > 0 ? ` (+${fmtPrice(selectedColor.priceAddon)})` : '';
+  return `
+    <div class="mb-5 pb-5 border-b border-border-default">
+      <h5 class="text-sm font-bold text-text-heading mb-3">${t('cart.colorLabel')}: <span class="font-normal text-text-secondary">${escapeHtml(selectedLabel)}${selectedAddonText}</span></h5>
+      <div class="flex flex-wrap gap-2">
+        ${state.item.colors.map(color => {
+    const isSelected = color.id === state.selectedColorId;
+    const borderClass = isSelected ? 'border-primary-500 ring-2 ring-primary-200' : 'border-border-default';
+    const colorAddonTitle = color.priceAddon && color.priceAddon > 0 ? ` (+${fmtPrice(color.priceAddon)})` : '';
+    return `
+            <button type="button"
+              class="cart-color-select shrink-0 rounded-lg border-2 overflow-hidden ${borderClass} cursor-pointer"
+              data-color-select-id="${escapeHtml(color.id)}"
+              data-preview-color="${escapeHtml(color.id)}"
+              style="width:56px;height:56px;"
+              title="${escapeHtml(color.label)}${colorAddonTitle}"
+            >
+              ${color.imageUrl
+      ? `<img src="${color.imageUrl}" alt="${escapeHtml(color.label)}" style="width:100%;height:100%;object-fit:cover;" loading="lazy" />`
+      : `<div style="width:100%;height:100%;background:${color.colorHex};"></div>`}
+            </button>`;
+  }).join('')}
+      </div>
+    </div>
+  `;
+}
 
-    ${priceSection}
+function renderCombinedQtyControl(totals: ReturnType<typeof getTotals>): string {
+  return `
+    <div class="mb-5 pb-5 border-b border-border-default">
+      <div class="flex items-center justify-between gap-3 py-2">
+        <span class="text-[17px] font-bold text-text-heading">${fmtPrice(totals.activePrice)}</span>
+        <div class="inline-flex items-center border border-border-default rounded-full overflow-hidden shrink-0">
+          <button type="button" data-combined-qty-action="minus" class="w-9 h-9 bg-surface text-text-secondary hover:bg-surface-raised transition-colors">−</button>
+          <input type="number" id="combined-qty-input" value="${state.combinedQuantity}" min="0" class="w-11 h-9 text-center border-x border-border-default bg-surface text-sm font-semibold text-text-heading [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" />
+          <button type="button" data-combined-qty-action="plus" class="w-9 h-9 bg-surface text-text-secondary hover:bg-surface-raised transition-colors">+</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
 
+function renderSingleVariantColors(totals: ReturnType<typeof getTotals>): string {
+  if (!state.item) return '';
+  return `
     <div class="mb-5">
       <h5 class="text-base font-bold text-text-heading mb-3">${t('cart.colorLabel')}</h5>
       <div class="divide-y divide-border-default">
         ${state.item.colors.map((color) => {
     const qty = state.colorQuantities.get(color.id) ?? 0;
     const selectedBorder = qty > 0 ? 'border-primary-500' : 'border-border-default';
+    const colorPrice = totals.activePrice + (color.priceAddon ?? 0);
     return `
             <div class="flex items-center gap-4 py-3" data-color-id="${escapeHtml(color.id)}">
               <button type="button" data-preview-color="${escapeHtml(color.id)}" class="shrink-0 rounded-full border-2 ${selectedBorder}">
                 ${renderColorThumb(color, 72)}
               </button>
               <div class="flex-1 min-w-0">
-                <p class="text-base font-semibold text-text-heading truncate">${escapeHtml(color.label)}</p>
+                <p class="text-base font-semibold text-text-heading truncate">${escapeHtml(color.label)}${color.priceAddon && color.priceAddon > 0 ? `<span class="text-xs font-normal text-text-tertiary ml-1">+${fmtPrice(color.priceAddon)}</span>` : ''}</p>
               </div>
-              <span class="text-[15px] font-semibold text-text-heading whitespace-nowrap">${formatPrice('$' + totals.activePrice.toFixed(2))}</span>
+              <span class="text-[15px] font-semibold text-text-heading whitespace-nowrap">${fmtPrice(colorPrice)}</span>
               <div class="inline-flex items-center border border-border-default rounded-full overflow-hidden shrink-0">
                 <button type="button" data-qty-action="minus" data-qty-color="${escapeHtml(color.id)}" class="w-9 h-9 bg-surface text-text-secondary hover:bg-surface-raised transition-colors">−</button>
                 <input type="number" data-qty-input="${escapeHtml(color.id)}" value="${qty}" min="0" class="w-11 h-9 text-center border-x border-border-default bg-surface text-sm font-semibold text-text-heading [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" />
@@ -286,7 +485,11 @@ function renderDrawerBody(): void {
   }).join('')}
       </div>
     </div>
+  `;
+}
 
+function renderShippingSection(): string {
+  return `
     <div class="mt-5 mb-2 rounded-3xl border border-border-default p-5">
       <div class="flex items-start justify-between gap-3">
         <div>
@@ -299,12 +502,67 @@ function renderDrawerBody(): void {
   `;
 }
 
+function renderDrawerBody(): void {
+  const { body } = getDrawerElements();
+  if (!body || !state.item) return;
+
+  const totals = getTotals();
+  const priceSection = renderPriceSectionHtml(totals);
+  const multi = isMultiVariant();
+
+  if (multi) {
+    // ── MULTI-VARIANT MODE (Alibaba Resim 8) ──
+    // Color thumbnails + pill selectors + single price/qty
+    const variantGroupsHtml = (state.item.variantGroups ?? [])
+      .map(group => renderVariantPillGroup(group)).join('');
+
+    body.innerHTML = `
+      <h4 class="text-base font-bold text-text-heading leading-tight mb-4">${escapeHtml(state.item.title)}</h4>
+      ${priceSection}
+      ${renderColorThumbSelector()}
+      ${variantGroupsHtml}
+      ${renderCombinedQtyControl(totals)}
+      ${renderShippingSection()}
+    `;
+  } else {
+    // ── SINGLE-VARIANT MODE (Alibaba Resim 6) ──
+    // Color rows with individual qty controls
+    body.innerHTML = `
+      <h4 class="text-base font-bold text-text-heading leading-tight mb-4">${escapeHtml(state.item.title)}</h4>
+      ${priceSection}
+      ${renderSingleVariantColors(totals)}
+      ${renderShippingSection()}
+    `;
+  }
+}
+
+function fmtSubtotal(qty: number, subtotal: number): string {
+  if (!state.item || qty <= 0) return fmtPrice(0);
+  const rangeMode = isPriceRangeMode();
+  if (rangeMode && state.item.priceMin !== undefined && state.item.priceMax !== undefined) {
+    const minTotal = qty * state.item.priceMin;
+    const maxTotal = qty * state.item.priceMax;
+    return `${fmtPrice(minTotal)} - ${fmtPrice(maxTotal)}`;
+  }
+  return fmtPrice(subtotal);
+}
+
 function renderDrawerFooter(): void {
   const { footer } = getDrawerElements();
   if (!footer || !state.item) return;
 
   const totals = getTotals();
   const perPiece = totals.totalQty > 0 ? totals.grandTotal / totals.totalQty : 0;
+  const rangeMode = isPriceRangeMode();
+  const subtotalDisplay = fmtSubtotal(totals.totalQty, totals.grandTotal);
+  const itemSubtotalDisplay = fmtSubtotal(totals.totalQty, totals.itemSubtotal);
+  const perPieceDisplay = rangeMode && state.item.priceMin !== undefined && state.item.priceMax !== undefined
+    ? `${fmtPrice(state.item.priceMin)}-${fmtPrice(state.item.priceMax)}`
+    : fmtPrice(perPiece);
+
+  const shippingDisplay = rangeMode
+    ? (t('cart.shippingNegotiate') || 'Müzakere Edilecek')
+    : escapeHtml(state.item.shippingOptions[state.selectedShippingIndex]?.costText ?? '$0.00');
 
   const details = state.footerExpanded
     ? `
@@ -317,17 +575,17 @@ function renderDrawerFooter(): void {
         <div class="space-y-2 text-sm text-text-secondary">
           <div class="flex items-center justify-between">
             <span>${t('cart.productTotal')} (${t('cart.variationItems', { variation: String(totals.variationCount), items: String(totals.totalQty) })})</span>
-            <strong class="text-text-heading">${formatPrice('$' + totals.itemSubtotal.toFixed(2))}</strong>
+            <strong class="text-text-heading">${itemSubtotalDisplay}</strong>
           </div>
           <div class="flex items-center justify-between">
             <span>${t('cart.shippingTotal')}</span>
-            <span>${escapeHtml(state.item.shippingOptions[state.selectedShippingIndex]?.costText ?? '$0.00')}</span>
+            <span>${shippingDisplay}</span>
           </div>
           <div class="flex items-center justify-between border-t border-border-default pt-3 mt-3">
             <strong class="text-text-heading">${t('cart.subtotal')}</strong>
             <div class="text-right">
-              <strong class="text-base text-cta-primary">${formatPrice('$' + totals.grandTotal.toFixed(2))}</strong>
-              <p class="text-xs text-text-tertiary">(${formatPrice('$' + perPiece.toFixed(2))}${t('cart.perUnit')})</p>
+              <strong class="text-base text-cta-primary">${subtotalDisplay}</strong>
+              <p class="text-xs text-text-tertiary">(${perPieceDisplay}/${state.item.unit})</p>
             </div>
           </div>
         </div>
@@ -337,8 +595,8 @@ function renderDrawerFooter(): void {
       <button type="button" id="shared-cart-footer-toggle" class="w-full flex items-center justify-between mb-4">
         <strong class="text-base text-text-heading">${t('cart.subtotal')}</strong>
         <span class="flex items-center gap-1.5">
-          <strong class="text-[17px] text-cta-primary">${formatPrice('$' + totals.grandTotal.toFixed(2))}</strong>
-          <span class="text-xs text-text-tertiary">(${formatPrice('$' + perPiece.toFixed(2))}${t('cart.perUnit')})</span>
+          <strong class="text-[17px] text-cta-primary">${subtotalDisplay}</strong>
+          <span class="text-xs text-text-tertiary">(${perPieceDisplay}/${state.item.unit})</span>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-text-tertiary"><path d="m6 9 6 6 6-6"/></svg>
         </span>
       </button>
@@ -432,25 +690,82 @@ function toSlug(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 }
 
-function syncToCartStore(item: CartDrawerItemModel, colorQuantities: Map<string, number>, unitPrice: number): void {
-  const supplierId = toSlug(item.supplierName || 'unknown-supplier');
+function syncToCartStore(item: CartDrawerItemModel): void {
+  const currencyInfo = getSelectedCurrencyInfo();
+  const multi = isMultiVariant();
+  const totals = getTotals();
+  const tierPrice = item.priceTiers[totals.tierIndex]?.price ?? 0;
+  const productId = item.id;
 
-  // Supplier yoksa oluştur
+  // SKU verisi hazırla — geçersizse erken çık (boş product oluşturmayı engelle)
+  let skuToAdd: CartSku | null = null;
+  let skuToUpdateId: string | null = null;
+  let skuToUpdateQty = 0;
+
+  if (multi) {
+    const colorId = state.selectedColorId;
+    const color = item.colors.find(c => c.id === colorId);
+    if (!color || state.combinedQuantity <= 0) return;
+
+    const variantParts: string[] = [`${t('cart.colorLabel')}: ${color.label}`];
+    const variantIds: string[] = [colorId];
+    for (const [groupLabel, optionId] of state.selectedVariants) {
+      for (const group of item.variantGroups ?? []) {
+        const opt = group.options.find(o => o.id === optionId);
+        if (opt) {
+          variantParts.push(`${groupLabel}: ${opt.label}`);
+          variantIds.push(optionId);
+        }
+      }
+    }
+
+    const addon = getVariantAddonTotal();
+    const baseAddon = getBaseVariantAddonTotal();
+    const baseTierPrice = item.priceTiers[totals.tierIndex]?.basePrice ?? tierPrice;
+    const skuId = `${productId}-${variantIds.sort().join('-')}`;
+    const existing = cartStore.getSku(skuId);
+
+    if (existing) {
+      skuToUpdateId = skuId;
+      skuToUpdateQty = existing.sku.quantity + state.combinedQuantity;
+    } else {
+      skuToAdd = {
+        id: skuId,
+        skuImage: color.imageUrl || 'https://placehold.co/120x120/f5f5f5/999?text=SKU',
+        variantText: variantParts.join(', '),
+        unitPrice: tierPrice + addon,
+        priceAddon: addon,
+        currency: currencyInfo.symbol,
+        unit: item.unit,
+        quantity: state.combinedQuantity,
+        minQty: item.moq,
+        maxQty: 9999,
+        selected: true,
+        baseUnitPrice: baseTierPrice + baseAddon,
+        basePriceAddon: baseAddon,
+        baseCurrency: item.baseCurrency || 'USD',
+      };
+    }
+  } else {
+    // Single-variant: ilk geçerli rengi bul, yoksa çık
+    const firstValidColor = Array.from(state.colorQuantities.entries()).find(([, qty]) => qty > 0);
+    if (!firstValidColor) return;
+  }
+
+  // ── Supplier ve Product oluştur (sadece en az 1 SKU eklenecekse) ──
+  const supplierId = toSlug(item.supplierName || 'unknown-supplier');
   if (!cartStore.getSupplier(supplierId)) {
-    const supplier: CartSupplier = {
+    cartStore.addSupplier({
       id: supplierId,
       name: item.supplierName,
       href: `/supplier/${supplierId}`,
       selected: true,
       products: [],
-    };
-    cartStore.addSupplier(supplier);
+    });
   }
 
-  // Product yoksa oluştur
-  const productId = item.id;
   if (!cartStore.getProduct(productId)) {
-    const product: CartProduct = {
+    cartStore.addProduct(supplierId, {
       id: productId,
       title: item.title,
       href: `/product/${productId}`,
@@ -460,38 +775,64 @@ function syncToCartStore(item: CartDrawerItemModel, colorQuantities: Map<string,
       deleteIcon: '🗑',
       skus: [],
       selected: true,
-    };
-    cartStore.addProduct(supplierId, product);
+      priceTiers: item.priceTiers.map(pt => ({
+        minQty: pt.minQty,
+        maxQty: pt.maxQty,
+        price: pt.basePrice,
+      })),
+      baseCurrency: item.baseCurrency || 'USD',
+      shippingMethods: item.shippingOptions.map((so, idx) => ({
+        id: so.id || `ship-${idx + 1}`,
+        method: so.method,
+        estimatedDays: so.estimatedDays,
+        baseCost: so.baseCost,
+        baseCurrency: so.baseCurrency || item.baseCurrency || 'USD',
+      })),
+    });
   }
 
-  // Her renk/miktar çifti → SKU
-  colorQuantities.forEach((qty, colorId) => {
-    if (qty <= 0) return;
-
-    const color = item.colors.find((c) => c.id === colorId);
-    if (!color) return;
-
-    const skuId = `${item.id}-${colorId}`;
-    const existing = cartStore.getSku(skuId);
-
-    if (existing) {
-      cartStore.updateSkuQuantity(skuId, existing.sku.quantity + qty);
-    } else {
-      const sku: CartSku = {
-        id: skuId,
-        skuImage: color.imageUrl || 'https://placehold.co/120x120/f5f5f5/999?text=SKU',
-        variantText: `${t('cart.colorLabel')}: ${color.label}`,
-        unitPrice,
-        currency: '$',
-        unit: item.unit,
-        quantity: qty,
-        minQty: item.moq,
-        maxQty: 9999,
-        selected: true,
-      };
-      cartStore.addSku(productId, sku);
+  // ── SKU ekle/güncelle ──
+  if (multi) {
+    if (skuToUpdateId) {
+      cartStore.updateSkuQuantity(skuToUpdateId, skuToUpdateQty);
+    } else if (skuToAdd) {
+      cartStore.addSku(productId, skuToAdd);
     }
-  });
+  } else {
+    // Single-variant: her renk/miktar çifti → ayrı SKU
+    const baseTierPriceSingle = item.priceTiers[totals.tierIndex]?.basePrice ?? tierPrice;
+    state.colorQuantities.forEach((qty, colorId) => {
+      if (qty <= 0) return;
+      const color = item.colors.find((c) => c.id === colorId);
+      if (!color) return;
+
+      const addon = color.priceAddon ?? 0;
+      const baseAddonSingle = color.basePriceAddon ?? 0;
+      const skuId = `${productId}-${colorId}`;
+      const existing = cartStore.getSku(skuId);
+
+      if (existing) {
+        cartStore.updateSkuQuantity(skuId, existing.sku.quantity + qty);
+      } else {
+        cartStore.addSku(productId, {
+          id: skuId,
+          skuImage: color.imageUrl || 'https://placehold.co/120x120/f5f5f5/999?text=SKU',
+          variantText: `${t('cart.colorLabel')}: ${color.label}`,
+          unitPrice: tierPrice + addon,
+          priceAddon: addon,
+          currency: currencyInfo.symbol,
+          unit: item.unit,
+          quantity: qty,
+          minQty: item.moq,
+          maxQty: 9999,
+          selected: true,
+          baseUnitPrice: baseTierPriceSingle + baseAddonSingle,
+          basePriceAddon: baseAddonSingle,
+          baseCurrency: item.baseCurrency || 'USD',
+        });
+      }
+    });
+  }
 }
 
 function dispatchCartAdd(): void {
@@ -501,21 +842,28 @@ function dispatchCartAdd(): void {
   if (totals.totalQty <= 0) return;
 
   // CartStore'a kaydet
-  syncToCartStore(state.item, state.colorQuantities, totals.activePrice);
+  syncToCartStore(state.item);
+
+  // cartMemory güncelle — multi-variant modda selectedColorId + combinedQuantity kullan
+  const multi = isMultiVariant();
+  const memoryQuantities = new Map<string, number>();
+  if (multi) {
+    if (state.selectedColorId && state.combinedQuantity > 0) {
+      memoryQuantities.set(state.selectedColorId, state.combinedQuantity);
+    }
+  } else {
+    state.colorQuantities.forEach((qty, colorId) => {
+      if (qty > 0) memoryQuantities.set(colorId, qty);
+    });
+  }
 
   const existing = cartMemory.get(state.item.id);
   if (existing) {
-    state.colorQuantities.forEach((qty, colorId) => {
-      if (qty > 0) {
-        existing.colorQuantities.set(colorId, (existing.colorQuantities.get(colorId) ?? 0) + qty);
-      }
+    memoryQuantities.forEach((qty, colorId) => {
+      existing.colorQuantities.set(colorId, (existing.colorQuantities.get(colorId) ?? 0) + qty);
     });
   } else {
-    const copy = new Map<string, number>();
-    state.colorQuantities.forEach((qty, colorId) => {
-      if (qty > 0) copy.set(colorId, qty);
-    });
-    cartMemory.set(state.item.id, { item: state.item, colorQuantities: copy });
+    cartMemory.set(state.item.id, { item: state.item, colorQuantities: new Map(memoryQuantities) });
   }
 
   const groupedItems = buildGroupedItemsForEvent();
@@ -546,13 +894,31 @@ function openDrawer(itemId?: string, mode: 'cart' | 'sample' = 'cart', preselect
   state.footerExpanded = false;
   state.colorQuantities = new Map(item.colors.map((color) => [color.id, 0]));
 
+  // Pre-select first available option for each variant group
+  state.selectedVariants = new Map();
+  state.combinedQuantity = 0;
+  state.selectedColorId = item.colors[0]?.id ?? '';
+
+  if (item.variantGroups && item.variantGroups.length > 0) {
+    // Multi-variant mode
+    for (const group of item.variantGroups) {
+      const firstAvailable = group.options.find(o => o.available);
+      if (firstAvailable) {
+        state.selectedVariants.set(group.label, firstAvailable.id);
+      }
+    }
+  }
+
   // Pre-select the color that was clicked in the variant selector
   if (preselectedColorLabel && item.colors.length > 0) {
     const normalizedLabel = preselectedColorLabel.toLowerCase().trim();
     const matchIndex = item.colors.findIndex(c => c.label.toLowerCase().trim() === normalizedLabel);
     if (matchIndex >= 0) {
       state.previewColorIndex = matchIndex;
-      state.colorQuantities.set(item.colors[matchIndex].id, 1);
+      state.selectedColorId = item.colors[matchIndex].id;
+      if (!isMultiVariant()) {
+        state.colorQuantities.set(item.colors[matchIndex].id, 1);
+      }
     }
   }
 
@@ -715,6 +1081,49 @@ export function initSharedCartDrawer(items: CartDrawerItemModel[]): void {
   body.addEventListener('click', (event) => {
     const target = event.target as HTMLElement;
 
+    // Variant group option selection (size, material, etc.)
+    const variantOptionBtn = target.closest<HTMLButtonElement>('.cart-variant-option:not([disabled])');
+    if (variantOptionBtn) {
+      const groupLabel = variantOptionBtn.dataset.variantGroupLabel ?? '';
+      const optionId = variantOptionBtn.dataset.variantOptionId ?? '';
+      state.selectedVariants.set(groupLabel, optionId);
+      rerenderDrawer();
+      return;
+    }
+
+    // Multi-variant mode: color thumbnail selection
+    const colorSelectBtn = target.closest<HTMLButtonElement>('.cart-color-select');
+    if (colorSelectBtn && state.item) {
+      const colorId = colorSelectBtn.dataset.colorSelectId ?? '';
+      state.selectedColorId = colorId;
+      const index = state.item.colors.findIndex(c => c.id === colorId);
+      if (index >= 0) {
+        state.previewColorIndex = index;
+        updatePreview();
+        setPreviewVisible(window.innerWidth >= 1280);
+      }
+      rerenderDrawer();
+      return;
+    }
+
+    // Multi-variant mode: combined quantity control
+    const combinedQtyTrigger = target.closest<HTMLElement>('[data-combined-qty-action]');
+    if (combinedQtyTrigger) {
+      const action = combinedQtyTrigger.dataset.combinedQtyAction;
+      if (action === 'plus') {
+        if (state.mode === 'sample' && state.combinedQuantity >= 1) {
+          showSampleMaxToast();
+          return;
+        }
+        state.combinedQuantity += 1;
+      }
+      if (action === 'minus') {
+        state.combinedQuantity = Math.max(0, state.combinedQuantity - 1);
+      }
+      rerenderDrawer();
+      return;
+    }
+
     const previewTrigger = target.closest<HTMLElement>('[data-preview-color]');
     if (previewTrigger && state.item) {
       const colorId = previewTrigger.dataset.previewColor;
@@ -727,6 +1136,7 @@ export function initSharedCartDrawer(items: CartDrawerItemModel[]): void {
       return;
     }
 
+    // Single-variant mode: per-color quantity control
     const qtyTrigger = target.closest<HTMLElement>('[data-qty-action]');
     if (qtyTrigger) {
       const action = qtyTrigger.dataset.qtyAction;
@@ -757,6 +1167,22 @@ export function initSharedCartDrawer(items: CartDrawerItemModel[]): void {
   });
 
   body.addEventListener('change', (event) => {
+    // Combined qty input (multi-variant mode)
+    const combinedInput = (event.target as HTMLElement).closest<HTMLInputElement>('#combined-qty-input');
+    if (combinedInput) {
+      let val = Number(combinedInput.value);
+      if (Number.isNaN(val) || val < 0) val = 0;
+      if (state.mode === 'sample' && val > 1) {
+        val = 1;
+        combinedInput.value = '1';
+        showSampleMaxToast();
+      }
+      state.combinedQuantity = val;
+      rerenderDrawer();
+      return;
+    }
+
+    // Per-color qty input (single-variant mode)
     const input = (event.target as HTMLElement).closest<HTMLInputElement>('[data-qty-input]');
     if (!input) return;
 
@@ -765,7 +1191,6 @@ export function initSharedCartDrawer(items: CartDrawerItemModel[]): void {
     if (Number.isNaN(nextValue) || nextValue < 0) nextValue = 0;
 
     if (state.mode === 'sample') {
-      // Sum of other colors + this one cannot exceed 1
       const othersTotal = Array.from(state.colorQuantities.entries())
         .filter(([id]) => id !== colorId)
         .reduce((a, [, b]) => a + b, 0);
@@ -819,6 +1244,13 @@ export function initSharedCartDrawer(items: CartDrawerItemModel[]): void {
           unit: item.unit,
           color: color ? { id: color.id, label: color.label, imageUrl: color.imageUrl } : null,
           quantity: 1,
+          shippingMethods: item.shippingOptions.map((so, idx) => ({
+            id: so.id || `ship-${idx + 1}`,
+            method: so.method,
+            estimatedDays: so.estimatedDays,
+            baseCost: so.baseCost,
+            baseCurrency: so.baseCurrency || item.baseCurrency || 'USD',
+          })),
         };
         localStorage.setItem('tradehub_sample_order', JSON.stringify(sampleOrder));
         applyDrawerTransform(false);

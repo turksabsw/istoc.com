@@ -491,6 +491,7 @@ const tr = {
       samplePrice: 'Numune fiyatı',
       variants: 'Varyantlar',
       makeSelection: 'Seçim yap',
+      selectedPrice: 'Seçili fiyat',
       supplierCustomization: 'Tedarikçi Özelleştirme',
       drawingCustomization: 'Çizim bazlı özelleştirme',
       sampleCustomization: 'Numune bazlı özelleştirme',

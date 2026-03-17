@@ -208,19 +208,27 @@ def get_listing_detail(listing_id):
 
     # Get specifications
     specs = []
-    packaging_specs = []
     for attr in (listing.attribute_values or []):
         specs.append({
             "label": attr.attribute_name,
             "value": attr.attribute_value,
             "group": attr.attribute_group,
         })
-    for attr in (listing.packaging_specs or []):
-        packaging_specs.append({
-            "label": attr.attribute_name,
-            "value": attr.attribute_value,
-            "group": attr.attribute_group,
-        })
+
+    # Build packaging specs from dedicated fields
+    packaging_specs = []
+    if listing.package_type:
+        packaging_specs.append({"label": "Paket Tipi", "value": listing.package_type})
+    if listing.package_length and listing.package_width and listing.package_height:
+        packaging_specs.append({"label": "Paket Boyutu", "value": f"{listing.package_length} x {listing.package_width} x {listing.package_height} cm"})
+    if listing.package_weight:
+        packaging_specs.append({"label": "Paket Ağırlığı", "value": f"{listing.package_weight} kg"})
+    if listing.units_per_package:
+        packaging_specs.append({"label": "Koli Başına Adet", "value": str(listing.units_per_package)})
+    if listing.carton_length and listing.carton_width and listing.carton_height:
+        packaging_specs.append({"label": "Koli Boyutu", "value": f"{listing.carton_length} x {listing.carton_width} x {listing.carton_height} cm"})
+    if listing.carton_gross_weight:
+        packaging_specs.append({"label": "Koli Brüt Ağırlığı", "value": f"{listing.carton_gross_weight} kg"})
 
     # Get shipping methods
     shipping = []
@@ -263,6 +271,13 @@ def get_listing_detail(listing_id):
         "priceRange": price_range,
         "shipping": shipping,
         "leadTime": f"{listing.handling_days or 1} iş günü" if listing.handling_days else "",
+        "leadTimeRanges": [
+            {
+                "quantityRange": f"{r.min_qty}-{r.max_qty}" if r.max_qty else f"{r.min_qty}+",
+                "days": f"{r.lead_days} gün",
+            }
+            for r in (listing.lead_time_ranges or [])
+        ],
         "variants": variants,
         "specs": specs,
         "packagingSpecs": packaging_specs,
@@ -596,12 +611,16 @@ def _get_listing_variants(listing_name):
                 # Use variant price, fallback to listing base price
                 variant_price = v.price if v.price and v.price > 0 else base_price
 
+                # For legacy DocType, addon is the difference from base
+                price_addon = (variant_price - base_price) if variant_price > base_price else 0
+
                 option = {
                     "label": attr.attribute_value,
                     "value": attr.attribute_value,
                     "available": is_available,
                     "image": v.primary_image if v.primary_image else None,
                     "price": variant_price,
+                    "priceAddon": price_addon,
                     "stockQty": v.stock_qty or 0,
                     "variantId": v.name,
                 }
@@ -662,6 +681,7 @@ def _build_variants_from_inline(listing_name, inline_variants):
                 "available": is_available,
                 "image": v.variant_image if v.variant_image else None,
                 "price": variant_price,
+                "priceAddon": v.variant_price if v.variant_price and v.variant_price > 0 else 0,
                 "stockQty": v.variant_stock or 0,
                 "variantId": f"{listing_name}-{v.attribute_type}-{v.attribute_value}",
             }

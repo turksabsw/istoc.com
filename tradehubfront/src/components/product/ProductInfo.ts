@@ -45,6 +45,7 @@ function renderVariant(variant: ProductVariant): string {
               data-variant-label="${opt.label}"
               data-variant-image="${opt.thumbnail || ''}"
               data-variant-value="${opt.value}"
+              ${opt.price ? `data-variant-price="${opt.price}"` : ''}
               ${opt.available ? '' : 'disabled'}
               aria-label="${opt.label}"
               title="${opt.label}"
@@ -67,6 +68,7 @@ function renderVariant(variant: ProductVariant): string {
             class="variant-option pd-variant-btn ${i === 0 && opt.available ? 'active' : ''} ${opt.available ? '' : 'opacity-40 cursor-not-allowed'}"
             data-variant-id="${opt.id}"
             data-variant-label="${opt.label}"
+            ${opt.price ? `data-variant-price="${opt.price}"` : ''}
             ${opt.available ? '' : 'disabled'}
           >
             ${opt.label}
@@ -207,6 +209,18 @@ export function initProductInfo(): void {
     });
   });
 
+  // "Seçim yap" link → open cart drawer
+  const makeSelectionLink = document.querySelector<HTMLAnchorElement>('#pd-variations-section a[href="#"]');
+  if (makeSelectionLink) {
+    makeSelectionLink.addEventListener('click', (e) => {
+      e.preventDefault();
+      // Find the currently selected color variant label
+      const activeColorBtn = document.querySelector<HTMLButtonElement>('.variant-group[data-variant-type="color"] .variant-option.active');
+      const colorLabel = activeColorBtn?.getAttribute('data-variant-label') || '';
+      openCartDrawer(colorLabel);
+    });
+  }
+
   // Variant selection — updates active state, label, gallery image
   const variantGroups = document.querySelectorAll<HTMLElement>('.variant-group');
   variantGroups.forEach(group => {
@@ -228,14 +242,12 @@ export function initProductInfo(): void {
         // Navigate gallery slider to the variant's image
         const variantImage = btn.getAttribute('data-variant-image');
         if (variantImage) {
-          // Find which thumbnail index matches this variant's image
           const thumbList = document.querySelector<HTMLElement>('[x-ref="thumbList"]');
           if (thumbList) {
             const thumbs = thumbList.querySelectorAll<HTMLElement>('.gallery-thumb, [data-thumb-index]');
             thumbs.forEach((thumb, idx) => {
               const thumbImg = thumb.querySelector<HTMLImageElement>('img');
               if (thumbImg && thumbImg.src.includes(variantImage.replace('/files/', ''))) {
-                // Dispatch gallery-go-to event to navigate slider
                 document.dispatchEvent(new CustomEvent('gallery-go-to', { detail: { index: idx } }));
               }
             });

@@ -7,6 +7,7 @@ import '../style.css'
 import { initFlowbite } from 'flowbite'
 import { initStickyHeights } from '../utils/stickyHeights'
 import { t } from '../i18n'
+import { initCurrency } from '../services/currencyService'
 
 // Header components (reuse from main page)
 import { TopBar, initMobileDrawer, SubHeader, MegaMenu, initMegaMenu, initHeaderCart } from '../components/header'
@@ -96,11 +97,11 @@ initFlowbite();
 initMobileDrawer();
 initLanguageSelector();
 
-// Initialize cart page logic (store zaten load() ile yüklendi)
-initCartPage();
-
-// Header cart init'i store doldurulduktan SONRA gelsin ki badge güncellensin
-initHeaderCart();
+// Currency init → cart page → header cart (sıralı, currency load sonrası fiyat hesaplaması)
+initCurrency().then(() => {
+  initCartPage();
+  initHeaderCart();
+});
 initStickyHeights();
 
 // Start Alpine LAST — after innerHTML is set so it can find all x-data directives in the DOM

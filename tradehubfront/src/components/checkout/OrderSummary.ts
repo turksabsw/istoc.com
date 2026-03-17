@@ -1,5 +1,6 @@
 import type { OrderSummary as OrderSummaryData, OrderSummaryThumbnail } from '../../types/checkout';
 import { t } from '../../i18n';
+import { formatCurrency } from '../../services/currencyService';
 
 export interface ProtectionSummaryItem {
   icon: string;
@@ -48,11 +49,11 @@ function renderThumbnailGrid(thumbnails: OrderSummaryThumbnail[], itemCount: num
 
 export function OrderSummary({ data, protectionItems, tradeAssuranceText }: OrderSummaryProps): string {
   const currency = data.currency;
+  const fmtMoney = (amount: number) => formatCurrency(amount, currency);
 
-  // Format numbers to match precision
-  const subtotalStr = `${currency} ${(data.itemSubtotal).toFixed(2)}`;
-  const shippingStr = `${currency} ${(data.shipping).toFixed(2)}`;
-  const totalStr = `${currency} ${(data.total).toFixed(2)}`;
+  const subtotalStr = fmtMoney(data.itemSubtotal);
+  const shippingStr = fmtMoney(data.shipping);
+  const totalStr = fmtMoney(data.total);
   const implicitDiscount = Number((data.itemSubtotal + data.shipping - data.total).toFixed(2));
 
   // The protection items rendering
