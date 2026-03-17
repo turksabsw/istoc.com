@@ -319,8 +319,36 @@ function CategoriesTab(categories: CategoryCard[]): string {
 
 // ─── Company Info Tab (Şirket Bilgileri) ─────────────────────────────
 function CompanyTab(seller: SellerProfile, infoData: CompanyInfoData, certs: Certificate[]): string {
+  const cells = [
+    seller.city        && { icon: '🌍', label: 'Şehir',          value: [seller.city, seller.district].filter(Boolean).join(', ') },
+    seller.founded_year && { icon: '📅', label: 'Kuruluş Yılı',  value: String(seller.founded_year) },
+    seller.business_type && { icon: '🏭', label: 'İş Türü',      value: seller.business_type },
+    seller.main_markets  && { icon: '🗺️', label: 'Ana Pazarlar', value: seller.main_markets },
+    seller.annual_revenue && { icon: '📊', label: 'Yıllık Ciro', value: seller.annual_revenue },
+    seller.staff_count   && { icon: '👥', label: 'Çalışan Sayısı', value: String(seller.staff_count) },
+    seller.company_name  && { icon: '🏢', label: 'Şirket Adı',   value: seller.company_name },
+  ].filter(Boolean) as { icon: string; label: string; value: string }[];
+
   return `
     <div class="company-profile__tab-content" x-show="activeTab === 'company'" x-transition.opacity.duration.300ms id="tab-company">
+
+      ${cells.length ? `
+      <div class="bg-white rounded-(--radius-md) border border-gray-200 p-6 mb-6">
+        <h3 class="text-[16px] font-bold text-gray-900 mb-4">Şirket Bilgileri</h3>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          ${cells.map(c => `
+            <div class="flex items-start gap-3 p-3 bg-gray-50 rounded-lg border border-gray-100">
+              <span class="text-xl flex-shrink-0">${c.icon}</span>
+              <div>
+                <div class="text-[11px] text-gray-500 font-medium uppercase tracking-wide">${c.label}</div>
+                <div class="text-[14px] text-gray-900 font-semibold mt-0.5">${c.value}</div>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+      ` : ''}
+
       <div class="bg-white rounded-(--radius-md) border border-gray-200 mb-6 px-4">
         ${CompanyInfoComponent(infoData, seller)}
       </div>
@@ -332,9 +360,38 @@ function CompanyTab(seller: SellerProfile, infoData: CompanyInfoData, certs: Cer
 }
 
 // ─── Contact Info Tab (İletişim) ─────────────────────────────────────
-function ContactTab(formData: ContactFormData): string {
+function ContactTab(formData: ContactFormData, seller: SellerProfile): string {
+  const contactItems = [
+    seller.phone   && { icon: '📞', label: 'Telefon',  value: seller.phone,   href: `tel:${seller.phone}` },
+    seller.email   && { icon: '✉️',  label: 'E-posta',  value: seller.email,   href: `mailto:${seller.email}` },
+    seller.website && { icon: '🌐', label: 'Web Sitesi', value: seller.website, href: seller.website },
+    seller.address && { icon: '📍', label: 'Adres',    value: seller.address, href: null },
+    seller.city    && { icon: '🏙️', label: 'Şehir',    value: [seller.city, seller.district].filter(Boolean).join(', '), href: null },
+  ].filter(Boolean) as { icon: string; label: string; value: string; href: string | null }[];
+
   return `
     <div class="company-profile__tab-content" x-show="activeTab === 'contact'" x-transition.opacity.duration.300ms id="tab-contact">
+
+      ${contactItems.length ? `
+      <div class="bg-white rounded-(--radius-md) border border-gray-200 p-6 mb-6">
+        <h3 class="text-[16px] font-bold text-gray-900 mb-4">İletişim Bilgileri</h3>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          ${contactItems.map(c => `
+            <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-100">
+              <span class="text-xl flex-shrink-0">${c.icon}</span>
+              <div class="min-w-0">
+                <div class="text-[11px] text-gray-500 font-medium uppercase tracking-wide">${c.label}</div>
+                ${c.href
+                  ? `<a href="${c.href}" target="_blank" rel="noopener" class="text-[14px] text-blue-600 hover:underline font-medium truncate block mt-0.5">${c.value}</a>`
+                  : `<div class="text-[14px] text-gray-900 font-medium mt-0.5">${c.value}</div>`
+                }
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+      ` : ''}
+
       ${ContactForm(formData)}
     </div>
   `;
@@ -379,7 +436,7 @@ export function CompanyProfileComponent(
             ${ProductsTab(categories)}
             ${CategoriesTab(categoryCards)}
             ${CompanyTab(seller, companyInfo, certs)}
-            ${ContactTab(contact)}
+            ${ContactTab(contact, seller)}
           </div>
 
           <!-- Right Sidebar -->

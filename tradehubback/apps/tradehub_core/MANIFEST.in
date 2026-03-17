@@ -1,0 +1,2 @@
+include MANIFEST.in
+recursive-include tradehub_core *.json *.js *.css *.html *.png *.jpg *.jpeg *.gif *.svg *.txt *.md
