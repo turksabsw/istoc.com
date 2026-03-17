@@ -17,7 +17,7 @@ import {
 function toShippingOptions(product: ProductDetail): CartDrawerShippingOption[] {
   if (product.shipping.length === 0) {
     return [
-      { id: 'standard', method: t('products.standardShipping'), estimatedDays: t('products.businessDays', { days: '10-20' }), cost: 0, costText: t('products.freeShipping') },
+      { id: 'standard', method: t('products.standardShipping'), estimatedDays: t('products.businessDays', { days: '10-20' }), cost: 0, costText: t('products.freeShipping'), baseCost: 0, baseCurrency: product.baseCurrency || 'USD' },
     ];
   }
   return product.shipping.map((option, index) => {
@@ -28,6 +28,8 @@ function toShippingOptions(product: ProductDetail): CartDrawerShippingOption[] {
       estimatedDays: option.estimatedDays,
       cost: numeric,
       costText: option.cost,
+      baseCost: option.baseCost ?? numeric,
+      baseCurrency: option.baseCurrency || product.baseCurrency || 'USD',
     };
   });
 }
@@ -59,6 +61,7 @@ function toDrawerItem(product: ProductDetail): CartDrawerItemModel {
     minQty: tier.minQty,
     maxQty: tier.maxQty,
     price: tier.price,
+    basePrice: tier.basePrice ?? tier.price,
   }));
 
   return {
@@ -72,6 +75,7 @@ function toDrawerItem(product: ProductDetail): CartDrawerItemModel {
     colors: toColors(product),
     shippingOptions: toShippingOptions(product),
     samplePrice: product.samplePrice,
+    baseCurrency: product.baseCurrency || 'USD',
   };
 }
 
@@ -107,9 +111,9 @@ function toMinimalDrawerItem(product: ProductListingCard): CartDrawerItemModel {
     moq,
     imageKind: 'jewelry',
     priceTiers: [
-      { minQty: Math.max(1, moq), maxQty: 49, price: high || low },
-      { minQty: 50, maxQty: 199, price: mid || low },
-      { minQty: 200, maxQty: null, price: low },
+      { minQty: Math.max(1, moq), maxQty: 49, price: high || low, basePrice: high || low },
+      { minQty: 50, maxQty: 199, price: mid || low, basePrice: mid || low },
+      { minQty: 200, maxQty: null, price: low, basePrice: low },
     ],
     colors: [{
       id: 'default-color',
@@ -119,8 +123,9 @@ function toMinimalDrawerItem(product: ProductListingCard): CartDrawerItemModel {
       imageUrl: product.imageSrc,
     }],
     shippingOptions: [
-      { id: 'standard', method: t('products.standardShipping'), estimatedDays: t('products.businessDays', { days: '10-20' }), cost: 0, costText: t('products.freeShipping') },
+      { id: 'standard', method: t('products.standardShipping'), estimatedDays: t('products.businessDays', { days: '10-20' }), cost: 0, costText: t('products.freeShipping'), baseCost: 0, baseCurrency: 'USD' },
     ],
+    baseCurrency: 'USD',
   };
 }
 

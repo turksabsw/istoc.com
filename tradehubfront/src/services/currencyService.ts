@@ -43,8 +43,8 @@ const STORAGE_KEY = 'tradehub-currency'
 const RATES_CACHE_KEY = 'tradehub_rates'
 const RATES_CACHE_TTL = 30 * 60 * 1000 // 30 minutes
 
-let _settings: CurrencySettings | null = null
-let _selectedCurrency: string = 'USD'
+let _settings: CurrencySettings | null = _loadCachedRates()
+let _selectedCurrency: string = localStorage.getItem(STORAGE_KEY) || 'USD'
 let _initialized = false
 
 // Default fallback rates (USD-based)

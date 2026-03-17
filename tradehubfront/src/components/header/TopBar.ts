@@ -13,6 +13,7 @@ import { mockConversations } from '../../data/mockMessages';
 import { t, getCurrentLang, updatePageTranslations } from '../../i18n';
 import type { SupportedLang } from '../../i18n';
 import { getSelectedCurrency, setSelectedCurrency } from '../../utils/currency';
+import { formatCurrency, getSelectedCurrencyInfo } from '../../services/currencyService';
 
 /** Default country options for the delivery selector */
 const countryOptions: LocaleOption[] = [
@@ -1296,7 +1297,7 @@ export function initHeaderCart(): void {
     if (subtotalContainer) subtotalContainer.style.display = 'flex';
     if (subtotalPrice) {
       const gTotal = summary.subtotal || 0;
-      subtotalPrice.textContent = `$${gTotal.toFixed(2)}`;
+      subtotalPrice.textContent = formatCurrency(gTotal, getSelectedCurrencyInfo().code);
     }
 
     if (itemsContainer) {
@@ -1325,7 +1326,7 @@ export function initHeaderCart(): void {
                   <p class="text-[11px] text-gray-400">${sku.variantText || ''}</p>
                 </div>
                 <div class="flex flex-col items-end gap-1 flex-shrink-0">
-                  <span class="text-[13px] font-bold text-gray-900">$${sku.unitPrice.toFixed(2)}</span>
+                  <span class="text-[13px] font-bold text-gray-900">${formatCurrency(sku.unitPrice, getSelectedCurrencyInfo().code)}</span>
                   <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">x${sku.quantity}</span>
                 </div>
               </div>`;
@@ -1379,7 +1380,7 @@ export function initHeaderCart(): void {
                   <div class="flex-1 min-w-0">
                     <p class="text-[11px] text-text-tertiary truncate">${item.label}</p>
                     <div class="flex items-center justify-between mt-0.5">
-                      <span class="text-[13px] font-semibold text-text-heading">$${item.unitPrice.toFixed(2)}</span>
+                      <span class="text-[13px] font-semibold text-text-heading">${formatCurrency(item.unitPrice, getSelectedCurrencyInfo().code)}</span>
                       <span class="text-xs text-text-tertiary">x ${item.qty}</span>
                     </div>
                   </div>
@@ -1406,7 +1407,7 @@ export function initHeaderCart(): void {
                     <div class="flex-1 min-w-0">
                       <p class="text-xs text-text-tertiary">${desc}</p>
                       <div class="flex items-center justify-between mt-0.5">
-                        <span class="text-sm font-semibold text-text-heading">$${unitPrice.toFixed(2)}</span>
+                        <span class="text-sm font-semibold text-text-heading">${formatCurrency(unitPrice, getSelectedCurrencyInfo().code)}</span>
                         <span class="text-xs text-text-tertiary">x ${vi.qty}</span>
                       </div>
                     </div>
@@ -1419,7 +1420,7 @@ export function initHeaderCart(): void {
                 <div class="w-12 h-12 rounded-md flex-shrink-0 bg-surface-muted border border-border-default"></div>
                 <div class="flex-1 min-w-0">
                   <div class="flex items-center justify-between mt-0.5">
-                    <span class="text-sm font-semibold text-text-heading">$${unitPrice.toFixed(2)}</span>
+                    <span class="text-sm font-semibold text-text-heading">${formatCurrency(unitPrice, getSelectedCurrencyInfo().code)}</span>
                     <span class="text-xs text-text-tertiary">x ${quantity}</span>
                   </div>
                 </div>
@@ -1434,7 +1435,7 @@ export function initHeaderCart(): void {
       const subtotalContainer = document.getElementById('header-cart-subtotal');
       const subtotalPrice = document.getElementById('header-cart-subtotal-price');
       if (subtotalContainer) subtotalContainer.style.display = 'flex';
-      if (subtotalPrice) subtotalPrice.textContent = `$${grandTotal.toFixed(2)}`;
+      if (subtotalPrice) subtotalPrice.textContent = formatCurrency(grandTotal, getSelectedCurrencyInfo().code);
     } else {
       renderFromStore();
     }

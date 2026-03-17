@@ -491,6 +491,7 @@ const en = {
       samplePrice: 'Sample price',
       variants: 'Variants',
       makeSelection: 'Make selection',
+      selectedPrice: 'Selected price',
       supplierCustomization: 'Supplier Customization',
       drawingCustomization: 'Drawing-based customization',
       sampleCustomization: 'Sample-based customization',

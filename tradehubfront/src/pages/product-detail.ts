@@ -13,6 +13,9 @@ import { initLanguageSelector } from '../components/header/TopBar'
 // Footer components
 import { FooterLinks } from '../components/footer'
 
+// Browsing history
+import { saveToBrowsingHistory } from '../services/browsingHistoryService'
+
 // Floating components
 import { FloatingPanel } from '../components/floating'
 
@@ -99,6 +102,16 @@ async function renderProductPage() {
   }
 
   const product = getCurrentProduct();
+
+  // Save to browsing history
+  if (product.id && product.images.length > 0) {
+    saveToBrowsingHistory({
+      id: product.id,
+      image: product.images[0].src,
+      title: product.title,
+      href: `/pages/product-detail.html?id=${product.id}`,
+    });
+  }
 
   // If no product loaded (no ID or API failed), show empty state
   if (!product.id) {

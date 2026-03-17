@@ -54,8 +54,6 @@
   "specs_tab",
   "specifications_section",
   "attribute_values",
-  "packaging_section",
-  "packaging_specs",
   "variants_tab",
   "variants_section",
   "has_variants",
@@ -72,6 +70,20 @@
   "ships_from_city",
   "handling_days",
   "country_of_origin",
+  "packaging_details_section",
+  "package_type",
+  "package_length",
+  "package_width",
+  "package_height",
+  "package_weight",
+  "column_break_packaging",
+  "units_per_package",
+  "carton_length",
+  "carton_width",
+  "carton_height",
+  "carton_gross_weight",
+  "lead_time_section",
+  "lead_time_ranges",
   "shipping_methods_section",
   "shipping_methods",
   "settings_tab",
@@ -408,17 +420,6 @@
    "options": "Listing Attribute Value"
   },
   {
-   "fieldname": "packaging_section",
-   "fieldtype": "Section Break",
-   "label": "Packaging Specifications"
-  },
-  {
-   "fieldname": "packaging_specs",
-   "fieldtype": "Table",
-   "label": "Packaging Specs",
-   "options": "Listing Attribute Value"
-  },
-  {
    "fieldname": "variants_tab",
    "fieldtype": "Tab Break",
    "label": "Variants"
@@ -511,6 +512,85 @@
    "options": "Country"
   },
   {
+   "fieldname": "packaging_details_section",
+   "fieldtype": "Section Break",
+   "label": "Packaging Details"
+  },
+  {
+   "fieldname": "package_type",
+   "fieldtype": "Select",
+   "label": "Package Type",
+   "options": "\nKarton Kutu\nPoşet\nAhşap Kasa\nPalet\nFile\nTorba\nDiğer"
+  },
+  {
+   "fieldname": "package_length",
+   "fieldtype": "Float",
+   "label": "Package Length (cm)",
+   "precision": "2"
+  },
+  {
+   "fieldname": "package_width",
+   "fieldtype": "Float",
+   "label": "Package Width (cm)",
+   "precision": "2"
+  },
+  {
+   "fieldname": "package_height",
+   "fieldtype": "Float",
+   "label": "Package Height (cm)",
+   "precision": "2"
+  },
+  {
+   "fieldname": "package_weight",
+   "fieldtype": "Float",
+   "label": "Package Weight (kg)",
+   "precision": "3"
+  },
+  {
+   "fieldname": "column_break_packaging",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "units_per_package",
+   "fieldtype": "Int",
+   "label": "Units Per Package"
+  },
+  {
+   "fieldname": "carton_length",
+   "fieldtype": "Float",
+   "label": "Carton Length (cm)",
+   "precision": "2"
+  },
+  {
+   "fieldname": "carton_width",
+   "fieldtype": "Float",
+   "label": "Carton Width (cm)",
+   "precision": "2"
+  },
+  {
+   "fieldname": "carton_height",
+   "fieldtype": "Float",
+   "label": "Carton Height (cm)",
+   "precision": "2"
+  },
+  {
+   "fieldname": "carton_gross_weight",
+   "fieldtype": "Float",
+   "label": "Carton Gross Weight (kg)",
+   "precision": "3"
+  },
+  {
+   "fieldname": "lead_time_section",
+   "fieldtype": "Section Break",
+   "label": "Lead Time Ranges"
+  },
+  {
+   "fieldname": "lead_time_ranges",
+   "fieldtype": "Table",
+   "label": "Lead Time Ranges",
+   "options": "Listing Lead Time Range"
+  },
+  {
    "fieldname": "shipping_methods_section",
    "fieldtype": "Section Break",
    "label": "Shipping Methods"
@@ -575,7 +655,7 @@
    "fieldname": "selling_point",
    "fieldtype": "Data",
    "label": "Selling Point",
-   "description": "Short highlight text for product card, e.g. '180 g\u00fcn en d\u00fc\u015f\u00fck fiyat'"
+   "description": "Short highlight text for product card, e.g. '180 gün en düşük fiyat'"
   },
   {
    "fieldname": "statistics_tab",
@@ -723,11 +803,26 @@
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [
-  {"color": "gray", "title": "Draft"},
-  {"color": "green", "title": "Active"},
-  {"color": "yellow", "title": "Paused"},
-  {"color": "red", "title": "Out of Stock"},
-  {"color": "gray", "title": "Archived"}
+  {
+   "color": "gray",
+   "title": "Draft"
+  },
+  {
+   "color": "green",
+   "title": "Active"
+  },
+  {
+   "color": "yellow",
+   "title": "Paused"
+  },
+  {
+   "color": "red",
+   "title": "Out of Stock"
+  },
+  {
+   "color": "gray",
+   "title": "Archived"
+  }
  ],
  "title_field": "title",
  "track_changes": 1
