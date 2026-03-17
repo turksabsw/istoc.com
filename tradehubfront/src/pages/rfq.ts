@@ -38,6 +38,9 @@ const testimonials = getTestimonials();
 // Types
 import type { Product, RFQFormData } from '../types/rfq'
 import { FILE_UPLOAD_CONFIG } from '../types/rfq'
+import { requireAuth } from '../utils/auth-guard'
+
+await requireAuth();
 
 // --- Helper: Product Card HTML ---
 function renderProductCard(product: Product): string {

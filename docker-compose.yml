@@ -35,6 +35,7 @@ services:
       - ./tradehubback/sites/common_site_config.docker.json:/home/frappe/frappe-bench/sites/common_site_config.json
       - ./tradehubback/frappe_wsgi.py:/home/frappe/frappe-bench/frappe_wsgi.py
       - backend-logs:/home/frappe/frappe-bench/logs
+      - ./tradehubback/apps/tradehub_core:/home/frappe/frappe-bench/apps/tradehub_core
     depends_on:
       db:
         condition: service_healthy
@@ -75,6 +76,7 @@ services:
       - ./tradehubback/sites:/home/frappe/frappe-bench/sites
       - ./tradehubback/sites/common_site_config.docker.json:/home/frappe/frappe-bench/sites/common_site_config.json
       - backend-logs:/home/frappe/frappe-bench/logs
+      - ./tradehubback/apps/tradehub_core:/home/frappe/frappe-bench/apps/tradehub_core
     depends_on:
       - redis-queue
       - backend
@@ -92,6 +94,7 @@ services:
       - ./tradehubback/sites:/home/frappe/frappe-bench/sites
       - ./tradehubback/sites/common_site_config.docker.json:/home/frappe/frappe-bench/sites/common_site_config.json
       - backend-logs:/home/frappe/frappe-bench/logs
+      - ./tradehubback/apps/tradehub_core:/home/frappe/frappe-bench/apps/tradehub_core
     depends_on:
       - redis-queue
       - backend
@@ -142,6 +145,16 @@ services:
       - "${REDIS_QUEUE_PORT:-11002}:6379"
     volumes:
       - redis-queue-data:/data
+    restart: unless-stopped
+
+  # ──────────────────────────────────────────────
+  # Mailpit — Lokal SMTP test sunucusu
+  # ──────────────────────────────────────────────
+  mailpit:
+    image: axllent/mailpit:latest
+    ports:
+      - "8025:8025"   # Web UI
+      - "1025:1025"   # SMTP
     restart: unless-stopped
 
 volumes:

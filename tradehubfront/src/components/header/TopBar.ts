@@ -8,7 +8,7 @@
 import type { LocaleOption, CurrencyOption } from '../../types/navigation';
 import { megaCategories } from './MegaMenu';
 import { cartStore } from '../cart/state/CartStore';
-import { isLoggedIn, getUser, logout } from '../../utils/auth';
+import { isLoggedIn, getUser, getSessionUser, logout } from '../../utils/auth';
 import { mockConversations } from '../../data/mockMessages';
 import { t, getCurrentLang, updatePageTranslations } from '../../i18n';
 import type { SupportedLang } from '../../i18n';
@@ -86,7 +86,7 @@ function renderCompactLogo(): string {
  */
 function renderUserButton(): string {
   const user = getUser();
-  const displayName = user?.name ?? t('topbar.defaultUser');
+  const displayName = user?.full_name ?? t('topbar.defaultUser');
   return `
     <div class="relative">
       <button
@@ -697,7 +697,7 @@ function renderMobileDrawer(): string {
           </div>
 
           <!-- Profile Section -->
-          <div class="mx-4 mt-2 rounded-md bg-gray-50 dark:bg-gray-700 px-4 py-3 flex items-center gap-3">
+          <div id="mobile-drawer-profile" class="mx-4 mt-2 rounded-md bg-gray-50 dark:bg-gray-700 px-4 py-3 flex items-center gap-3">
             <div class="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center flex-shrink-0">
               <svg class="w-5 h-5 text-gray-400 dark:text-gray-300" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
@@ -1110,7 +1110,7 @@ export function TopBar(props?: TopBarProps): string {
               ${renderCartButton(0)}
 
               <!-- Auth/User Button -->
-              <div class="hidden lg:block">
+              <div class="hidden lg:block" data-auth-area>
                 ${isLoggedIn() ? renderUserButton() : renderAuthButtons()}
               </div>
 
@@ -1214,7 +1214,7 @@ export function TopBar(props?: TopBarProps): string {
             ${renderCartButton(0)}
 
             <!-- Auth/User Button (hidden on mobile) -->
-            <div class="hidden lg:block">
+            <div class="hidden lg:block" data-auth-area>
               ${isLoggedIn() ? renderUserButton() : renderAuthButtons()}
             </div>
 
@@ -1442,20 +1442,65 @@ export function initHeaderCart(): void {
 }
 
 // Auto-init: logout handler via event delegation (works on any page that imports this module)
-document.addEventListener('click', (e) => {
+document.addEventListener('click', async (e) => {
   const target = e.target as HTMLElement;
   if (target.id === 'logout-btn' || target.closest('#logout-btn')) {
     e.preventDefault();
-    logout();
-    window.location.href = getBaseUrl();
+    await logout();
+    window.location.replace('/pages/auth/login.html');
   }
 });
+
+/**
+ * Check session state and update header auth UI accordingly.
+ * Replaces "Sign In" buttons with user dropdown when logged in,
+ * and updates mobile drawer profile section.
+ */
+export async function initAuthState(): Promise<void> {
+  const user = await getSessionUser();
+
+  // Update all desktop auth areas
+  const authAreas = document.querySelectorAll<HTMLElement>('[data-auth-area]');
+  authAreas.forEach(container => {
+    container.innerHTML = user ? renderUserButton() : renderAuthButtons();
+  });
+
+  // Update mobile drawer profile
+  const mobileProfile = document.getElementById('mobile-drawer-profile');
+  if (mobileProfile && user) {
+    const initials = (user.full_name || user.email || 'U').charAt(0).toUpperCase();
+    const escapedName = (user.full_name || user.email).replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const escapedEmail = user.email.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    mobileProfile.innerHTML = `
+      <div class="w-10 h-10 rounded-full bg-orange-100 dark:bg-orange-900 flex items-center justify-center flex-shrink-0">
+        <span class="text-sm font-bold text-orange-600 dark:text-orange-300">${initials}</span>
+      </div>
+      <div>
+        <p class="text-sm font-medium text-gray-900 dark:text-white">${escapedName}</p>
+        <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">${escapedEmail}</p>
+      </div>
+    `;
+  }
+
+  // Re-initialize Flowbite dropdowns for dynamically inserted elements
+  if (user) {
+    try {
+      const { initDropdowns } = await import('flowbite');
+      initDropdowns();
+    } catch {
+      // Flowbite not available, skip
+    }
+  }
+}
 
 /**
  * Initialize language selector functionality.
  * Wires up the language <select> in the header popover to change the app language.
  */
 export function initLanguageSelector(): void {
+  // Check auth state and update header UI (fire-and-forget)
+  initAuthState();
+
   // Run initial translation update for all data-i18n elements
   updatePageTranslations();
 

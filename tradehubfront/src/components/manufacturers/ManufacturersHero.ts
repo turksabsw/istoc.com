@@ -566,7 +566,7 @@ function renderProfileColumn(): string {
 
   const loggedIn = isLoggedIn();
   const user = getUser();
-  const userName = user ? user.name : 'Guest';
+  const userName = user ? user.full_name : 'Guest';
 
   return `
     <div class="flex-1 h-[400px] overflow-hidden flex flex-col" style="border-radius: var(--mfr-hero-card-radius, 6px)">

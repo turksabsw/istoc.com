@@ -7,6 +7,10 @@ import '../style.css'
 import { initFlowbite } from 'flowbite'
 import { startAlpine } from '../alpine'
 import { t } from '../i18n'
+import { requireAuth } from '../utils/auth-guard'
+
+// Block page until auth is confirmed
+await requireAuth();
 
 // Header components (simplified for dashboard — no search bar / mega menu)
 import { TopBar, initMobileDrawer, initHeaderCart } from '../components/header'
@@ -25,7 +29,7 @@ import { FloatingPanel, initFloatingPanel } from '../components/floating'
 import { BuyerDashboardLayout, initBuyerDashboardLayout, OtherServicesLayout, initOtherServicesLayout } from '../components/buyer-dashboard'
 import { renderSidebar } from '../components/sidebar'
 
-// Mock data
+// Mock data (used for browsing history, promotions etc. — user data comes from Alpine)
 import { getMockBuyerDashboardData } from '../data/mockBuyerDashboard'
 
 // ── Hash routing: dashboard vs other-services sub-pages ──
