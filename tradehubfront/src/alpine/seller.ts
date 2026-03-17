@@ -126,6 +126,32 @@ Alpine.data('sellPricing', () => ({
 Alpine.data('sellerStorefront', () => ({
   activeTab: 'overview' as string,
   mobileMenuOpen: false,
+  seller: null as Record<string, any> | null,
+  loading: true,
+
+  async init() {
+    const code = new URLSearchParams(window.location.search).get('seller');
+    if (!code) { this.loading = false; return; }
+    const apiBase = (window as any).API_BASE || '/api';
+    try {
+      const res = await fetch(
+        `${apiBase}/method/tradehub_core.api.seller.get_seller?slug=${code}`,
+        { credentials: 'omit' }
+      ).then(r => r.json());
+      this.seller = res.message || null;
+    } catch (e) {}
+    this.loading = false;
+  },
+
+  get sellerYears() {
+    if (!this.seller?.joined_at) return '';
+    const years = new Date().getFullYear() - new Date((this.seller as any).joined_at).getFullYear();
+    return years > 0 ? `${years}yrs` : '';
+  },
+
+  get sellerLocation() {
+    return [(this.seller as any)?.city, (this.seller as any)?.country].filter(Boolean).join(', ');
+  },
 
   setTab(tab: string) {
     this.activeTab = tab;

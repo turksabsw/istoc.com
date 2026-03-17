@@ -44,7 +44,7 @@ function getSeller(): SellerProfile {
 }
 
 // ─── C2: Navigation ─────────────────────────────────────
-function getNavData(): StoreNavData {
+export function getNavData(): StoreNavData {
   return {
     items: [
       { label: t('sellerMock.navHome'), href: '#overview', isActive: true },
