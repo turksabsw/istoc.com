@@ -1,5 +1,5 @@
 [project]
-name = "tradehub"
+name = "tradehub_core"
 authors = [
     { name = "TradeHub", email = "info@tradehub.com"}
 ]
