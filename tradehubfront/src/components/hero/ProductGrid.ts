@@ -4,8 +4,6 @@
  */
 import { t } from '../../i18n';
 import { formatPrice } from '../../utils/currency';
-import { searchListings } from '../../services/listingService';
-import { initCurrency } from '../../services/currencyService';
 
 interface ProductCard {
   name: string;
@@ -20,7 +18,147 @@ interface ProductCard {
   supplierCountry?: string;
 }
 
-const productCardSeed: ProductCard[] = [];
+const productCardSeed: ProductCard[] = [
+  {
+    name: "Custom Beanie Patch Hat | Leather Patch Winter Beanie ADD YOUR LOGO Company Employee...",
+    href: '/pages/product-detail.html',
+    price: '$1.28-2.99',
+    discountPercent: 15,
+    moqCount: 10,
+    moqUnit: 'pcs',
+    soldCount: '19,070',
+    imageSrc: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=600&h=600&q=80',
+    supplierYearCount: 5,
+    supplierCountry: 'CN',
+  },
+  {
+    name: 'New Wireless TWS M10 Mini Black Earbuds Earphone Headphone Power Bank In-ear...',
+    href: '/pages/product-detail.html',
+    price: '$1.30-1.99',
+    discountPercent: 10,
+    moqCount: 1,
+    moqUnit: 'pcs',
+    soldCount: '341',
+    imageSrc: 'https://images.unsplash.com/photo-1588423771073-b8903fbb85b5?auto=format&fit=crop&w=600&h=600&q=80',
+    supplierYearCount: 1,
+    supplierCountry: 'CN',
+  },
+  {
+    name: "Hot Sale 125ml High Quality Men's Perfume Floral Fragrance Light and Long Lasting Factory...",
+    href: '/pages/product-detail.html',
+    price: '$6.02-7.02',
+    moqCount: 10,
+    moqUnit: 'pcs',
+    soldCount: '490',
+    imageSrc: 'https://images.unsplash.com/photo-1594035910387-fea47794261f?auto=format&fit=crop&w=600&h=600&q=80',
+    supplierYearCount: 1,
+    supplierCountry: 'CN',
+  },
+  {
+    name: 'Free to Door DHL FEDEX UPS Express Sea Railway Air Shipping Agent China to Egypt Freight...',
+    href: '/pages/product-detail.html',
+    price: '$0.50-1',
+    discountPercent: 5,
+    moqCount: 1,
+    moqUnit: 'kg',
+    soldCount: '880',
+    imageSrc: 'https://images.unsplash.com/photo-1566576912321-d58ddd7a6088?auto=format&fit=crop&w=600&h=600&q=80',
+    supplierYearCount: 1,
+    supplierCountry: 'CN',
+  },
+  {
+    name: 'Cross-Border New Style Cat-Eye Glasses Frame Fashion Eyewear...',
+    href: '/pages/product-detail.html',
+    price: '$1.53-1.62',
+    discountPercent: 8,
+    moqCount: 5,
+    moqUnit: 'pcs',
+    soldCount: '649',
+    imageSrc: 'https://images.unsplash.com/photo-1511499767150-a48a237f0083?auto=format&fit=crop&w=600&h=600&q=80',
+    supplierYearCount: 1,
+    supplierCountry: 'CN',
+  },
+  {
+    name: "MORESE 2085 Men's Optical Eyeglasses Frame Full Rim...",
+    href: '/pages/product-detail.html',
+    price: '$3.65-4.05',
+    moqCount: 2,
+    moqUnit: 'pcs',
+    soldCount: '228',
+    imageSrc: 'https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=600&h=600&q=80',
+    supplierYearCount: 7,
+    supplierCountry: 'CN',
+  },
+  {
+    name: '2026 New Smart Fitness Watch Waterproof Touch Screen Men Women...',
+    href: '/pages/product-detail.html',
+    price: '$4.10-5.90',
+    discountPercent: 12,
+    moqCount: 2,
+    moqUnit: 'pcs',
+    soldCount: '1,102',
+    imageSrc: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=600&h=600&q=80',
+    supplierYearCount: 3,
+    supplierCountry: 'CN',
+  },
+  {
+    name: 'Wholesale Mini Crossbody Bag PU Leather Casual Fashion Design...',
+    href: '/pages/product-detail.html',
+    price: '$2.10-3.40',
+    moqCount: 20,
+    moqUnit: 'pcs',
+    soldCount: '2,345',
+    imageSrc: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=600&h=600&q=80',
+    supplierYearCount: 2,
+    supplierCountry: 'CN',
+  },
+  {
+    name: 'Oversized Cotton Streetwear Blank T-Shirt Custom Logo Printing...',
+    href: '/pages/product-detail.html',
+    price: '$2.60-3.20',
+    discountPercent: 10,
+    moqCount: 30,
+    moqUnit: 'pcs',
+    soldCount: '978',
+    imageSrc: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=600&h=600&q=80',
+    supplierYearCount: 4,
+    supplierCountry: 'CN',
+  },
+  {
+    name: 'Wireless Bluetooth Stereo Headphones Foldable Deep Bass Sound...',
+    href: '/pages/product-detail.html',
+    price: '$5.30-7.20',
+    moqCount: 5,
+    moqUnit: 'pcs',
+    soldCount: '413',
+    imageSrc: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=600&h=600&q=80',
+    supplierYearCount: 1,
+    supplierCountry: 'CN',
+  },
+  {
+    name: 'Private Label Skincare Moisturizing Essence Serum Set OEM...',
+    href: '/pages/product-detail.html',
+    price: '$3.90-6.50',
+    discountPercent: 20,
+    moqCount: 12,
+    moqUnit: 'pcs',
+    soldCount: '752',
+    imageSrc: 'https://images.unsplash.com/photo-1523293182086-7651a899d37f?auto=format&fit=crop&w=600&h=600&q=80',
+    supplierYearCount: 2,
+    supplierCountry: 'CN',
+  },
+  {
+    name: 'Premium Optical Frames With Case Lightweight Business Style...',
+    href: '/pages/product-detail.html',
+    price: '$2.95-3.88',
+    moqCount: 6,
+    moqUnit: 'pcs',
+    soldCount: '529',
+    imageSrc: 'https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=600&h=600&q=80',
+    supplierYearCount: 5,
+    supplierCountry: 'CN',
+  },
+];
 
 function lensIcon(): string {
   return `
@@ -109,35 +247,8 @@ function renderProductCard(card: ProductCard, index: number): string {
   `;
 }
 
-/** Load real products from API and re-render the grid. */
-export function initProductGrid(): void {
-  initCurrency().then(() => searchListings({ page_size: 12 })).then(result => {
-    if (result.products.length > 0) {
-      // Hide empty state
-      const emptyState = document.getElementById('product-grid-empty');
-      if (emptyState) emptyState.style.display = 'none';
-
-      const grid = document.getElementById('home-product-grid');
-      if (grid) {
-        grid.innerHTML = result.products.map((p, i) => {
-          const card: ProductCard = {
-            name: p.name,
-            href: p.href || `/pages/product-detail.html?id=${p.id}`,
-            price: p.price,
-            discountPercent: p.discount ? parseInt(p.discount) : undefined,
-            moqCount: parseInt(p.moq) || 1,
-            moqUnit: 'pcs',
-            soldCount: p.stats?.replace(/[^\d.]/g, '') || '0',
-            imageSrc: p.imageSrc || '',
-            supplierYearCount: p.supplierYears,
-            supplierCountry: p.supplierCountry,
-          };
-          return renderProductCard(card, i);
-        }).join('');
-      }
-    }
-  }).catch(err => console.warn('[ProductGrid] API load failed:', err));
-}
+/** No-op — ProductGrid uses CSS grid, no JS initialization needed. */
+export function initProductGrid(): void { }
 
 export function ProductGrid(): string {
   return `
@@ -147,17 +258,8 @@ export function ProductGrid(): string {
       style="background-color: var(--product-bg, #f4f4f4); padding-top: 28px; padding-bottom: 28px;"
     >
       <div class="container-wide">
-        <div id="home-product-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 product-grid home-product-grid" style="gap: var(--product-grid-gap, 8px);" role="list" aria-label="Product listings">
-          ${productCardSeed.length > 0 ? productCardSeed.map((card, index) => renderProductCard(card, index)).join('') : `
-          <div id="product-grid-empty" class="col-span-full flex items-center justify-center py-12">
-            <div class="text-center">
-              <svg class="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
-              </svg>
-              <p class="text-sm text-gray-400">Yak\u0131nda yeni \u00fcr\u00fcnler eklenecek</p>
-            </div>
-          </div>
-          `}
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 product-grid home-product-grid" style="gap: var(--product-grid-gap, 8px);" role="list" aria-label="Product listings">
+          ${productCardSeed.map((card, index) => renderProductCard(card, index)).join('')}
         </div>
       </div>
     </section>

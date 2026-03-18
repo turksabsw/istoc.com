@@ -12,6 +12,9 @@ import { FloatingPanel } from '../components/floating'
 import { startAlpine } from '../alpine'
 import { renderSidebar } from '../components/sidebar'
 import { OrdersPageLayout, initOrdersPageLayout } from '../components/orders'
+import { requireAuth } from '../utils/auth-guard'
+
+await requireAuth();
 
 const appEl = document.querySelector<HTMLDivElement>('#app')!;
 appEl.classList.add('relative');

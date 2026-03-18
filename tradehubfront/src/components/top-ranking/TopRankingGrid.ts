@@ -6,7 +6,7 @@
 
 import { t } from '../../i18n';
 import { formatPrice } from '../../utils/currency';
-import type { RankingCategoryGroup } from '../../types/topRanking';
+import type { RankingCategoryGroup } from '../../data/mockTopRanking';
 
 export function renderRankingGroupCard(group: RankingCategoryGroup): string {
   const productsHtml = group.products.map(product => {
@@ -51,22 +51,11 @@ export function renderRankingGroupCard(group: RankingCategoryGroup): string {
 export function TopRankingGrid(): string {
   return `
     <section class="mt-4" aria-label="Top ranking products">
-      <!-- Empty state (shown when no groups) -->
-      <div id="top-ranking-grid-empty" x-show="filteredGroups.length === 0" class="flex items-center justify-center py-12">
-        <div class="text-center">
-          <svg class="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
-          </svg>
-          <p class="text-sm text-gray-400">Yak\u0131nda yeni \u00fcr\u00fcnler eklenecek</p>
-        </div>
-      </div>
-
       <div
         id="top-ranking-grid"
         class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 lg:gap-5"
         role="list"
         aria-label="Ranking category groups"
-        x-show="filteredGroups.length > 0"
       >
         <template x-for="group in visibleGroups" :key="group.id">
           <div role="listitem" x-html="renderGroupCard(group)"></div>

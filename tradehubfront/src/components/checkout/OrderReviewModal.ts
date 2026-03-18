@@ -6,7 +6,7 @@
  * Reactivity handled by Alpine.js via x-data="checkoutReviewModal".
  */
 
-import { getSelectedCurrencyInfo } from '../../services/currencyService';
+import { getCurrencyCode } from '../../utils/currency';
 
 export function OrderReviewModal(): string {
   return `
@@ -96,7 +96,7 @@ export function OrderReviewModal(): string {
                       <template x-for="sku in product.skuLines" :key="sku.id">
                         <div class="flex justify-between text-[12px] text-[#6b7280] mt-0.5">
                           <span x-text="sku.variantText + ' x ' + sku.quantity"></span>
-                          <span x-text="'${getSelectedCurrencyInfo().code} ' + (sku.unitPrice * sku.quantity).toFixed(2)"></span>
+                          <span x-text="'${getCurrencyCode()} ' + (sku.unitPrice * sku.quantity).toFixed(2)"></span>
                         </div>
                       </template>
                     </div>
@@ -110,21 +110,21 @@ export function OrderReviewModal(): string {
           <div class="border-t border-[#e5e5e5] pt-4">
             <div class="flex justify-between text-[14px] text-[#222222] py-1">
               <span>Item subtotal</span>
-              <span x-text="'${getSelectedCurrencyInfo().code} ' + summary.itemSubtotal"></span>
+              <span x-text="'${getCurrencyCode()} ' + summary.itemSubtotal"></span>
             </div>
             <div class="flex justify-between text-[14px] text-[#222222] py-1">
               <span>Shipping fee</span>
-              <span x-text="'${getSelectedCurrencyInfo().code} ' + summary.shippingFee"></span>
+              <span x-text="'${getCurrencyCode()} ' + summary.shippingFee"></span>
             </div>
             <template x-if="summary.couponDiscount && parseFloat(summary.couponDiscount) > 0">
               <div class="flex justify-between text-[14px] text-[#16a34a] py-1">
                 <span>Coupon discount</span>
-                <span x-text="'- ${getSelectedCurrencyInfo().code} ' + summary.couponDiscount"></span>
+                <span x-text="'- ${getCurrencyCode()} ' + summary.couponDiscount"></span>
               </div>
             </template>
             <div class="flex justify-between text-[18px] font-bold text-[#222222] pt-2 mt-1 border-t border-[#e5e5e5]">
               <span>Total</span>
-              <span x-text="'${getSelectedCurrencyInfo().code} ' + summary.total"></span>
+              <span x-text="'${getCurrencyCode()} ' + summary.total"></span>
             </div>
           </div>
         </div>

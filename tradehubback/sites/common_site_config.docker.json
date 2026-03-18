@@ -18,5 +18,6 @@
  "use_tls": 0,
  "use_ssl": 0,
  "auto_email_id": "noreply@tradehub.localhost",
- "disable_mail_smtp_authentication": 1
+ "disable_mail_smtp_authentication": 1,
+ "ignore_csrf": 1
 }

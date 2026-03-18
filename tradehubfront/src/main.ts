@@ -1,6 +1,5 @@
 import './style.css'
 import { initFlowbite } from 'flowbite'
-import { initCurrency } from './services/currencyService'
 
 // i18n
 import { initLanguageSelector } from './components/header/TopBar'
@@ -39,7 +38,6 @@ import { startAlpine } from './alpine'
 
 // Utilities
 import { initAnimatedPlaceholder } from './utils/animatedPlaceholder'
-
 
 const appEl = document.querySelector<HTMLDivElement>('#app')!;
 appEl.classList.add('relative');
@@ -123,6 +121,6 @@ initTailoredSelections();
 initProductGrid();
 
 initMobileDrawer();
-initCurrency().then(() => initHeaderCart());
+initHeaderCart();
 initLanguageSelector();
 initAnimatedPlaceholder('#topbar-compact-search-input');

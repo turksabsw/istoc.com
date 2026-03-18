@@ -11,7 +11,6 @@ import { BatchSelectBar } from '../molecules/BatchSelectBar';
 import { SupplierCard } from '../organisms/SupplierCard';
 import { CartSummary } from './CartSummary';
 import { cartStore } from '../state/CartStore';
-import { getSelectedCurrencyInfo } from '../../../services/currencyService';
 
 export interface CartPageProps {
   suppliers: CartSupplier[];
@@ -84,7 +83,7 @@ export function CartPage({ suppliers, summary, assuranceItems }: CartPageProps):
  */
 export function initCartPage(suppliers?: CartSupplier[], shippingFee?: number, discount?: number): void {
   if (suppliers) {
-    cartStore.init(suppliers, shippingFee ?? 0, getSelectedCurrencyInfo().symbol, discount ?? 0);
+    cartStore.init(suppliers, shippingFee ?? 0, '$', discount ?? 0);
   }
   // Event handlers, sync functions, thumbnail slider, and store subscription
   // are managed by Alpine.data('cartPage') component registered in alpine.ts.

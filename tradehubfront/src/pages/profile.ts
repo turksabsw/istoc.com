@@ -15,6 +15,9 @@ import { startAlpine } from '../alpine'
 import { renderSidebar } from '../components/sidebar'
 import { ProfileLayout, initProfileLayout } from '../components/profile'
 import { t } from '../i18n'
+import { requireAuth } from '../utils/auth-guard'
+
+await requireAuth();
 
 const appEl = document.querySelector<HTMLDivElement>('#app')!;
 appEl.classList.add('relative');

@@ -152,7 +152,7 @@ export function SettingsEmailPreferences(): string {
       <p class="text-[13px] max-sm:text-xs mb-2 m-0" style="color:var(--color-text-muted, #666666)">${t('settings.emailServices')}</p>
       <h2 class="text-2xl max-sm:text-xl font-bold mb-2 m-0" style="color:var(--color-text-heading, #111827)">${t('settings.emailPreferences')}</h2>
       <p class="text-sm max-sm:text-[13px] mb-4 m-0" style="color:var(--color-text-placeholder, #999999)">${t('settings.emailPreferencesDesc')}</p>
-      <p class="text-sm max-sm:text-[13px] mb-6 m-0" style="color:var(--color-text-heading, #111827)">${t('settings.emailPreferencesFor')} <strong>met***@gmail.com</strong></p>
+      <p class="text-sm max-sm:text-[13px] mb-6 m-0" style="color:var(--color-text-heading, #111827)">${t('settings.emailPreferencesFor')} <strong x-text="userEmail || '...'" class="font-semibold"></strong></p>
       <div class="flex flex-col gap-5 max-sm:gap-4">
         ${categories.map(renderCategory).join('')}
       </div>

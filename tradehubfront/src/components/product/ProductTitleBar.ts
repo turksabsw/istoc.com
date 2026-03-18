@@ -4,7 +4,7 @@
  * Contains: product title (h1), rating/review/order line, supplier company bar.
  */
 
-import { getCurrentProduct } from '../../alpine/product';
+import { getMockProduct } from '../../data/mockProduct';
 import { t } from '../../i18n';
 
 function starIcon(filled: boolean): string {
@@ -22,7 +22,7 @@ function renderStars(rating: number): string {
 }
 
 export function ProductTitleBar(): string {
-  const mockProduct = getCurrentProduct();
+  const mockProduct = getMockProduct();
   const p = mockProduct;
   const s = p.supplier;
 

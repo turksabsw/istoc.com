@@ -7,10 +7,69 @@ import { formatPrice } from '../../utils/currency';
  * Uses CSS transitions for smooth 500ms zoom animation.
  */
 
-import type { ProductListingCard, ViewMode } from '../../types/productListing';
-// Mock data import removed — grid is now API-driven
+import type { ProductListingCard, ProductImageKind, ViewMode } from '../../types/productListing';
+import { getMockProductListingCards } from '../../data/mockProductListing';
 
-// Placeholder images removed — all images come from API now
+/**
+ * Unsplash e-commerce product images per category
+ * Each category has 4-6 curated product photos for slider variety.
+ */
+const categoryImages: Record<ProductImageKind, string[]> = {
+  jewelry: [
+    'https://images.unsplash.com/photo-1515562141589-67f0d569b6f5?w=400&h=400&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?w=400&h=400&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1611591437281-460bfbe1220a?w=400&h=400&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1573408301185-9146fe634ad0?w=400&h=400&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?w=400&h=400&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1602173574767-37ac01994b2a?w=400&h=400&fit=crop&q=80',
+  ],
+  electronics: [
+    'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&h=400&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1583394838336-acd977736f90?w=400&h=400&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1546868871-af0de0ae72be?w=400&h=400&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1572569511254-d8f925fe2cbb?w=400&h=400&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&h=400&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1585386959984-a4155224a1ad?w=400&h=400&fit=crop&q=80',
+  ],
+  label: [
+    'https://images.unsplash.com/photo-1586075010923-2dd4570fb338?w=400&h=400&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1588345921523-c2dcdb7f1dcd?w=400&h=400&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1568702846914-96b305d2ead1?w=400&h=400&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1607082350899-7e105aa886ae?w=400&h=400&fit=crop&q=80',
+  ],
+  crafts: [
+    'https://images.unsplash.com/photo-1513364776144-60967b0f800c?w=400&h=400&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1452860606245-08f97f4c8657?w=400&h=400&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1596455607563-ad6193f76b17?w=400&h=400&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1595436810223-7dbab2f3bc56?w=400&h=400&fit=crop&q=80',
+  ],
+  accessory: [
+    'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=400&h=400&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=400&h=400&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1622560480654-d96214fddae9?w=400&h=400&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1590874103328-eac38a683ce7?w=400&h=400&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1473188588951-1003bbe4a275?w=400&h=400&fit=crop&q=80',
+  ],
+  clothing: [
+    'https://images.unsplash.com/photo-1523381210434-271e8be1f52b?w=400&h=400&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1562157873-818bc0726f68?w=400&h=400&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1489987707025-afc232f7ea0f?w=400&h=400&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1558171813-4c088753af8f?w=400&h=400&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1434389677669-e08b4cda3f96?w=400&h=400&fit=crop&q=80',
+  ],
+  tools: [
+    'https://images.unsplash.com/photo-1504148455328-c376907d081c?w=400&h=400&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1581783898377-1c85bf937427?w=400&h=400&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1572981779307-38b8cabb2407?w=400&h=400&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1426927308491-6380b6a9936f?w=400&h=400&fit=crop&q=80',
+  ],
+  packaging: [
+    'https://images.unsplash.com/photo-1607082349566-187342175e2f?w=400&h=400&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1605000797499-95a51c5269ae?w=400&h=400&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1558618666-fcd25c85f82e?w=400&h=400&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1576867757603-05b134ebc379?w=400&h=400&fit=crop&q=80',
+  ],
+};
 
 /**
  * Camera search icon for image search overlay
@@ -33,30 +92,21 @@ function cameraSearchIcon(): string {
  * - Camera icon at bottom-left
  */
 function renderImageSlider(card: ProductListingCard): string {
-  // Use real image if available, otherwise fallback to category placeholder
-  const realImageSrc = card.imageSrc || '';
-  const hasRealImage = realImageSrc.length > 0;
+  const images = card.images && card.images.length > 0 ? card.images : [card.imageKind];
+  const hasMultiple = images.length > 1;
 
-  let slidesHtml: string;
-  let hasMultiple = false;
+  // Use card ID hash for unique image offset per product
+  const idOffset = card.id.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
 
-  if (hasRealImage) {
-    // Use the actual product image from API
-    slidesHtml = `
+  const slidesHtml = images.map((kind, i) => {
+    const urls = categoryImages[kind];
+    const url = urls[(idOffset + i) % urls.length];
+    return `
       <div class="w-full h-full flex-shrink-0">
-        <img src="${realImageSrc}" alt="${card.name}" class="w-full h-full object-cover" loading="lazy" />
+        <img src="${url}" alt="${card.name}" class="w-full h-full object-cover" loading="lazy" />
       </div>
     `;
-  } else {
-    // No image — show placeholder
-    slidesHtml = `
-      <div class="w-full h-full flex-shrink-0 flex items-center justify-center bg-gray-100">
-        <svg class="w-12 h-12 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.41a2.25 2.25 0 013.182 0l2.909 2.91m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z"/>
-        </svg>
-      </div>
-    `;
-  }
+  }).join('');
 
   const arrowsHtml = hasMultiple ? `
     <!-- Prev arrow -->
@@ -77,7 +127,14 @@ function renderImageSlider(card: ProductListingCard): string {
     </button>
   ` : '';
 
-  const dotsHtml = '';
+  const dotsHtml = hasMultiple ? `
+    <div class="absolute bottom-2 left-1/2 -translate-x-1/2 z-10 flex items-center gap-1 opacity-0 group-hover/img:opacity-100 transition-opacity">
+      ${images.map((_, i) => `
+        <span class="product-slider-dot w-1.5 h-1.5 rounded-full transition-colors ${i === 0 ? 'bg-white' : 'bg-white/50'}"
+              data-slider-dot="${card.id}" data-dot-index="${i}"></span>
+      `).join('')}
+    </div>
+  ` : '';
 
   return `
     <div class="relative aspect-square w-full flex-shrink-0 overflow-hidden group/img">
@@ -399,7 +456,7 @@ export function initProductSliders(): void {
  * - transition-transform duration-500 ease-out
  * - group-hover/product:scale-110 (10% zoom)
  */
-export function ProductListingGrid(products: ProductListingCard[] = []): string {
+export function ProductListingGrid(products: ProductListingCard[] = getMockProductListingCards()): string {
   if (products.length === 0) {
     return `
       <section aria-label="${t('products.productList')}" class="flex-1">

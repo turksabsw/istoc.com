@@ -6,7 +6,7 @@
 
 import { t } from '../../i18n';
 import { formatPrice } from '../../utils/currency';
-import type { TailoredProduct } from '../../types/tailoredSelections';
+import type { TailoredProduct } from '../../data/mockTailoredSelections';
 
 function renderStarRating(rating: number, count: number): string {
     const fullStars = Math.floor(rating);
@@ -31,7 +31,7 @@ function renderStarRating(rating: number, count: number): string {
   `;
 }
 
-export function renderProductCard(product: TailoredProduct, index: number): string {
+function renderProductCard(product: TailoredProduct, index: number): string {
     const safeName = product.name.replace(/"/g, '&quot;');
     const moqText = `MOQ: ${product.moqCount}`;
 
@@ -149,19 +149,9 @@ export function TailoredProductGrid(products: TailoredProduct[]): string {
     return `
     <section class="pt-4 pb-8 lg:pb-12">
       <div class="container-boxed">
-        ${products.length === 0 ? `
-        <div id="ts-product-grid-empty" class="flex items-center justify-center py-12">
-          <div class="text-center">
-            <svg class="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
-            </svg>
-            <p class="text-sm text-gray-400">Yak\u0131nda yeni \u00fcr\u00fcnler eklenecek</p>
-          </div>
-        </div>
-        ` : ''}
         <div
           id="ts-product-grid"
-          class="grid grid-cols-2 xl:grid-cols-5 gap-4 sm:gap-5${products.length === 0 ? ' hidden' : ''}"
+          class="grid grid-cols-2 xl:grid-cols-5 gap-4 sm:gap-5"
           role="list"
           aria-label="Tailored selection products"
         >

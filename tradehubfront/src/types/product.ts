@@ -14,7 +14,6 @@ export interface PriceTier {
   minQty: number;
   maxQty: number | null;
   price: number;
-  basePrice?: number;
   currency: string;
 }
 
@@ -30,9 +29,6 @@ export interface VariantOption {
   value: string;
   thumbnail?: string;
   available: boolean;
-  price?: number;
-  priceAddon?: number;
-  basePriceAddon?: number;
 }
 
 export interface ProductSpec {
@@ -86,8 +82,6 @@ export interface ShippingInfo {
   method: string;
   estimatedDays: string;
   cost: string;
-  baseCost?: number;
-  baseCurrency?: string;
 }
 
 export interface FAQItem {
@@ -112,8 +106,6 @@ export interface ProductDetail {
   category: string[];
   images: ProductImage[];
   priceTiers: PriceTier[];
-  priceMin?: number;
-  priceMax?: number;
   moq: number;
   unit: string;
   leadTime: string;
@@ -128,8 +120,6 @@ export interface ProductDetail {
   orderCount: string;
   reviews: ProductReview[];
   samplePrice?: number;
-  baseSamplePrice?: number;
-  baseCurrency: string;
   supplier: SupplierInfo;
   faq: FAQItem[];
   leadTimeRanges: LeadTimeRange[];

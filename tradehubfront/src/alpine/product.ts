@@ -16,41 +16,9 @@ import {
   LIGHTBOX_THUMB_SIZE,
   LIGHTBOX_THUMB_GAP,
 } from '../components/product/ProductImageGallery'
-import { getListingDetail } from '../services/listingService'
-import type { ProductDetail } from '../types/product'
+import { getMockProduct } from '../data/mockProduct'
 
-// Empty default product — no mock data
-const emptyProduct: ProductDetail = {
-  id: '', title: '', category: [], images: [], priceTiers: [],
-  moq: 0, unit: '', leadTime: '', shipping: [], variants: [],
-  specs: [], packagingSpecs: [], description: '', packaging: '',
-  rating: 0, reviewCount: 0, orderCount: '0', reviews: [],
-  baseCurrency: 'USD',
-  supplier: { name: '', verified: false, yearsInBusiness: 0, responseTime: '', responseRate: '', onTimeDelivery: '', mainProducts: [], employees: '', annualRevenue: '', certifications: [] },
-  faq: [], leadTimeRanges: [], customizationOptions: [],
-  reviewCategoryRatings: [], storeReviewCount: 0, reviewMentionTags: [],
-};
-
-let currentProduct: ProductDetail = emptyProduct;
-
-// Export for other modules
-export function getCurrentProduct(): ProductDetail {
-  return currentProduct;
-}
-
-// Load product from API and update state
-export async function loadProduct(listingId: string): Promise<ProductDetail> {
-  try {
-    const product = await getListingDetail(listingId);
-    currentProduct = product;
-    // Dispatch event for components that need to re-render
-    document.dispatchEvent(new CustomEvent('product-loaded', { detail: product }));
-    return product;
-  } catch (err) {
-    console.warn('Failed to load product from API, using mock data:', err);
-    return currentProduct;
-  }
-}
+const mockProduct = getMockProduct();
 
 Alpine.data('loginModal', () => ({
   open: false,
@@ -210,9 +178,9 @@ Alpine.data('imageGallery', () => ({
   isLightboxOpen: false,
   isZooming: false,
   supportsHoverZoom: false,
-  imageCount: currentProduct.images.length,
-  totalSlides: currentProduct.images.length + 1,
-  attrsIndex: currentProduct.images.length,
+  imageCount: mockProduct.images.length,
+  totalSlides: mockProduct.images.length + 1,
+  attrsIndex: mockProduct.images.length,
 
   init() {
     this.supportsHoverZoom = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
@@ -291,7 +259,7 @@ Alpine.data('imageGallery', () => ({
     if (!isAttrs) {
       const mainImage = (this.$refs as Record<string, HTMLElement>).mainImage;
       if (mainImage) {
-        const image = currentProduct.images[index];
+        const image = mockProduct.images[index];
         mainImage.innerHTML = renderGalleryMedia(
           image?.src,
           image?.alt ?? `Product view ${index + 1}`,
@@ -322,7 +290,7 @@ Alpine.data('imageGallery', () => ({
 
     const lightboxImage = (this.$refs as Record<string, HTMLElement>).lightboxImage;
     if (lightboxImage) {
-      const image = currentProduct.images[index];
+      const image = mockProduct.images[index];
       lightboxImage.innerHTML = renderGalleryMedia(
         image?.src,
         image?.alt ?? `Product view ${index + 1}`,

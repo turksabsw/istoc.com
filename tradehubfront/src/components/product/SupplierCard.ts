@@ -3,7 +3,7 @@
  * Sidebar card showing supplier info, verification, and contact CTA.
  */
 
-import { getCurrentProduct } from '../../alpine/product';
+import { getMockProduct } from '../../data/mockProduct';
 import { t } from '../../i18n';
 
 function verifiedBadge(): string {
@@ -27,7 +27,7 @@ function statRow(icon: string, label: string, value: string): string {
 }
 
 export function SupplierCard(): string {
-  const mockProduct = getCurrentProduct();
+  const mockProduct = getMockProduct();
   const s = mockProduct.supplier;
 
   return `

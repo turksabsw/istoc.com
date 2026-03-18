@@ -1,8 +1,5 @@
 import { isLoggedIn, getUser } from '../../utils/auth';
 import { t } from '../../i18n';
-import { searchListings } from '../../services/listingService';
-import { initCurrency } from '../../services/currencyService';
-import { getBrowsingHistory } from '../../services/browsingHistoryService';
 
 interface SubcategoryGroup {
   title: string;
@@ -498,13 +495,13 @@ function renderMiddleColumn(): string {
         <div class="flex flex-wrap justify-between">
           <a href="#" class="block w-[calc(50%-5.5px)] group">
             <div class="w-full h-[105px] overflow-hidden rounded flex items-center justify-center" style="background-color: var(--mfr-sample-img-bg, #f5f5f5)">
-              <img src="" id="mfr-sample-img-1" alt="${t('mfr.popularProducts')}" class="max-w-full max-h-full object-contain group-hover:scale-105 transition-transform duration-300">
+              <img src="https://picsum.photos/seed/sample1/160/105" alt="${t('mfr.popularProducts')}" class="max-w-full max-h-full object-contain group-hover:scale-105 transition-transform duration-300">
             </div>
             <p class="w-full h-8 min-h-[32px] mt-1 text-sm leading-4 text-center overflow-hidden text-ellipsis" style="color: var(--mfr-sample-label-color, #666666)" title="${t('mfr.popularProducts')}">${t('mfr.popularProducts')}</p>
           </a>
           <a href="#" class="block w-[calc(50%-5.5px)] group">
             <div class="w-full h-[105px] overflow-hidden rounded flex items-center justify-center" style="background-color: var(--mfr-sample-img-bg, #f5f5f5)">
-              <img src="" id="mfr-sample-img-2" alt="${t('mfr.newArrivals')}" class="max-w-full max-h-full object-contain group-hover:scale-105 transition-transform duration-300">
+              <img src="https://picsum.photos/seed/sample2/160/105" alt="${t('mfr.newArrivals')}" class="max-w-full max-h-full object-contain group-hover:scale-105 transition-transform duration-300">
             </div>
             <p class="w-full h-8 min-h-[32px] mt-1 text-sm leading-4 text-center overflow-hidden text-ellipsis" style="color: var(--mfr-sample-label-color, #666666)" title="${t('mfr.newArrivals')}">${t('mfr.newArrivals')}</p>
           </a>
@@ -517,13 +514,13 @@ function renderMiddleColumn(): string {
         <div class="flex flex-wrap justify-between">
           <a href="#" class="block w-[calc(50%-5.5px)] group">
             <div class="w-full h-[105px] overflow-hidden rounded flex items-center justify-center" style="background-color: var(--mfr-sample-img-bg, #f5f5f5)">
-              <img src="" id="mfr-sample-img-3" alt="${t('mfr.bestSellers')}" class="max-w-full max-h-full object-contain group-hover:scale-105 transition-transform duration-300">
+              <img src="https://picsum.photos/seed/sample3/160/105" alt="${t('mfr.bestSellers')}" class="max-w-full max-h-full object-contain group-hover:scale-105 transition-transform duration-300">
             </div>
             <p class="w-full h-8 min-h-[32px] mt-1 text-sm leading-4 text-center overflow-hidden text-ellipsis" style="color: var(--mfr-sample-label-color, #666666)" title="${t('mfr.bestSellers')}">${t('mfr.bestSellers')}</p>
           </a>
           <a href="#" class="block w-[calc(50%-5.5px)] group">
             <div class="w-full h-[105px] overflow-hidden rounded flex items-center justify-center" style="background-color: var(--mfr-sample-img-bg, #f5f5f5)">
-              <img src="" id="mfr-sample-img-4" alt="${t('mfr.campaigns')}" class="max-w-full max-h-full object-contain group-hover:scale-105 transition-transform duration-300">
+              <img src="https://picsum.photos/seed/sample4/160/105" alt="${t('mfr.campaigns')}" class="max-w-full max-h-full object-contain group-hover:scale-105 transition-transform duration-300">
             </div>
             <p class="w-full h-8 min-h-[32px] mt-1 text-sm leading-4 text-center overflow-hidden text-ellipsis" style="color: var(--mfr-sample-label-color, #666666)" title="${t('mfr.campaigns')}">${t('mfr.campaigns')}</p>
           </a>
@@ -536,10 +533,10 @@ function renderMiddleColumn(): string {
 
 function renderTopRankingColumn(): string {
   const items = [
-    { imgId: 'mfr-rank-img-1', label: t('mfr.mostPopular') },
-    { imgId: 'mfr-rank-img-2', label: t('mfr.topSellers') },
-    { imgId: 'mfr-rank-img-3', label: t('mfr.leadingFactories') },
-    { imgId: 'mfr-rank-img-4', label: t('mfr.quickResponse') },
+    { img: 'https://picsum.photos/seed/rank1/116/116', label: t('mfr.mostPopular') },
+    { img: 'https://picsum.photos/seed/rank2/116/116', label: t('mfr.topSellers') },
+    { img: 'https://picsum.photos/seed/rank3/116/116', label: t('mfr.leadingFactories') },
+    { img: 'https://picsum.photos/seed/rank4/116/116', label: t('mfr.quickResponse') },
   ];
 
   return `
@@ -549,7 +546,7 @@ function renderTopRankingColumn(): string {
         ${items.map(item => `
           <a href="#" class="block w-[calc(50%-5.5px)] h-[156px] mb-4 group" title="${item.label}">
             <div class="w-full h-[116px] rounded overflow-hidden flex items-center justify-center">
-              <img src="" id="${item.imgId}" alt="${item.label}" class="max-w-full max-h-full w-[116px] h-[116px] object-contain group-hover:scale-105 transition-transform duration-300">
+              <img src="${item.img}" alt="${item.label}" class="max-w-full max-h-full w-[116px] h-[116px] object-contain group-hover:scale-105 transition-transform duration-300">
             </div>
             <p class="w-full h-8 min-h-[32px] mt-1 text-sm leading-4 text-center overflow-hidden text-ellipsis" style="color: var(--mfr-ranking-label-color, #666666)" title="${item.label}">${item.label}</p>
           </a>
@@ -560,10 +557,16 @@ function renderTopRankingColumn(): string {
 }
 
 function renderProfileColumn(): string {
+  const thumbs = [
+    'https://picsum.photos/seed/hist1/80/80',
+    'https://picsum.photos/seed/hist2/80/80',
+    'https://picsum.photos/seed/hist3/80/80',
+    'https://picsum.photos/seed/hist4/80/80',
+  ];
 
   const loggedIn = isLoggedIn();
   const user = getUser();
-  const userName = user ? user.name : 'Guest';
+  const userName = user ? user.full_name : 'Guest';
 
   return `
     <div class="flex-1 h-[400px] overflow-hidden flex flex-col" style="border-radius: var(--mfr-hero-card-radius, 6px)">
@@ -608,10 +611,16 @@ function renderProfileColumn(): string {
              </div>`
     }
 
-        <!-- Search history (from LocalStorage) -->
-        <div class="mt-auto" id="mfr-browsing-history-section">
-          <a href="#" class="block text-base font-bold mb-2 leading-6" style="color: var(--mfr-profile-text-color, #222222)">${t('mfr.yourSearchHistory')}</a>
-          <div class="grid grid-cols-4 gap-2" id="mfr-browsing-history-grid"></div>
+        <!-- Search history -->
+        <div class="mt-auto">
+          <a href="#" class="block text-base font-bold mb-2 leading-6" style="color: var(--mfr-profile-text-color, #222222)">${loggedIn ? 'Your browsing history' : t('mfr.yourSearchHistory')}</a>
+          <div class="grid grid-cols-4 gap-2">
+            ${thumbs.map(src => `
+              <a href="#" class="aspect-square rounded-md overflow-hidden group">
+                <img src="${src}" alt="${t('mfr.history')}" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300">
+              </a>
+            `).join('')}
+          </div>
         </div>
       </div>
 
@@ -625,49 +634,6 @@ function renderProfileColumn(): string {
 
     </div>
   `;
-}
-
-export async function initManufacturersHeroImages(): Promise<void> {
-  try {
-    await initCurrency();
-    const result = await searchListings({ page_size: 12 });
-    const products = result.products;
-
-    // Populate "Numune alin" images (first 4 products)
-    for (let i = 0; i < 4 && i < products.length; i++) {
-      const img = document.getElementById(`mfr-sample-img-${i + 1}`) as HTMLImageElement | null;
-      if (img && products[i].imageSrc) {
-        img.src = products[i].imageSrc!;
-      }
-    }
-
-    // Populate "Top ranking" images (next 4 products, or reuse)
-    for (let i = 0; i < 4; i++) {
-      const productIdx = Math.min(i + 4, products.length - 1);
-      const img = document.getElementById(`mfr-rank-img-${i + 1}`) as HTMLImageElement | null;
-      if (img && products[productIdx]?.imageSrc) {
-        img.src = products[productIdx].imageSrc!;
-      }
-    }
-
-    // Populate browsing history from LocalStorage
-    const browsingItems = getBrowsingHistory();
-    const historyGrid = document.getElementById('mfr-browsing-history-grid');
-    const historySection = document.getElementById('mfr-browsing-history-section');
-    if (historyGrid && historySection) {
-      if (browsingItems.length === 0) {
-        historySection.style.display = 'none';
-      } else {
-        historyGrid.innerHTML = browsingItems.map(item => `
-          <a href="${item.href}" class="aspect-square rounded-md overflow-hidden group">
-            <img src="${item.image}" alt="${item.title}" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300">
-          </a>
-        `).join('');
-      }
-    }
-  } catch (err) {
-    console.warn('[ManufacturersHero] Failed to load images:', err);
-  }
 }
 
 export function initCategoryFlyout(): void {

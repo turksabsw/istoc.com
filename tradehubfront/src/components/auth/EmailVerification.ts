@@ -14,8 +14,10 @@ export interface EmailVerificationOptions {
   email?: string;
   /** Container element ID */
   containerId?: string;
-  /** Callback when OTP is completed (all 6 digits entered) */
+  /** Callback when OTP is completed (all 6 digits entered) — sync, fires immediately */
   onComplete?: (otp: string) => void;
+  /** Async callback to verify OTP against backend. If provided, disables inputs during verification. */
+  onVerify?: (otp: string) => Promise<void>;
   /** Callback when resend is clicked */
   onResend?: () => void;
   /** Callback when back/change email is clicked */
@@ -163,6 +165,7 @@ function maskEmail(email: string): string {
 export function initEmailVerification(options: EmailVerificationOptions = {}): EmailVerificationState {
   const {
     onComplete,
+    onVerify,
     onResend,
     onBack,
     resendCountdown = 60
@@ -186,6 +189,53 @@ export function initEmailVerification(options: EmailVerificationOptions = {}): E
   const backBtn = document.getElementById('otp-back-btn') as HTMLButtonElement | null;
   const countdownSpan = document.getElementById('otp-countdown');
   const errorMsg = document.getElementById('otp-error');
+
+  // Helper to handle OTP submission (sync onComplete + async onVerify)
+  let verifying = false;
+
+  function setInputsDisabled(disabled: boolean): void {
+    otpInputs.forEach(inp => { inp.disabled = disabled; });
+    if (continueBtn) {
+      continueBtn.disabled = disabled;
+      continueBtn.textContent = disabled
+        ? t('auth.otpVerifying')
+        : t('auth.otpVerifyAndContinue');
+    }
+  }
+
+  async function handleOTPSubmit(): Promise<void> {
+    if (!isOTPComplete(state) || verifying) return;
+
+    const otp = state.otp.join('');
+
+    // Fire sync callback if provided
+    if (onComplete && !onVerify) {
+      onComplete(otp);
+      return;
+    }
+
+    // Fire async verify callback if provided
+    if (onVerify) {
+      verifying = true;
+      setInputsDisabled(true);
+      hideError(errorMsg);
+
+      try {
+        await onVerify(otp);
+        // Success — caller (alpine/auth.ts) handles navigation
+      } catch (err) {
+        // Verification failed — show error, clear inputs
+        const message = err instanceof Error ? err.message : t('auth.otpInvalidCode');
+        showOTPError(message);
+        clearOTPInputs();
+        state.otp = ['', '', '', '', '', ''];
+        updateContinueButton(state, continueBtn);
+      } finally {
+        verifying = false;
+        setInputsDisabled(false);
+      }
+    }
+  }
 
   // Setup OTP input handlers
   otpInputs.forEach((input, index) => {
@@ -215,8 +265,8 @@ export function initEmailVerification(options: EmailVerificationOptions = {}): E
       updateContinueButton(state, continueBtn);
 
       // Auto-submit when all digits entered
-      if (isOTPComplete(state) && onComplete) {
-        onComplete(state.otp.join(''));
+      if (isOTPComplete(state)) {
+        handleOTPSubmit();
       }
     });
 
@@ -247,8 +297,8 @@ export function initEmailVerification(options: EmailVerificationOptions = {}): E
         updateContinueButton(state, continueBtn);
 
         // Auto-submit if complete
-        if (isOTPComplete(state) && onComplete) {
-          onComplete(state.otp.join(''));
+        if (isOTPComplete(state)) {
+          handleOTPSubmit();
         }
       }
     });
@@ -280,9 +330,7 @@ export function initEmailVerification(options: EmailVerificationOptions = {}): E
   // Continue button handler
   if (continueBtn) {
     continueBtn.addEventListener('click', () => {
-      if (isOTPComplete(state) && onComplete) {
-        onComplete(state.otp.join(''));
-      }
+      handleOTPSubmit();
     });
   }
 

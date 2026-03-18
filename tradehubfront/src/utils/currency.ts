@@ -53,23 +53,3 @@ export function formatPrice(price: string): string {
     .replace(/\$(?=\d)/g, symbol)
     .replace(/\bUSD\b/g, code);
 }
-
-/**
- * Extract the starting (MOQ) price from a price range string.
- * For "$0.88-1.51" returns "$1.51" (the higher/starting price).
- * For "$36" returns "$36" as-is.
- * Used in Top Deals cards to show a single price like Alibaba.
- */
-export function formatStartingPrice(price: string): string {
-  const { symbol } = getSelectedCurrency();
-  // Match patterns like "$0.88-1.51", "$0.88 - 1.51", "$0.88-$1.51"
-  const rangeMatch = price.match(/[\$€₺]?([\d.]+)\s*-\s*[\$€₺]?([\d.]+)/);
-  if (rangeMatch) {
-    const a = parseFloat(rangeMatch[1]);
-    const b = parseFloat(rangeMatch[2]);
-    const startingPrice = Math.max(a, b);
-    return `${symbol}${startingPrice.toFixed(2).replace(/\.00$/, '')}`;
-  }
-  // Single price — just swap symbol
-  return formatPrice(price);
-}

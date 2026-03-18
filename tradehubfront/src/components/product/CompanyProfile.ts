@@ -4,11 +4,11 @@
  * company details table, factory capabilities, certifications.
  */
 
-import { getCurrentProduct } from '../../alpine/product';
+import { getMockProduct } from '../../data/mockProduct';
 import { t } from '../../i18n';
 
 export function CompanyProfile(): string {
-  const mockProduct = getCurrentProduct();
+  const mockProduct = getMockProduct();
   const s = mockProduct.supplier;
 
   return `

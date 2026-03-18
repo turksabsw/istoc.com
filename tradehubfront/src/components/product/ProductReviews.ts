@@ -4,7 +4,7 @@
  * filter/mention pills, review cards with badges & supplier replies.
  */
 
-import { getCurrentProduct } from '../../alpine/product';
+import { getMockProduct } from '../../data/mockProduct';
 import { t } from '../../i18n';
 import type { ProductReview } from '../../types/product';
 import { openLoginModal } from './LoginModal';
@@ -173,7 +173,7 @@ function langToggleHtml(): string {
 /* ── Main component ──────────────────────────────────── */
 
 export function ProductReviews(): string {
-  const mockProduct = getCurrentProduct();
+  const mockProduct = getMockProduct();
   const p = mockProduct;
   const photoReviewCount = p.reviews.filter(r => r.images && r.images.length > 0).length;
 
@@ -280,7 +280,7 @@ export const SORT_LABELS: Record<SortMode, string> = {
 };
 
 export function filterAndSortReviews(state: ReviewFilterState): ProductReview[] {
-  const mockProduct = getCurrentProduct();
+  const mockProduct = getMockProduct();
   let results = [...mockProduct.reviews];
 
   // Filter by photo/video

@@ -3,11 +3,11 @@
  * Description tab content: rich HTML description + specs table + packaging info.
  */
 
-import { getCurrentProduct } from '../../alpine/product';
+import { getMockProduct } from '../../data/mockProduct';
 import { t } from '../../i18n';
 
 function renderSpecsTable(): string {
-  const mockProduct = getCurrentProduct();
+  const mockProduct = getMockProduct();
   return `
     <div class="mt-6">
       <h3 class="text-base font-semibold mb-3" style="color: var(--pd-title-color, #111827);">${t('product.technicalSpecs')}</h3>
@@ -26,7 +26,7 @@ function renderSpecsTable(): string {
 }
 
 function renderPackaging(): string {
-  const mockProduct = getCurrentProduct();
+  const mockProduct = getMockProduct();
   return `
     <div class="mt-6">
       <h3 class="text-base font-semibold mb-3" style="color: var(--pd-title-color, #111827);">${t('product.packagingDelivery')}</h3>
@@ -36,7 +36,7 @@ function renderPackaging(): string {
 }
 
 export function ProductDescription(): string {
-  const mockProduct = getCurrentProduct();
+  const mockProduct = getMockProduct();
   return `
     <div class="py-6">
       <!-- Rich Description Content -->

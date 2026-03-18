@@ -26,10 +26,11 @@ def get_session_user():
 
 
 @frappe.whitelist(allow_guest=True)
-def check_email_exists(email):
+def check_email_exists(email=None):
     """Check if an email address is already registered."""
     if not email:
         frappe.throw(_("Email is required"), frappe.ValidationError)
 
     exists = frappe.db.exists("User", {"email": email, "enabled": 1})
-    return {"exists": bool(exists)}
+    disabled = frappe.db.exists("User", {"email": email, "enabled": 0})
+    return {"exists": bool(exists), "disabled": bool(disabled)}

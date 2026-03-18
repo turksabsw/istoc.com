@@ -38,19 +38,19 @@ import {
 } from '../components/top-deals'
 import { renderTopDealCard } from '../components/top-deals/TopDealsGrid'
 
-// Services
-import { searchListings } from '../services/listingService'
-import { initCurrency } from '../services/currencyService'
-
-// Data (types only)
-import type { TopDealsProduct } from '../types/topDeals'
+// Data
+import {
+  getMockTopDealsProducts,
+  getSubFiltersForCategory,
+} from '../data/mockTopDeals'
+import type { TopDealsProduct } from '../data/mockTopDeals'
 
 // Utilities
 import { initAnimatedPlaceholder } from '../utils/animatedPlaceholder'
 
 /* ── Alpine Data Registration ── */
 
-const allProducts: TopDealsProduct[] = [];
+const allProducts = getMockTopDealsProducts();
 const ITEMS_PER_PAGE = 20;
 
 Alpine.data('topDealsPage', () => ({
@@ -63,7 +63,7 @@ Alpine.data('topDealsPage', () => ({
   allProducts: allProducts,
 
   get subFilters(): { id: string; labelKey: string }[] {
-    return [];
+    return getSubFiltersForCategory(this.activeCategory);
   },
 
   get filteredProducts(): TopDealsProduct[] {
@@ -202,29 +202,6 @@ initMobileDrawer();
 initLanguageSelector();
 initCategoryTabs();
 initAnimatedPlaceholder('#topbar-compact-search-input');
-
-// Load products from API
-initCurrency().then(() => searchListings({ page_size: 20 })).then(result => {
-  if (result.products.length > 0) {
-    // Update Alpine reactive data
-    const mainEl = document.querySelector<HTMLElement>('[x-data="topDealsPage"]');
-    if (mainEl && (mainEl as any)._x_dataStack) {
-      const data = (mainEl as any)._x_dataStack[0];
-      if (data) {
-        data.allProducts = result.products.map(p => ({
-          id: p.id || '',
-          name: p.name,
-          href: p.href || `/pages/product-detail.html?id=${p.id}`,
-          price: p.price,
-          imageKind: 'jewelry' as const,
-          imageSrc: p.imageSrc || undefined,
-          moq: p.moq || '1 adet',
-          category: 'all',
-        }));
-      }
-    }
-  }
-}).catch(err => console.warn('[TopDeals Page] API load failed:', err));
 
 // Show/hide sticky compact mobile header based on hero visibility
 const mobileHeroSentinel = document.getElementById('td-mobile-hero-sentinel');

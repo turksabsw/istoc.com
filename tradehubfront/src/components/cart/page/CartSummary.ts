@@ -7,7 +7,6 @@
 import type { CartSummaryData, AssuranceItem } from '../../../types/cart';
 import { PriceDisplay } from '../atoms/PriceDisplay';
 import { t } from '../../../i18n';
-import { formatCurrency, getSelectedCurrencyInfo } from '../../../services/currencyService';
 
 function getDefaultAssuranceItems(): AssuranceItem[] {
   return [
@@ -102,7 +101,7 @@ export function CartSummary(
         ${data.discount > 0 ? `
         <div class="sc-summary-discount-row flex justify-between items-center text-[14px] leading-[18px]">
           <span class="text-[#333]" data-i18n="cart.productDiscount">${t('cart.productDiscount')}</span>
-          <span class="sc-summary-discount text-[#FF6600] font-semibold">- ${formatCurrency(data.discount, getSelectedCurrencyInfo().code)}</span>
+          <span class="sc-summary-discount text-[#FF6600] font-semibold">- ${data.currency}${data.discount.toFixed(2).replace('.', ',')}</span>
         </div>` : `
         <div class="sc-summary-discount-row flex justify-between items-center text-[14px] leading-[18px] hidden">
           <span class="text-[#333]" data-i18n="cart.productDiscount">${t('cart.productDiscount')}</span>
@@ -121,7 +120,7 @@ export function CartSummary(
 
       ${data.discount > 0 ? `
       <div class="sc-summary-savings-banner mt-3 w-full h-12 rounded-[4px] px-3 py-1.5 flex items-center" style="background:linear-gradient(90deg,#ffead1,#ffd5d1)">
-        <span class="text-[14px] leading-[18px] text-[#4B1D1F]">${t('cart.savedOnOrder', { amount: `<strong class="text-[#FF6600]">${formatCurrency(data.discount, getSelectedCurrencyInfo().code)}</strong>` })}</span>
+        <span class="text-[14px] leading-[18px] text-[#4B1D1F]">${t('cart.savedOnOrder', { amount: `<strong class="text-[#FF6600]">${data.currency}${data.discount.toFixed(2).replace('.', ',')}</strong>` })}</span>
       </div>` : `
       <div class="sc-summary-savings-banner mt-3 w-full h-12 rounded-[4px] px-3 py-1.5 flex items-center hidden" style="background:linear-gradient(90deg,#ffead1,#ffd5d1)">
         <span class="text-[14px] leading-[18px] text-[#4B1D1F]">${t('cart.savedOnOrder', { amount: '<strong class="text-[#FF6600]"></strong>' })}</span>

@@ -6,15 +6,15 @@
  * with data-attribute-driven JS initialization.
  */
 
-import { getCurrentProduct } from '../../alpine/product';
+import { getMockProduct } from '../../data/mockProduct';
 import { t } from '../../i18n';
 import { formatPrice } from '../../utils/currency';
 import type { ProductVariant } from '../../types/product';
-import { openShippingModal, openCartDrawer } from './CartDrawer';
+import { openShippingModal } from './CartDrawer';
 import { openLoginModal } from './LoginModal';
 import { renderStars } from './ProductReviews';
 
-// Product loaded lazily — getCurrentProduct() called inside functions
+const mockProduct = getMockProduct();
 
 /* ── Reusable SVG fragments ──────────────────────────── */
 
@@ -79,7 +79,7 @@ function renderVariantSection(variant: ProductVariant): string {
   if (variant.type === 'color') {
     const thumbs = variant.options.map(opt => `
       <button type="button" class="pdm-color-thumb w-14 h-14 rounded-[6px] border-2 border-border-default overflow-hidden cursor-pointer p-0 bg-none${!opt.available ? ' pdm-disabled' : ''}"
-        data-value="${opt.id}" data-label="${opt.label}" ${opt.price ? `data-variant-price="${opt.price}"` : ''} ${!opt.available ? 'disabled' : ''}>
+        data-value="${opt.id}" data-label="${opt.label}" ${!opt.available ? 'disabled' : ''}>
         ${opt.thumbnail
         ? `<img src="${opt.thumbnail}" alt="${opt.label}" class="w-full h-full object-cover" />`
         : `<span class="pdm-color-swatch" style="background:${opt.value}"></span>`}
@@ -96,7 +96,7 @@ function renderVariantSection(variant: ProductVariant): string {
   // Size / Material — pill layout
   const pills = variant.options.map(opt => `
     <button type="button" class="pdm-variant-pill px-4 py-[7px] border border-border-medium rounded-2xl text-[13px] text-text-body bg-surface cursor-pointer${!opt.available ? ' pdm-disabled' : ''}"
-      data-value="${opt.id}" data-label="${opt.label}" ${opt.price ? `data-variant-price="${opt.price}"` : ''} ${!opt.available ? 'disabled' : ''}>
+      data-value="${opt.id}" data-label="${opt.label}" ${!opt.available ? 'disabled' : ''}>
       ${opt.label}
     </button>
   `).join('');
@@ -113,7 +113,7 @@ function renderVariantSection(variant: ProductVariant): string {
    ══════════════════════════════════════════════════════ */
 
 export function MobileProductLayout(): string {
-  const p = getCurrentProduct();
+  const p = mockProduct;
 
   // ── Sections 1-5: Gallery, Badges, Price, Sample, Title ──
 
@@ -167,12 +167,12 @@ export function MobileProductLayout(): string {
     </div>
   `;
 
-  const sampleSection = p.samplePrice ? `
+  const sampleSection = `
     <div id="pdm-sample-row" class="flex items-center justify-between px-4 py-2.5 max-[374px]:px-3 max-[374px]:py-2 bg-surface text-[13px] max-[374px]:text-xs text-text-body">
-      <span>${t('product.samplePrice')}: <strong>${formatPrice('$' + p.samplePrice.toFixed(2))}</strong></span>
-      <button type="button" data-order-sample="${p.id}" class="pdm-sample-btn px-[18px] py-1.5 max-[374px]:px-3.5 max-[374px]:py-[5px] border border-[#333] rounded-[20px] text-[13px] max-[374px]:text-xs font-medium bg-surface cursor-pointer text-text-body">${t('cart.orderSample')}</button>
+      <span>${t('product.samplePrice')}: <strong>${formatPrice('$' + (p.samplePrice?.toFixed(2) ?? '30.00'))}</strong></span>
+      <button type="button" data-order-sample="${mockProduct.id}" class="pdm-sample-btn px-[18px] py-1.5 max-[374px]:px-3.5 max-[374px]:py-[5px] border border-[#333] rounded-[20px] text-[13px] max-[374px]:text-xs font-medium bg-surface cursor-pointer text-text-body">${t('cart.orderSample')}</button>
     </div>
-  ` : '';
+  `;
 
   const titleSection = `
     <div id="pdm-title-section" class="flex flex-col gap-1 pt-3.5 px-4 pb-1.5 max-[374px]:pt-3 max-[374px]:px-3 max-[374px]:pb-1.5 bg-surface">
@@ -202,11 +202,11 @@ export function MobileProductLayout(): string {
     sheetId: 'shipping-modal',  // special: opens existing ShippingModal
     previewHtml: `
       <div id="pdm-ship-preview" class="px-4 pb-3.5 text-[13px] text-text-body leading-[1.6]">
-        <div class="pdm-ship-method font-semibold text-text-heading">${p.shipping[0]?.method || t('product.shippingLabel')}</div>
-        ${p.shipping[0] ? `<div class="pdm-ship-detail flex gap-4 mt-1">
+        <div class="pdm-ship-method font-semibold text-text-heading">${p.shipping[0].method}</div>
+        <div class="pdm-ship-detail flex gap-4 mt-1">
           <span class="text-text-muted">${t('product.estimatedCost')}: <strong>${p.shipping[0].cost}</strong></span>
           <span class="text-text-muted">${t('product.duration')}: <strong>${p.shipping[0].estimatedDays}</strong></span>
-        </div>` : ''}
+        </div>
       </div>
     `,
   });
@@ -624,18 +624,6 @@ function initSectionTabs(): void {
 
 /* ── Variant selection (delegated) ───────────────────── */
 
-function updateMobileVariantPrice(btn: HTMLButtonElement): void {
-  const variantPrice = btn.getAttribute('data-variant-price');
-  if (variantPrice) {
-    // Update the first tier price as the "active" price indicator
-    const firstTierPrice = document.querySelector<HTMLElement>('#pdm-price-tiers .pdm-tier-col:first-child .pdm-tier-price');
-    if (firstTierPrice) {
-      firstTierPrice.textContent = formatPrice('$' + parseFloat(variantPrice).toFixed(2));
-    }
-    document.dispatchEvent(new CustomEvent('variant-price-change', { detail: { price: parseFloat(variantPrice) } }));
-  }
-}
-
 function initVariantSelection(): void {
   // Color thumbnails
   const colorBody = document.getElementById('pdm-color-section-body');
@@ -645,10 +633,6 @@ function initVariantSelection(): void {
       if (!btn) return;
       colorBody.querySelectorAll('.pdm-color-thumb').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
-      updateMobileVariantPrice(btn);
-      // Open cart drawer with selected color
-      const label = btn.getAttribute('data-label') || btn.getAttribute('title') || '';
-      openCartDrawer(label);
     });
   }
 
@@ -659,9 +643,6 @@ function initVariantSelection(): void {
       if (!btn) return;
       group.querySelectorAll('.pdm-variant-pill').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
-      updateMobileVariantPrice(btn);
-      // Open cart drawer
-      openCartDrawer();
     });
   });
 }

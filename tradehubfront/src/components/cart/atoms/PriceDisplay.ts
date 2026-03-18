@@ -2,7 +2,7 @@
  * PriceDisplay Atom
  */
 
-import { formatCurrency, getSelectedCurrencyInfo } from '../../../services/currencyService';
+import { getCurrencySymbol } from '../../../utils/currency';
 
 export interface PriceDisplayProps {
   amount: number;
@@ -18,14 +18,12 @@ function formatPriceLocal(amount: number, currency: string): string {
 
 export function PriceDisplay({
   amount,
-  currency,
+  currency = getCurrencySymbol(),
   bold: _bold = false,
   unit,
   emphasize: _emphasize = false,
 }: PriceDisplayProps): string {
-  const info = getSelectedCurrencyInfo();
-  const resolvedCurrency = currency || info.symbol;
-  const price = formatCurrency(amount, info.code);
+  const price = formatPriceLocal(amount, currency);
   let unitHtml = '';
   if (unit) {
     unitHtml = `
@@ -59,19 +57,19 @@ export function PriceDisplay({
           <div class="space-y-2 mt-3">
             <div class="flex justify-between items-center text-[13px]">
               <span class="text-[#666]">1-9</span>
-              <span class="text-[#333] font-medium">${formatPriceLocal(amount, resolvedCurrency)}</span>
+              <span class="text-[#333] font-medium">${formatPriceLocal(amount, currency)}</span>
             </div>
             <div class="flex justify-between items-center text-[13px]">
               <span class="text-[#666] opacity-70">10-49</span>
-              <span class="text-[#999] font-medium">${formatPriceLocal(amount * 0.95, resolvedCurrency)}</span>
+              <span class="text-[#999] font-medium">${formatPriceLocal(amount * 0.95, currency)}</span>
             </div>
             <div class="flex justify-between items-center text-[13px]">
               <span class="text-[#666] opacity-70">50-999</span>
-              <span class="text-[#999] font-medium">${formatPriceLocal(amount * 0.90, resolvedCurrency)}</span>
+              <span class="text-[#999] font-medium">${formatPriceLocal(amount * 0.90, currency)}</span>
             </div>
             <div class="flex justify-between items-center text-[13px]">
               <span class="text-[#666] opacity-70">≥1000</span>
-              <span class="text-[#999] font-medium">${formatPriceLocal(amount * 0.80, resolvedCurrency)}</span>
+              <span class="text-[#999] font-medium">${formatPriceLocal(amount * 0.80, currency)}</span>
             </div>
           </div>
         </div>

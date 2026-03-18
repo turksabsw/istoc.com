@@ -1,15 +1,40 @@
 import Alpine from 'alpinejs'
 import { t } from '../i18n'
+import { isPasswordValid } from '../utils/password-validation'
+import { getSessionUser, logout } from '../utils/auth'
+import { api } from '../utils/api'
 
 Alpine.data('settingsLayout', () => ({
   currentSection: '',
+  userName: '',
+  userEmail: '',
+  userInitial: '',
+  memberId: '',
 
   init() {
     this.currentSection = window.location.hash || '';
+    this.loadUser();
+  },
+
+  async loadUser() {
+    try {
+      const user = await getSessionUser();
+      if (user) {
+        this.userName = user.full_name || '';
+        this.userEmail = user.email || '';
+        this.userInitial = (user.full_name || user.email || '?').charAt(0).toLowerCase();
+        this.memberId = user.member_id || '';
+      }
+    } catch { /* ignore */ }
+  },
+
+  async handleLogout() {
+    await logout();
+    window.location.replace('/pages/auth/login.html');
   },
 
   copyMemberId() {
-    navigator.clipboard.writeText('tr29243492599miuy').then(() => {
+    navigator.clipboard.writeText(this.memberId || this.userEmail).then(() => {
       const btn = (this.$refs as Record<string, HTMLElement>).copyBtn;
       if (btn) {
         btn.title = t('orders.copied');
@@ -19,142 +44,23 @@ Alpine.data('settingsLayout', () => ({
   },
 }));
 
-Alpine.data('settingsChangeEmail', () => ({
-  step: 1,
-  countdown: 59,
-  error: '',
-  _timerInterval: null as ReturnType<typeof setInterval> | null,
-
-  init() {
-    this.startTimer();
-  },
-
-  startTimer() {
-    this.countdown = 59;
-    if (this._timerInterval) clearInterval(this._timerInterval);
-    this._timerInterval = setInterval(() => {
-      this.countdown--;
-      if (this.countdown <= 0 && this._timerInterval) {
-        clearInterval(this._timerInterval);
-        this._timerInterval = null;
-      }
-    }, 1000);
-  },
-
-  resendCode() {
-    if (this.countdown > 0) return;
-    this.startTimer();
-  },
-
-  handleCodeInput(event: Event) {
-    const input = event.target as HTMLInputElement;
-    if (!input.classList.contains('email-change__code-box')) return;
-    const idx = parseInt(input.dataset.idx || '0', 10);
-    const boxes = (this.$refs as Record<string, HTMLElement>).codeBoxes;
-    if (!boxes) return;
-    const inputs = boxes.querySelectorAll<HTMLInputElement>('.email-change__code-box');
-
-    if (input.value.length === 1 && idx < inputs.length - 1) {
-      inputs[idx + 1].focus();
-    }
-
-    const code = Array.from(inputs).map(b => b.value).join('');
-    if (code.length === 6) {
-      if (this._timerInterval) {
-        clearInterval(this._timerInterval);
-        this._timerInterval = null;
-      }
-      this.step = 2;
-    }
-  },
-
-  handleCodeKeydown(event: KeyboardEvent) {
-    const input = event.target as HTMLInputElement;
-    if (!input.classList.contains('email-change__code-box')) return;
-    const idx = parseInt(input.dataset.idx || '0', 10);
-    if (event.key === 'Backspace' && !input.value && idx > 0) {
-      const boxes = (this.$refs as Record<string, HTMLElement>).codeBoxes;
-      if (!boxes) return;
-      const inputs = boxes.querySelectorAll<HTMLInputElement>('.email-change__code-box');
-      inputs[idx - 1].focus();
-    }
-  },
-
-  submitEmail() {
-    const input = (this.$refs as Record<string, HTMLInputElement>).ecNewEmail;
-    const val = input?.value.trim() || '';
-
-    if (!val || !val.includes('@')) {
-      this.error = t('auth.register.emailError');
-      return;
-    }
-
-    try {
-      const raw = localStorage.getItem('tradehub_account_data');
-      const data = raw ? JSON.parse(raw) : {};
-      data.email = val;
-      data.emailVerified = false;
-      localStorage.setItem('tradehub_account_data', JSON.stringify(data));
-    } catch { /* ignore */ }
-
-    this.error = '';
-    this.step = 3;
-  },
-
-  destroy() {
-    if (this._timerInterval) {
-      clearInterval(this._timerInterval);
-      this._timerInterval = null;
-    }
-  },
-}));
+// settingsChangeEmail — disabled (coming soon), no Alpine data needed
 
 Alpine.data('settingsChangePassword', () => ({
   step: 1,
-  countdown: 0,
-  codeError: false,
   error: '',
-  _timerInterval: null as ReturnType<typeof setInterval> | null,
+  loading: false,
 
-  init() {
-    this.startTimer();
-  },
-
-  startTimer() {
-    this.countdown = 60;
-    if (this._timerInterval) clearInterval(this._timerInterval);
-    this._timerInterval = setInterval(() => {
-      this.countdown--;
-      if (this.countdown <= 0 && this._timerInterval) {
-        clearInterval(this._timerInterval);
-        this._timerInterval = null;
-      }
-    }, 1000);
-  },
-
-  resendCode() {
-    this.startTimer();
-  },
-
-  verifySubmit() {
-    const codeInput = (this.$refs as Record<string, HTMLInputElement>).pwVerifyCode;
-    if (!codeInput.value.trim()) {
-      this.codeError = true;
-      return;
-    }
-    this.codeError = false;
-    if (this._timerInterval) {
-      clearInterval(this._timerInterval);
-      this._timerInterval = null;
-    }
-    this.step = 2;
-  },
-
-  savePassword() {
+  async savePassword() {
+    const currentPw = (this.$refs as Record<string, HTMLInputElement>).pwCurrent.value;
     const newPw = (this.$refs as Record<string, HTMLInputElement>).pwNew.value;
     const confirmPw = (this.$refs as Record<string, HTMLInputElement>).pwConfirm.value;
 
-    if (newPw.length < 8) {
+    if (!currentPw) {
+      this.error = t('settings.currentPasswordRequired');
+      return;
+    }
+    if (!isPasswordValid(newPw)) {
       this.error = t('settings.passwordMinLength');
       return;
     }
@@ -164,138 +70,119 @@ Alpine.data('settingsChangePassword', () => ({
     }
 
     this.error = '';
-    this.step = 3;
-  },
-
-  destroy() {
-    if (this._timerInterval) {
-      clearInterval(this._timerInterval);
-      this._timerInterval = null;
+    this.loading = true;
+    try {
+      await api('/method/tradehub_core.api.v1.identity.change_password', {
+        method: 'POST',
+        body: JSON.stringify({ current_password: currentPw, new_password: newPw }),
+      });
+      this.step = 2;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : '';
+      if (msg === 'RATE_LIMIT') {
+        this.error = t('common.rateLimitError');
+      } else if (msg.includes('Incorrect') || msg.includes('incorrect') || msg.includes('Invalid')) {
+        this.error = t('settings.currentPasswordWrong');
+      } else {
+        this.error = t('settings.passwordChangeFailed');
+      }
+    } finally {
+      this.loading = false;
     }
   },
 }));
 
 Alpine.data('settingsChangePhone', () => ({
   step: 1,
-  countryCode: '+90',
-  phoneNumber: '',
-  phoneError: '',
-  verifyError: '',
-  countdown: 0,
-  _timerInterval: null as ReturnType<typeof setInterval> | null,
+  error: '',
+  loading: false,
+  currentPhone: '',
 
-  sendCode() {
-    const num = this.phoneNumber.trim();
-    if (!num || num.length < 7) {
-      this.phoneError = t('settings.invalidPhone');
-      return;
-    }
-    this.phoneError = '';
-    this.step = 2;
-    this.startTimer();
-  },
-
-  startTimer() {
-    this.countdown = 60;
-    if (this._timerInterval) clearInterval(this._timerInterval);
-    this._timerInterval = setInterval(() => {
-      this.countdown--;
-      if (this.countdown <= 0 && this._timerInterval) {
-        clearInterval(this._timerInterval);
-        this._timerInterval = null;
-      }
-    }, 1000);
-  },
-
-  verify() {
-    const codeInput = (this.$refs as Record<string, HTMLInputElement>).phoneVerifyCode;
-    const code = codeInput?.value.trim() || '';
-    if (!code || code.length < 6) {
-      this.verifyError = t('settings.invalidVerifyCode');
-      return;
-    }
-    if (this._timerInterval) {
-      clearInterval(this._timerInterval);
-      this._timerInterval = null;
-    }
-    this.verifyError = '';
-
+  async init() {
     try {
-      const raw = localStorage.getItem('tradehub_account_data');
-      const data = raw ? JSON.parse(raw) : {};
-      data.phoneCountry = this.countryCode.trim();
-      data.phoneArea = '';
-      data.phoneNumber = this.phoneNumber.trim();
-      localStorage.setItem('tradehub_account_data', JSON.stringify(data));
+      const res = await api<{ message: { phone: string } }>('/method/tradehub_core.api.v1.auth.get_user_profile');
+      this.currentPhone = res.message?.phone || '';
     } catch { /* ignore */ }
-
-    this.step = 3;
   },
 
-  destroy() {
-    if (this._timerInterval) {
-      clearInterval(this._timerInterval);
-      this._timerInterval = null;
+  async savePhone() {
+    const newPhone = (this.$refs as Record<string, HTMLInputElement>).newPhone.value.trim();
+    const password = (this.$refs as Record<string, HTMLInputElement>).phonePassword.value;
+
+    if (!newPhone) {
+      this.error = t('settings.phoneRequired') || 'Telefon numarası gerekli.';
+      return;
+    }
+    if (!password) {
+      this.error = t('settings.currentPasswordRequired');
+      return;
+    }
+
+    this.error = '';
+    this.loading = true;
+    try {
+      await api('/method/tradehub_core.api.v1.identity.change_phone', {
+        method: 'POST',
+        body: JSON.stringify({ phone: newPhone, password }),
+      });
+      this.step = 2;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : '';
+      if (msg.includes('Incorrect') || msg.includes('incorrect') || msg.includes('Invalid')) {
+        this.error = t('settings.currentPasswordWrong');
+      } else {
+        this.error = t('settings.phoneChangeFailed') || 'Telefon numarası değiştirilemedi.';
+      }
+    } finally {
+      this.loading = false;
     }
   },
 }));
 
 Alpine.data('settingsDeleteAccount', () => ({
   step: 1,
+  error: '',
+  loading: false,
   reason: '',
-  confirmed: false,
-  countdown: 0,
-  error1: '',
-  error2: '',
-  error3: '',
-  _timerInterval: null as ReturnType<typeof setInterval> | null,
 
-  continueToVerify() {
-    if (!this.reason) {
-      this.error1 = t('settings.selectReason');
-      return;
-    }
-    this.error1 = '';
+  goToStep2() {
+    this.reason = (this.$refs as Record<string, HTMLSelectElement>).reason.value;
     this.step = 2;
-    this.startTimer();
   },
 
-  startTimer() {
-    this.countdown = 60;
-    if (this._timerInterval) clearInterval(this._timerInterval);
-    this._timerInterval = setInterval(() => {
-      this.countdown--;
-      if (this.countdown <= 0 && this._timerInterval) {
-        clearInterval(this._timerInterval);
-        this._timerInterval = null;
-      }
-    }, 1000);
-  },
+  async confirmDelete() {
+    const password = (this.$refs as Record<string, HTMLInputElement>).deletePassword.value;
+    const confirmed = (this.$refs as Record<string, HTMLInputElement>).confirmCheck.checked;
 
-  verifyCode() {
-    const codeInput = (this.$refs as Record<string, HTMLInputElement>).delVerifyCode;
-    const code = codeInput?.value.trim() || '';
-    if (!code || code.length < 6) {
-      this.error2 = t('settings.invalidVerifyCode');
+    if (!password) {
+      this.error = t('settings.currentPasswordRequired');
       return;
     }
-    if (this._timerInterval) {
-      clearInterval(this._timerInterval);
-      this._timerInterval = null;
+    if (!confirmed) {
+      this.error = t('settings.confirmDeleteRequired') || 'Lütfen onay kutusunu işaretleyin.';
+      return;
     }
-    this.error2 = '';
-    this.step = 3;
-  },
 
-  deleteFinal() {
-    localStorage.removeItem('tradehub_account_data');
-    this.step = 4;
-  },
-
-  destroy() {
-    if (this._timerInterval) {
-      clearInterval(this._timerInterval);
-      this._timerInterval = null;
+    this.error = '';
+    this.loading = true;
+    try {
+      await api('/method/tradehub_core.api.v1.identity.delete_account', {
+        method: 'POST',
+        body: JSON.stringify({ password, reason: this.reason }),
+      });
+      // Account disabled in DB — now logout and redirect
+      this.step = 3;
+      await logout();
+      setTimeout(() => { window.location.href = '/pages/auth/login.html'; }, 3000);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : '';
+      if (msg.includes('Incorrect') || msg.includes('incorrect') || msg.includes('Invalid')) {
+        this.error = t('settings.currentPasswordWrong');
+      } else {
+        this.error = t('settings.deleteAccountFailed') || 'Hesap silinemedi.';
+      }
+    } finally {
+      this.loading = false;
     }
   },
 }));

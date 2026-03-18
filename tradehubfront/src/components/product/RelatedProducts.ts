@@ -1,7 +1,7 @@
 /**
  * RelatedProducts Component
  * Horizontal Swiper slider of related product cards.
- * Loads data from API via getRelatedListings().
+ * Uses Tailwind utility classes for card styling.
  */
 
 import Swiper from 'swiper';
@@ -9,8 +9,6 @@ import { Navigation } from 'swiper/modules';
 import 'swiper/swiper-bundle.css';
 import { t } from '../../i18n';
 import { formatPrice } from '../../utils/currency';
-import { getRelatedListings } from '../../services/listingService';
-import { getCurrentProduct } from '../../alpine/product';
 
 interface RelatedProduct {
   name: string;
@@ -25,11 +23,107 @@ interface RelatedProduct {
   supplierCountry?: string;
 }
 
+const relatedProducts: RelatedProduct[] = [
+  {
+    name: 'Stainless Steel Minimalist Chain Bracelet Unisex Adjustable...',
+    href: '/pages/product-detail.html',
+    price: '$2.10-3.60',
+    discountPercent: 10,
+    moqCount: 10,
+    moqUnit: 'pcs',
+    soldCount: '3,580',
+    imageSrc: 'https://images.unsplash.com/photo-1611591437281-460bfbe1220a?auto=format&fit=crop&w=600&h=600&q=80',
+    supplierYearCount: 4,
+    supplierCountry: 'CN',
+  },
+  {
+    name: '18K Gold Plated Crystal Pendant Necklace Women Fashion Jewelry...',
+    href: '/pages/product-detail.html',
+    price: '$0.90-1.60',
+    moqCount: 20,
+    moqUnit: 'pcs',
+    soldCount: '8,950',
+    imageSrc: 'https://images.unsplash.com/photo-1515562141589-67f0d569b6fc?auto=format&fit=crop&w=600&h=600&q=80',
+    supplierYearCount: 6,
+    supplierCountry: 'CN',
+  },
+  {
+    name: 'Genuine Leather Minimalist Card Holder RFID Blocking Slim Wallet...',
+    href: '/pages/product-detail.html',
+    price: '$1.50-2.20',
+    discountPercent: 15,
+    moqCount: 50,
+    moqUnit: 'pcs',
+    soldCount: '6,730',
+    imageSrc: 'https://images.unsplash.com/photo-1627123424574-724758594e93?auto=format&fit=crop&w=600&h=600&q=80',
+    supplierYearCount: 5,
+    supplierCountry: 'CN',
+  },
+  {
+    name: 'Handmade Resin Phone Case Mold Kit DIY Craft Silicone Set...',
+    href: '/pages/product-detail.html',
+    price: '$2.40-3.80',
+    moqCount: 20,
+    moqUnit: 'pcs',
+    soldCount: '890',
+    imageSrc: 'https://images.unsplash.com/photo-1601784551446-20c9e07cdbdb?auto=format&fit=crop&w=600&h=600&q=80',
+    supplierYearCount: 2,
+    supplierCountry: 'CN',
+  },
+  {
+    name: 'Smart WiFi Security Camera 1080P Indoor Wireless Surveillance...',
+    href: '/pages/product-detail.html',
+    price: '$8.50-12',
+    discountPercent: 8,
+    moqCount: 10,
+    moqUnit: 'pcs',
+    soldCount: '1,280',
+    imageSrc: 'https://images.unsplash.com/photo-1585771724684-38269d6639fd?auto=format&fit=crop&w=600&h=600&q=80',
+    supplierYearCount: 7,
+    supplierCountry: 'CN',
+  },
+  {
+    name: 'Oversize Cotton Vintage Print T-Shirt Streetwear Graphic Tee...',
+    href: '/pages/product-detail.html',
+    price: '$3.20-4.50',
+    discountPercent: 10,
+    moqCount: 30,
+    moqUnit: 'pcs',
+    soldCount: '9,450',
+    imageSrc: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=600&h=600&q=80',
+    supplierYearCount: 4,
+    supplierCountry: 'CN',
+  },
+  {
+    name: 'PU Leather Crossbody Mini Bag Women Casual Fashion Design...',
+    href: '/pages/product-detail.html',
+    price: '$1.20-2.40',
+    moqCount: 50,
+    moqUnit: 'pcs',
+    soldCount: '14,200',
+    imageSrc: 'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?auto=format&fit=crop&w=600&h=600&q=80',
+    supplierYearCount: 3,
+    supplierCountry: 'CN',
+  },
+  {
+    name: 'Natural Gemstone Beaded Bracelet Healing Crystal Chakra Set...',
+    href: '/pages/product-detail.html',
+    price: '$1.20-2.80',
+    discountPercent: 12,
+    moqCount: 10,
+    moqUnit: 'pcs',
+    soldCount: '7,890',
+    imageSrc: 'https://images.unsplash.com/photo-1573408301185-9146fe634ad0?auto=format&fit=crop&w=600&h=600&q=80',
+    supplierYearCount: 3,
+    supplierCountry: 'CN',
+  },
+];
+
 function renderRelatedSlide(card: RelatedProduct): string {
   const safeName = card.name.replace(/"/g, '&quot;');
   const unitLabel = card.moqUnit === 'kg' ? t('productGrid.kg') : t('productGrid.pcs');
   const moqText = `${card.moqCount} ${unitLabel}`;
-  const soldText = card.soldCount ? t('productGrid.unitsSold', { count: card.soldCount }) : '';
+  const soldText = t('productGrid.unitsSold', { count: card.soldCount });
   const discountText = card.discountPercent
     ? t('productGrid.discount', { percent: card.discountPercent })
     : '';
@@ -47,10 +141,12 @@ function renderRelatedSlide(card: RelatedProduct): string {
         <!-- Image -->
         <div class="relative">
           <div class="aspect-square w-full overflow-hidden bg-gray-50">
-            ${card.imageSrc
-              ? `<img class="w-full h-full object-cover transition-transform duration-300 hover:scale-105" src="${card.imageSrc}" alt="${safeName}" loading="lazy" />`
-              : `<div class="w-full h-full flex items-center justify-center text-gray-300"><svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg></div>`
-            }
+            <img
+              class="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
+              src="${card.imageSrc}"
+              alt="${safeName}"
+              loading="lazy"
+            />
           </div>
         </div>
 
@@ -68,7 +164,7 @@ function renderRelatedSlide(card: RelatedProduct): string {
           <!-- MOQ + sold -->
           <div class="text-xs text-gray-500 truncate">
             <span class="mr-1.5 font-medium text-gray-600">${moqText}</span>
-            ${soldText ? `<span>${soldText}</span>` : ''}
+            <span>${soldText}</span>
           </div>
 
           <!-- Supplier info -->
@@ -87,13 +183,13 @@ export function RelatedProducts(): string {
     <section class="related-products-section max-[374px]:px-3 max-[374px]:py-4" style="background: var(--pd-related-bg, #f8f8f8);">
         <div class="flex items-center justify-between mb-4 max-[374px]:mb-3">
           <h2 class="text-lg font-bold max-[374px]:text-base" style="color: var(--pd-title-color, #111827);">${t('product.similarProducts')}</h2>
-          <a href="/pages/products.html" class="text-sm font-medium hover:underline max-[374px]:text-xs" style="color: var(--pd-breadcrumb-link-color, #cc9900);">${t('product.viewAllProducts')} →</a>
+          <a href="#" class="text-sm font-medium hover:underline max-[374px]:text-xs" style="color: var(--pd-breadcrumb-link-color, #cc9900);">${t('product.viewAllProducts')} →</a>
         </div>
 
         <div class="group/related-slider relative">
           <div class="swiper related-products-swiper overflow-hidden">
-            <div class="swiper-wrapper" id="related-products-slides">
-              <!-- Populated dynamically from API -->
+            <div class="swiper-wrapper">
+              ${relatedProducts.map(p => renderRelatedSlide(p)).join('')}
             </div>
           </div>
 
@@ -120,61 +216,24 @@ export function RelatedProducts(): string {
 }
 
 export function initRelatedProducts(): void {
-  const product = getCurrentProduct();
-  if (!product.id) return;
+  const el = document.querySelector<HTMLElement>('.related-products-swiper');
+  if (!el) return;
 
-  // Fetch related products from API
-  getRelatedListings(product.id, 8).then(listings => {
-    const container = document.getElementById('related-products-slides');
-    if (!container) return;
-
-    if (listings.length === 0) {
-      // Hide the section if no related products
-      const section = container.closest('.related-products-section');
-      if (section) (section as HTMLElement).style.display = 'none';
-      return;
-    }
-
-    const relatedProducts: RelatedProduct[] = listings.map(listing => ({
-      name: listing.name,
-      href: listing.href || `/pages/product-detail.html?id=${listing.id}`,
-      price: listing.price,
-      discountPercent: listing.discount ? parseInt(listing.discount) : undefined,
-      moqCount: parseInt(listing.moq) || 1,
-      moqUnit: 'pcs' as const,
-      soldCount: listing.stats?.replace(/[^\d.,+K]/gi, '') || '',
-      imageSrc: listing.imageSrc || '',
-      supplierYearCount: listing.supplierYears,
-      supplierCountry: listing.supplierCountry,
-    }));
-
-    container.innerHTML = relatedProducts.map(p => renderRelatedSlide(p)).join('');
-
-    // Initialize Swiper after content is loaded
-    const el = document.querySelector<HTMLElement>('.related-products-swiper');
-    if (el) {
-      new Swiper(el, {
-        modules: [Navigation],
-        spaceBetween: 12,
-        navigation: {
-          nextEl: '.related-next',
-          prevEl: '.related-prev',
-        },
-        breakpoints: {
-          0: { slidesPerView: 1.4, spaceBetween: 8 },
-          375: { slidesPerView: 2.3, spaceBetween: 10 },
-          480: { slidesPerView: 3.3, spaceBetween: 10 },
-          640: { slidesPerView: 4, spaceBetween: 12 },
-          768: { slidesPerView: 4, spaceBetween: 12 },
-          1024: { slidesPerView: 3.5, spaceBetween: 14 },
-          1280: { slidesPerView: 4, spaceBetween: 16 },
-        },
-      });
-    }
-  }).catch(err => {
-    console.warn('[RelatedProducts] Failed to load:', err);
-    // Hide section on error
-    const section = document.querySelector('.related-products-section');
-    if (section) (section as HTMLElement).style.display = 'none';
+  new Swiper(el, {
+    modules: [Navigation],
+    spaceBetween: 12,
+    navigation: {
+      nextEl: '.related-next',
+      prevEl: '.related-prev',
+    },
+    breakpoints: {
+      0: { slidesPerView: 1.4, spaceBetween: 8 },
+      375: { slidesPerView: 2.3, spaceBetween: 10 },
+      480: { slidesPerView: 3.3, spaceBetween: 10 },
+      640: { slidesPerView: 4, spaceBetween: 12 },
+      768: { slidesPerView: 4, spaceBetween: 12 },
+      1024: { slidesPerView: 3.5, spaceBetween: 14 },
+      1280: { slidesPerView: 4, spaceBetween: 16 },
+    },
   });
 }

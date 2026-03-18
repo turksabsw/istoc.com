@@ -7,7 +7,6 @@ import '../style.css'
 import { initFlowbite } from 'flowbite'
 import { t } from '../i18n'
 import { getBaseUrl } from '../utils/url'
-import { initCurrency } from '../services/currencyService'
 
 // Header components (reuse from main page)
 import { TopBar, initMobileDrawer, SubHeader, initStickyHeaderSearch, MegaMenu, initMegaMenu, initHeaderCart } from '../components/header'
@@ -27,92 +26,25 @@ import { startAlpine } from '../alpine'
 
 // Checkout components
 import { CheckoutHeader, CheckoutLayout, ShippingAddressForm, OrderSummary, PaymentMethodSection, ItemsDeliverySection, OrderProtectionModal, OrderReviewModal } from '../components/checkout'
-import { protectionSummaryItems, tradeAssuranceText, modalSections, paymentIcons, infoBoxBullets } from '../data/mockCheckout'
+import { protectionSummaryItems, tradeAssuranceText, modalSections, paymentIcons, infoBoxBullets, mockCoupons } from '../data/mockCheckout'
 import { cartStore } from '../components/cart/state/CartStore'
 import type { OrderSummary as OrderSummaryData } from '../types/checkout'
-import type { CartProduct, CartShippingMethod, CartSku } from '../types/cart'
+import type { CartProduct, CartSku } from '../types/cart'
 import type { CheckoutDeliveryOrderGroup } from '../components/checkout'
 import { initStickyHeights } from '../utils/stickyHeights'
-import { convertPrice, getSelectedCurrencyInfo } from '../services/currencyService'
 import { orderStore } from '../components/orders/state/OrderStore'
 import type { Order } from '../types/order'
 
-// Expose coupons array for Alpine component (populated from API in future)
-(window as unknown as Record<string, unknown>).__mockCoupons = [];
-
-// Sample mode detection
-const isSampleMode = new URLSearchParams(window.location.search).get('mode') === 'sample';
-
-interface SampleOrderData {
-  productId: string;
-  title: string;
-  supplierName: string;
-  samplePrice: number;
-  unit: string;
-  color: { id: string; label: string; imageUrl?: string } | null;
-  quantity: number;
-  shippingMethods?: CartShippingMethod[];
-}
-
-let sampleOrderData: SampleOrderData | null = null;
-
-if (isSampleMode) {
-  try {
-    const raw = localStorage.getItem('tradehub_sample_order');
-    if (raw) sampleOrderData = JSON.parse(raw) as SampleOrderData;
-  } catch { /* ignore */ }
-  if (!sampleOrderData) {
-    window.location.replace('/');
-  }
-}
+// Expose mock coupons for Alpine component
+(window as unknown as Record<string, unknown>).__mockCoupons = mockCoupons;
 
 // CartStore'dan checkout order summary oluştur
-if (!isSampleMode) {
-  cartStore.load();
-  if (cartStore.hasSelectedSkuMoqViolation()) {
-    window.location.replace('/pages/cart.html');
-  }
+cartStore.load();
+if (cartStore.hasSelectedSkuMoqViolation()) {
+  window.location.replace('/pages/cart.html');
 }
 
-// shippingMethods eksik ürünler için backend'den shipping bilgisi çek
-async function enrichMissingShippingMethods(): Promise<void> {
-  if (isSampleMode) return;
-  const suppliers = cartStore.getSuppliers();
-  const productsNeedingShipping: { productId: string; product: CartProduct }[] = [];
-
-  for (const supplier of suppliers) {
-    for (const product of supplier.products) {
-      if (!product.shippingMethods || product.shippingMethods.length === 0) {
-        productsNeedingShipping.push({ productId: product.id, product });
-      }
-    }
-  }
-
-  if (productsNeedingShipping.length === 0) return;
-
-  // Her ürün için listing detail'den shipping bilgisini çek
-  const { getListingDetail } = await import('../services/listingService');
-  const settled = await Promise.allSettled(
-    productsNeedingShipping.map(async ({ productId, product }) => {
-      try {
-        const detail = await getListingDetail(productId);
-        if (detail && detail.shipping && detail.shipping.length > 0) {
-          product.shippingMethods = detail.shipping.map((s, idx) => ({
-            id: `ship-${idx + 1}`,
-            method: s.method,
-            estimatedDays: s.estimatedDays,
-            baseCost: s.baseCost ?? 0,
-            baseCurrency: s.baseCurrency || detail.baseCurrency || 'USD',
-          }));
-        }
-      } catch { /* API hatası — fallback shipping kullanılacak */ }
-    })
-  );
-  // Güncellenen veriyi kaydet (notify tetiklenmez ama localStorage güncellenir)
-  void settled;
-}
-
-const cartSummary = isSampleMode ? null : cartStore.getSummary();
+const cartSummary = cartStore.getSummary();
 
 function formatMonthDay(date: Date): string {
   return date.toLocaleDateString('en-US', { month: 'short', day: '2-digit' });
@@ -151,59 +83,7 @@ function buildProductCard(product: CartProduct): { card: CheckoutDeliveryOrderGr
   };
 }
 
-function buildSampleDeliveryOrders(): CheckoutDeliveryOrderGroup[] {
-  if (!sampleOrderData) return [];
-  const now = new Date();
-  const sellerId = sampleOrderData.supplierName.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-
-  let methods: CheckoutDeliveryOrderGroup['methods'];
-
-  if (sampleOrderData.shippingMethods && sampleOrderData.shippingMethods.length > 0) {
-    // Dynamic: use backend shipping methods with currency conversion
-    methods = sampleOrderData.shippingMethods.map((sm, idx) => ({
-      id: sm.id || `method-sample-${idx}`,
-      etaLabel: sm.estimatedDays
-        ? `Estimated delivery: ${sm.estimatedDays}`
-        : `Shipping option ${idx + 1}`,
-      shippingFee: Number(convertPrice(sm.baseCost, sm.baseCurrency).toFixed(2)),
-      isDefault: idx === 0,
-    }));
-  } else {
-    // Fallback: default shipping for old sample data
-    const start1 = addDays(now, 10);
-    const end1 = addDays(now, 24);
-    methods = [{
-      id: `method-sample-1`,
-      etaLabel: `Estimated delivery by ${formatMonthDay(start1)}-${formatMonthDay(end1)}`,
-      shippingFee: 5,
-      isDefault: true,
-    }];
-  }
-
-  return [{
-    orderId: 'order-sample',
-    orderLabel: t('cart.sampleOrder') || 'Sample Order',
-    sellerId,
-    sellerName: sampleOrderData.supplierName,
-    methods,
-    products: [{
-      id: sampleOrderData.productId,
-      title: sampleOrderData.title,
-      moqLabel: `${t('cart.sampleMaxNote')}`,
-      image: sampleOrderData.color?.imageUrl || '',
-      skuLines: [{
-        id: `sample-${sampleOrderData.productId}`,
-        image: sampleOrderData.color?.imageUrl || '',
-        variantText: sampleOrderData.color ? `${t('cart.colorLabel')}: ${sampleOrderData.color.label}` : '',
-        unitPrice: sampleOrderData.samplePrice,
-        quantity: 1,
-      }],
-    }],
-  }];
-}
-
 function buildDeliveryOrders(): CheckoutDeliveryOrderGroup[] {
-  if (!cartSummary) return [];
   const suppliers = cartStore.getSuppliers();
   const selectedSuppliers = suppliers
     .map((supplier) => {
@@ -216,73 +96,48 @@ function buildDeliveryOrders(): CheckoutDeliveryOrderGroup[] {
         supplier,
         subtotal,
         products: products.map((row) => row.card),
-        // Collect shipping methods from products that have backend data
-        sourceProducts: supplier.products.filter(p => p.skus.some(s => s.selected)),
       };
     })
     .filter((row) => row.subtotal > 0 && row.products.length > 0);
 
   if (selectedSuppliers.length === 0) return [];
 
+  const subtotalTotal = selectedSuppliers.reduce((sum, row) => sum + row.subtotal, 0);
   const now = new Date();
 
   return selectedSuppliers.map((row, index) => {
-    // Find the first product with backend shipping methods
-    const productWithShipping = row.sourceProducts.find(
-      p => p.shippingMethods && p.shippingMethods.length > 0
-    );
-
-    let methods: CheckoutDeliveryOrderGroup['methods'];
-
-    if (productWithShipping?.shippingMethods && productWithShipping.shippingMethods.length > 0) {
-      // Dynamic: use backend shipping methods with currency conversion
-      methods = productWithShipping.shippingMethods.map((sm, idx) => ({
-        id: sm.id || `method-${index}-${idx}`,
-        etaLabel: sm.estimatedDays
-          ? `Estimated delivery: ${sm.estimatedDays}`
-          : `Shipping option ${idx + 1}`,
-        shippingFee: Number(convertPrice(sm.baseCost, sm.baseCurrency).toFixed(2)),
-        isDefault: idx === 0,
-      }));
-    } else {
-      // Fallback: generate default shipping methods for old cart data
-      const start1 = addDays(now, 10 + (index * 2));
-      const end1 = addDays(now, 24 + (index * 2));
-      const start2 = addDays(now, 14 + (index * 2));
-      const end2 = addDays(now, 24 + (index * 2));
-
-      methods = [
-        {
-          id: `method-${row.supplier.id}-1`,
-          etaLabel: `Estimated delivery by ${formatMonthDay(start1)}-${formatMonthDay(end1)}`,
-          shippingFee: 5,
-          isDefault: true,
-        },
-        {
-          id: `method-${row.supplier.id}-2`,
-          etaLabel: `Estimated delivery by ${formatMonthDay(start2)}-${formatMonthDay(end2)}`,
-          shippingFee: 10,
-        },
-      ];
-    }
+    const shippingShare = subtotalTotal > 0 ? (cartSummary.shippingFee * row.subtotal) / subtotalTotal : 0;
+    const method1Fee = Number(Math.max(5, shippingShare).toFixed(2));
+    const method2Fee = Number(Math.max(method1Fee + 5, shippingShare * 1.35).toFixed(2));
+    const start1 = addDays(now, 10 + (index * 2));
+    const end1 = addDays(now, 24 + (index * 2));
+    const start2 = addDays(now, 14 + (index * 2));
+    const end2 = addDays(now, 24 + (index * 2));
 
     return {
       orderId: `order-${index + 1}`,
       orderLabel: `Order ${index + 1}`,
       sellerId: row.supplier.id,
       sellerName: row.supplier.name,
-      methods,
+      methods: [
+        {
+          id: `method-${row.supplier.id}-1`,
+          etaLabel: `Estimated delivery by ${formatMonthDay(start1)}-${formatMonthDay(end1)}`,
+          shippingFee: method1Fee,
+          isDefault: true,
+        },
+        {
+          id: `method-${row.supplier.id}-2`,
+          etaLabel: `Estimated delivery by ${formatMonthDay(start2)}-${formatMonthDay(end2)}`,
+          shippingFee: method2Fee,
+        },
+      ],
       products: row.products,
     };
   });
 }
 
-// Checkout render'ı async — önce eksik shipping verisi çekilir, sonra sayfa render edilir
-async function renderCheckout() {
-await initCurrency();
-await enrichMissingShippingMethods();
-
-const checkoutDeliveryOrders = isSampleMode ? buildSampleDeliveryOrders() : buildDeliveryOrders();
+const checkoutDeliveryOrders = buildDeliveryOrders();
 const defaultShippingFee = Number(
   checkoutDeliveryOrders.reduce((sum, order) => {
     const defaultMethod = order.methods.find((method) => method.isDefault) ?? order.methods[0];
@@ -290,26 +145,15 @@ const defaultShippingFee = Number(
   }, 0).toFixed(2),
 );
 
-const sampleSubtotal = sampleOrderData ? sampleOrderData.samplePrice * sampleOrderData.quantity : 0;
-
-const checkoutOrderSummary: OrderSummaryData = isSampleMode ? {
-  itemCount: 1,
-  thumbnails: sampleOrderData?.color?.imageUrl ? [{ image: sampleOrderData.color.imageUrl, quantity: 1 }] : [],
-  itemSubtotal: sampleSubtotal,
+const checkoutOrderSummary: OrderSummaryData = {
+  itemCount: cartSummary.selectedCount || cartSummary.items.reduce((s, i) => s + i.quantity, 0),
+  thumbnails: cartSummary.items.map(i => ({ image: i.image, quantity: i.quantity })),
+  itemSubtotal: cartSummary.productSubtotal,
   shipping: defaultShippingFee,
-  subtotal: sampleSubtotal + defaultShippingFee,
+  subtotal: cartSummary.productSubtotal + defaultShippingFee - cartSummary.discount,
   processingFee: 0,
-  total: sampleSubtotal + defaultShippingFee,
-  currency: getSelectedCurrencyInfo().code,
-} : {
-  itemCount: cartSummary!.selectedCount || cartSummary!.items.reduce((s, i) => s + i.quantity, 0),
-  thumbnails: cartSummary!.items.map(i => ({ image: i.image, quantity: i.quantity })),
-  itemSubtotal: cartSummary!.productSubtotal,
-  shipping: defaultShippingFee,
-  subtotal: cartSummary!.productSubtotal + defaultShippingFee - cartSummary!.discount,
-  processingFee: 0,
-  total: cartSummary!.productSubtotal + defaultShippingFee - cartSummary!.discount,
-  currency: getSelectedCurrencyInfo().code,
+  total: cartSummary.productSubtotal + defaultShippingFee - cartSummary.discount,
+  currency: 'USD',
 };
 
 const appEl = document.querySelector<HTMLDivElement>('#app')!;
@@ -365,6 +209,7 @@ initMobileDrawer();
 initLanguageSelector();
 initHeaderCart();
 initStickyHeights();
+
 // Build Order objects from checkout data
 function buildOrdersFromCheckout(paymentMethod: string): Order[] {
   const now = Date.now();
@@ -404,7 +249,7 @@ function buildOrdersFromCheckout(paymentMethod: string): Order[] {
       orderNumber,
       orderDate: dateStr,
       total: grandTotal.toFixed(2),
-      currency: getSelectedCurrencyInfo().code,
+      currency: 'USD',
       seller: deliveryOrder.sellerName,
       status: isCreditCard ? 'Confirming' : 'Waiting for payment',
       statusColor: isCreditCard ? 'text-blue-600' : 'text-amber-600',
@@ -538,11 +383,6 @@ window.addEventListener('checkout:confirm-order', () => {
   orderStore.load();
   orderStore.addOrders(newOrders);
 
-  // Sample order verisi temizle
-  if (isSampleMode) {
-    localStorage.removeItem('tradehub_sample_order');
-  }
-
   const orderNumbers = newOrders.map((o) => o.orderNumber).join(',');
 
   if (isCreditCard) {
@@ -551,7 +391,3 @@ window.addEventListener('checkout:confirm-order', () => {
     window.location.href = `${getBaseUrl()}pages/order/order-success.html?status=pending&count=${orderCount}&orderNumbers=${encodeURIComponent(orderNumbers)}`;
   }
 });
-
-} // renderCheckout sonu
-
-renderCheckout();

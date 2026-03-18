@@ -15,8 +15,72 @@ interface TopRankingCard {
   imageSrc: string;
 }
 
-// Empty — will be populated from API categories in future
-const topRankingCards: TopRankingCard[] = [];
+const topRankingCards: TopRankingCard[] = [
+  {
+    name: 'Consumer Electronics',
+    nameKey: 'topRanking.consumerElectronics',
+    href: '/pages/product-detail.html',
+    label: 'Hot selling',
+    labelKey: 'topRanking.hotSelling',
+    imageSrc: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=400&h=400&q=80',
+  },
+  {
+    name: 'Fashion & Apparel',
+    nameKey: 'topRanking.fashionApparel',
+    href: '/pages/product-detail.html',
+    label: 'Hot selling',
+    labelKey: 'topRanking.hotSelling',
+    imageSrc: 'https://images.unsplash.com/photo-1523381210434-271e8be1f52b?auto=format&fit=crop&w=400&h=400&q=80',
+  },
+  {
+    name: 'Home & Garden',
+    nameKey: 'topRanking.homeGarden',
+    href: '/pages/product-detail.html',
+    label: 'Rising trend',
+    labelKey: 'topRanking.risingTrend',
+    imageSrc: 'https://images.unsplash.com/photo-1556228453-efd6c1ff04f6?auto=format&fit=crop&w=400&h=400&q=80',
+  },
+  {
+    name: 'Beauty & Health',
+    nameKey: 'topRanking.beautyHealth',
+    href: '/pages/product-detail.html',
+    label: 'Hot selling',
+    labelKey: 'topRanking.hotSelling',
+    imageSrc: 'https://images.unsplash.com/photo-1596462502278-27bfdc403348?auto=format&fit=crop&w=400&h=400&q=80',
+  },
+  {
+    name: 'Auto Parts',
+    nameKey: 'topRanking.autoParts',
+    href: '/pages/product-detail.html',
+    label: 'Steady growth',
+    labelKey: 'topRanking.steadyGrowth',
+    imageSrc: 'https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?auto=format&fit=crop&w=400&h=400&q=80',
+  },
+  {
+    name: 'Sports & Outdoors',
+    nameKey: 'topRanking.sportsOutdoors',
+    href: '/pages/product-detail.html',
+    label: 'Hot selling',
+    labelKey: 'topRanking.hotSelling',
+    imageSrc: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=400&h=400&q=80',
+  },
+  {
+    name: 'Industrial Equipment',
+    nameKey: 'topRanking.industrialEquipment',
+    href: '/pages/product-detail.html',
+    label: 'Rising trend',
+    labelKey: 'topRanking.risingTrend',
+    imageSrc: 'https://images.unsplash.com/photo-1504148455328-c376907d081c?auto=format&fit=crop&w=400&h=400&q=80',
+  },
+  {
+    name: 'Toys & Hobbies',
+    nameKey: 'topRanking.toysHobbies',
+    href: '/pages/product-detail.html',
+    label: 'Hot selling',
+    labelKey: 'topRanking.hotSelling',
+    imageSrc: 'https://images.unsplash.com/photo-1558060370-d644479cb6f7?auto=format&fit=crop&w=400&h=400&q=80',
+  },
+];
 
 function renderRankingImage(card: TopRankingCard): string {
   return `
@@ -103,7 +167,6 @@ export function TopRanking(): string {
 
             <!-- Scrollable cards -->
             <div class="relative">
-              ${topRankingCards.length > 0 ? `
               <div
                 class="flex gap-3 overflow-x-auto pb-2 scrollbar-hide"
                 role="list"
@@ -111,16 +174,6 @@ export function TopRanking(): string {
               >
                 ${topRankingCards.map(card => `<div role="listitem">${renderRankingCard(card)}</div>`).join('')}
               </div>
-              ` : `
-              <div id="top-ranking-empty" class="flex items-center justify-center py-12">
-                <div class="text-center">
-                  <svg class="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
-                  </svg>
-                  <p class="text-sm text-gray-400">Yak\u0131nda yeni \u00fcr\u00fcnler eklenecek</p>
-                </div>
-              </div>
-              `}
             </div>
           </div>
         </div>
