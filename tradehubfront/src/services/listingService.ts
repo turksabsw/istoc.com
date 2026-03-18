@@ -166,6 +166,31 @@ export async function getShippingMethods(listingId?: string) {
   return response.message.data || []
 }
 
+/** Search suggestion item from API */
+export interface SearchSuggestion {
+  text: string
+  type: 'product' | 'category'
+}
+
+export interface SearchSuggestionsResult {
+  suggestions: SearchSuggestion[]
+  chips: SearchSuggestion[]
+}
+
+/**
+ * Get search suggestions for the search dropdown (trending products + popular categories)
+ */
+export async function getSearchSuggestions(): Promise<SearchSuggestionsResult> {
+  try {
+    const response = await api<FrappeResponse<{ suggestions: SearchSuggestion[]; chips: SearchSuggestion[] }>>(
+      '/method/tradehub_core.api.listing.get_search_suggestions'
+    )
+    return response.message.data as unknown as SearchSuggestionsResult
+  } catch {
+    return { suggestions: [], chips: [] }
+  }
+}
+
 
 // ── Price Range Helper ──
 
@@ -255,6 +280,7 @@ function mapListingCard(raw: any): ProductListingCard {
     discount: raw.discount || undefined,
     supplierName: raw.supplierName || undefined,
     sellingPoint: raw.sellingPoint || undefined,
+    category: raw.categoryName || raw.category || undefined,
   }
 }
 

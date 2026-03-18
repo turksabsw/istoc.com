@@ -363,7 +363,7 @@ if (placeOrderBtn) {
 }
 
 // Confirm Order (from review modal) → redirect
-window.addEventListener('checkout:confirm-order', () => {
+window.addEventListener('checkout:confirm-order', async () => {
   const orderCount = checkoutDeliveryOrders.length;
 
   const selected = document.querySelector<HTMLInputElement>('input[name="payment_method"]:checked');
@@ -380,8 +380,9 @@ window.addEventListener('checkout:confirm-order', () => {
   const paymentMethod = paymentMethodMap[selectedPaymentValue] || 'bank_transfer';
   const newOrders = buildOrdersFromCheckout(paymentMethod);
 
-  orderStore.load();
-  orderStore.addOrders(newOrders);
+  // Send orders to API + local cache
+  orderStore.loadSync();
+  await orderStore.addOrders(newOrders);
 
   const orderNumbers = newOrders.map((o) => o.orderNumber).join(',');
 

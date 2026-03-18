@@ -8,6 +8,7 @@ import favEmptySvg from '../../assets/images/O1CN01Bny3KU1Swwfj3Ntma_!!600000000
 import { t } from '../../i18n';
 import { formatPrice } from '../../utils/currency';
 import { showToast } from '../../utils/toast';
+import { getBrowsingHistory } from '../../services/browsingHistoryService';
 import {
   getLists,
   getItems,
@@ -21,79 +22,6 @@ import {
 } from '../../stores/favorites';
 
 const DEFAULT_LIST_ID = 'default';
-
-/* ────────────────────────────────────────
-   BROWSING HISTORY MOCK DATA
-   ──────────────────────────────────────── */
-interface BrowsingProduct {
-  image: string;
-  title: string;
-  priceRange: string;
-  minOrder: string;
-}
-
-const BROWSING_PRODUCTS: BrowsingProduct[] = [
-  {
-    image: 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=300&h=300&fit=crop',
-    title: 'Custom Logo Professional Thick Foam Padded Waterproof Electric Bass Guitar Bag',
-    priceRange: '$15.90-19.90',
-    minOrder: 'Min. order: 3 Pcs',
-  },
-  {
-    image: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=300&h=300&fit=crop',
-    title: 'Outdoor Tactical Training Boots Classic Style Leather Waterproof Hiking Shoes',
-    priceRange: '$14.22-18.81',
-    minOrder: 'Min. order: 2 Pcs',
-  },
-  {
-    image: 'https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=300&h=300&fit=crop',
-    title: 'Custom Logo Portable Outdoor Foldable Cart Metal Beach Wagon',
-    priceRange: '$24.99-26.99',
-    minOrder: 'Min. order: 100 Pcs',
-  },
-  {
-    image: 'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=300&h=300&fit=crop',
-    title: 'Custom Logo Printed Eco Recyclable Reusable Plain Cotton Tote Bag',
-    priceRange: '$1.20-3.50',
-    minOrder: 'Min. order: 50 Pcs',
-  },
-  {
-    image: 'https://images.unsplash.com/photo-1590874103328-eac38a683ce7?w=300&h=300&fit=crop',
-    title: 'New Hot Sale Ladies Crossbody Designer Women Tote Handbag',
-    priceRange: '$8.50-12.90',
-    minOrder: 'Min. order: 1 Pc',
-  },
-  {
-    image: 'https://images.unsplash.com/photo-1622560480654-d96214fdc887?w=300&h=300&fit=crop',
-    title: 'Autumn Winter Women Triple Strap Zipper Large Capacity Cross-Border Backpack',
-    priceRange: '$6.43-6.86',
-    minOrder: 'Min. order: 2 Pcs',
-  },
-  {
-    image: 'https://images.unsplash.com/photo-1491637639811-60e2756cc1c7?w=300&h=300&fit=crop',
-    title: 'Fashion Unisex Casual Thick Nylon Zipper Canvas Bag Travel Bag',
-    priceRange: '$4-5',
-    minOrder: 'Min. order: 100 Bags',
-  },
-  {
-    image: 'https://images.unsplash.com/photo-1606107557195-0e29a4b5b4aa?w=300&h=300&fit=crop',
-    title: 'Men Breathable Height Increasing Soft Cushioned Fashion Outdoor Sports Shoes',
-    priceRange: '$14.31-15.90',
-    minOrder: 'Min. order: 12 Pairs',
-  },
-  {
-    image: 'https://images.unsplash.com/photo-1605733513597-a8f8341084e6?w=300&h=300&fit=crop',
-    title: 'Men Lightweight Outdoor Leather Wear-Resistant Hiking Boots',
-    priceRange: '$15.80-16.90',
-    minOrder: 'Min. order: 2 Pairs',
-  },
-  {
-    image: 'https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?w=300&h=300&fit=crop',
-    title: 'Wholesale Latest Design Combat Sports Shoes Men Outdoor Running Shoes',
-    priceRange: '$13.65-15.65',
-    minOrder: 'Min. order: 1 Pair',
-  },
-];
 
 /* ────────────────────────────────────────
    EMPTY STATE ILLUSTRATION
@@ -263,14 +191,30 @@ function renderFavorites(): string {
 }
 
 function renderBrowsingHistory(): string {
-  const productCards = BROWSING_PRODUCTS.map(p => `
-    <a href="#" class="group flex flex-col no-underline text-inherit transition-transform duration-150 hover:-translate-y-0.5">
-      <div class="w-full aspect-square rounded-lg overflow-hidden border border-[#f0f0f0] mb-2.5">
-        <img src="${p.image}" alt="${p.title}" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.04]" loading="lazy" />
+  const history = getBrowsingHistory();
+
+  if (history.length === 0) {
+    return `
+      <div class="px-7 pt-6 max-sm:px-3 max-sm:pt-4">
+        <h1 class="text-xl font-bold text-text-primary">${t('favorites.browsingHistoryTitle')}</h1>
+        <p class="text-sm text-text-tertiary mt-1">${t('favorites.browsingHistoryDesc')}</p>
       </div>
-      <h4 class="text-[13px] text-text-secondary leading-[1.4] line-clamp-2 mb-1.5" title="${p.title}">${p.title}</h4>
-      <p class="text-sm font-bold text-text-primary mb-0.5">${formatPrice(p.priceRange)}</p>
-      <p class="text-xs text-text-tertiary">${p.minOrder}</p>
+      <div class="flex flex-col items-center text-center py-15 px-5">
+        <div class="mb-5">${FAVORITES_EMPTY_SVG}</div>
+        <h3 class="text-base font-bold text-text-primary mb-2.5">${t('favorites.browsingHistoryTitle')}</h3>
+        <p class="text-sm text-text-tertiary leading-relaxed max-w-[380px]">${t('favorites.browsingHistoryDesc')}</p>
+      </div>
+    `;
+  }
+
+  const productCards = history.map(p => `
+    <a href="${p.href}" class="group flex flex-col no-underline text-inherit transition-transform duration-150 hover:-translate-y-0.5">
+      <div class="w-full aspect-square rounded-lg overflow-hidden border border-[#f0f0f0] mb-2.5">
+        <img src="${p.image}" alt="${escapeHtml(p.title)}" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.04]" loading="lazy" />
+      </div>
+      <h4 class="text-[13px] text-text-secondary leading-[1.4] line-clamp-2 mb-1.5" title="${escapeHtml(p.title)}">${escapeHtml(p.title)}</h4>
+      ${p.priceRange ? `<p class="text-sm font-bold text-text-primary mb-0.5">${formatPrice(p.priceRange)}</p>` : ''}
+      ${p.minOrder ? `<p class="text-xs text-text-tertiary">${p.minOrder}</p>` : ''}
     </a>
   `).join('');
 

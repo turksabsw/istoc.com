@@ -454,6 +454,45 @@ def get_related_listings(listing_id, limit=8):
     return {"data": results}
 
 
+@frappe.whitelist(allow_guest=True)
+def get_search_suggestions(limit=6):
+    """Get search suggestions and category chips for the search bar."""
+    limit = int(limit)
+
+    # Top product titles from most ordered/viewed active listings
+    top_listings = frappe.get_all(
+        "Listing",
+        filters={"status": "Active", "is_visible": 1},
+        fields=["title"],
+        order_by="order_count DESC, view_count DESC",
+        limit=limit,
+    )
+
+    suggestions = [{"text": _truncate_words(l.title, 5), "type": "product"} for l in top_listings]
+
+    # Top 3 categories by active listing count
+    categories = frappe.get_all(
+        "Product Category",
+        filters={"is_active": 1},
+        fields=["name", "category_name"],
+    )
+
+    category_counts = []
+    for cat in categories:
+        count = frappe.db.count("Listing", {"category": cat.name, "status": "Active", "is_visible": 1})
+        category_counts.append({"name": cat.category_name, "count": count})
+
+    category_counts.sort(key=lambda x: x["count"], reverse=True)
+    chips = [{"text": c["name"], "type": "category"} for c in category_counts[:3]]
+
+    return {
+        "data": {
+            "suggestions": suggestions,
+            "chips": chips,
+        }
+    }
+
+
 # ---- Helper Functions ----
 
 def _format_listing_card(listing):
@@ -531,6 +570,7 @@ def _format_listing_card(listing):
         "isNewArrival": bool(listing.get("is_new_arrival")),
         "category": listing.get("category_name", ""),
         "brand": listing.get("brand", ""),
+        "baseCurrency": listing.get("currency", "USD"),
     }
 
 
@@ -775,6 +815,15 @@ def _format_price(price, currency="USD"):
 
     return f"{symbol}{price:.2f}"
 
+
+def _truncate_words(text, max_words=5):
+    """Truncate text to max_words words."""
+    if not text:
+        return ""
+    words = text.split()
+    if len(words) <= max_words:
+        return text
+    return " ".join(words[:max_words]) + "..."
 
 def _format_number(num):
     """Format number for display (e.g., 19070 -> 19.070)."""

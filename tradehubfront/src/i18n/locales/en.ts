@@ -2535,6 +2535,9 @@ const en = {
         addToFavorites: 'Add to favorites',
         odmService: 'ODM service available',
       },
+
+      noHistory: 'No browsing history yet. Browse products to see them here.',
+      welcomeTitle: 'Welcome to iSTOC.com',
     },
 
     // ============================================================
@@ -4369,6 +4372,15 @@ const en = {
     subWasteManagement: 'Waste Management',
     subWaterPurification: 'Water Purification',
     subAirFiltration: 'Air Filtration',
+  },
+
+  // ============================================================
+  // PROMO BANNER
+  // ============================================================
+  promo: {
+    campaignName: 'Spring Collection',
+    campaignMessage: 'Up to 50% off on selected categories — limited time offer!',
+    exploreNow: 'Explore now',
   },
 };
 

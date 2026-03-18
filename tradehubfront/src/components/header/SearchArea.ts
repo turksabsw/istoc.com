@@ -6,6 +6,7 @@
 
 import type { SearchTab } from '../../types/navigation';
 import { t } from '../../i18n';
+import { getSearchSuggestions } from '../../services/listingService';
 
 /** Search tabs configuration */
 function getSearchTabs(): SearchTab[] {
@@ -125,20 +126,8 @@ function renderDesktopSearchBar(): string {
               </div>
               <a href="/pages/legal/terms.html" class="text-xs whitespace-nowrap ml-4 transition-colors" style="color:var(--search-dropdown-muted)" data-i18n="header.termsOfUse">${t('header.termsOfUse')}</a>
             </div>
-            <!-- Suggestion Chips -->
-            <div class="flex items-center gap-2 flex-wrap">
-              <button type="button" class="search-chip flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-full transition-colors" style="color:var(--search-chip-text);background-color:var(--search-chip-bg);border:1px solid var(--search-chip-border)">
-                <span class="text-xs" style="color:var(--search-chip-accent)">&#10022;</span>
-                <span>Wholesale Electronics Supplier</span>
-              </button>
-              <button type="button" class="search-chip flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-full transition-colors" style="color:var(--search-chip-text);background-color:var(--search-chip-bg);border:1px solid var(--search-chip-border)">
-                <span class="text-xs" style="color:var(--search-chip-accent)">&#10022;</span>
-                <span>Custom Textile Manufacturing</span>
-              </button>
-              <button type="button" class="search-chip flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-full transition-colors" style="color:var(--search-chip-text);background-color:var(--search-chip-bg);border:1px solid var(--search-chip-border)">
-                <span class="text-xs" style="color:var(--search-chip-accent)">&#10022;</span>
-                <span>Industrial Machinery Parts</span>
-              </button>
+            <!-- Suggestion Chips (dynamically loaded) -->
+            <div id="search-chips-container" class="flex items-center gap-2 flex-wrap">
             </div>
           </div>
         </div>
@@ -301,15 +290,38 @@ export function initSearchArea(): void {
         // Close when mega menu opens
         document.addEventListener('istoc:close-search', hideDropdown);
 
-        // Click on suggestion chip fills search input
-        const chips = searchDropdown.querySelectorAll('.search-chip');
-        chips.forEach(chip => {
-          chip.addEventListener('click', () => {
-            const text = chip.querySelector('span:last-child')?.textContent || '';
-            (searchInput as HTMLInputElement).value = text;
-            hideDropdown();
+        // Load dynamic suggestions
+        const chipsContainer = document.getElementById('search-chips-container');
+
+        const bindChipClicks = (): void => {
+          const chips = searchDropdown.querySelectorAll('.search-chip');
+          chips.forEach(chip => {
+            chip.addEventListener('click', () => {
+              const text = chip.querySelector('span:last-child')?.textContent || '';
+              (searchInput as HTMLInputElement).value = text;
+              hideDropdown();
+            });
           });
-        });
+        };
+
+        const loadSuggestions = async (): Promise<void> => {
+          if (!chipsContainer) return;
+          try {
+            const data = await getSearchSuggestions();
+            const chipItems = data.chips.length > 0 ? data.chips : data.suggestions.slice(0, 3);
+            chipsContainer.innerHTML = chipItems.map(item => `
+              <button type="button" class="search-chip flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-full transition-colors max-w-[220px]" style="color:var(--search-chip-text);background-color:var(--search-chip-bg);border:1px solid var(--search-chip-border)">
+                <span class="text-xs shrink-0" style="color:var(--search-chip-accent)">&#10022;</span>
+                <span class="truncate">${item.text}</span>
+              </button>
+            `).join('');
+            bindChipClicks();
+          } catch {
+            // Silently fail — chips area stays empty
+          }
+        };
+
+        loadSuggestions();
       }
     };
 

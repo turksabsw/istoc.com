@@ -128,7 +128,23 @@ def get_dashboard_stats():
 
     orders_today = 0
     orders_pending = 0
-    if frappe.db.table_exists("tabSales Order"):
+
+    # Buyer Order tablosundan satıcıya ait siparişleri sorgula
+    if frappe.db.table_exists("tabBuyer Order"):
+        try:
+            orders_today = frappe.db.count("Buyer Order", {
+                "seller_name": seller.seller_name,
+                "order_date": [">=", frappe.utils.today()],
+            })
+            orders_pending = frappe.db.count("Buyer Order", {
+                "seller_name": seller.seller_name,
+                "status": ["in", ["Waiting for payment", "Confirming", "Preparing Shipment"]],
+            })
+        except Exception:
+            pass
+
+    # ERPNext Sales Order fallback
+    if not orders_today and not orders_pending and frappe.db.table_exists("tabSales Order"):
         try:
             orders_today = frappe.db.count("Sales Order", {
                 "custom_seller": seller.name,
@@ -152,6 +168,58 @@ def get_dashboard_stats():
         "available_balance": balance["available_balance"],
         "pending_balance": balance["pending_balance"],
         "total_earned": balance["total_earned"],
+    }
+
+
+@frappe.whitelist()
+def get_seller_orders(status=None, page=1, page_size=20):
+    """
+    Satıcıya ait siparişleri listele.
+
+    GET /api/method/tradehub_core.api.seller.get_seller_orders
+    """
+    from frappe.utils import cint
+
+    seller = _require_seller()
+    page = cint(page) or 1
+    page_size = min(cint(page_size) or 20, 100)
+
+    filters = {"seller_name": seller.seller_name}
+
+    if status and status != "all":
+        filters["status"] = status
+
+    total = frappe.db.count("Buyer Order", filters=filters)
+
+    orders = frappe.get_list(
+        "Buyer Order",
+        filters=filters,
+        fields=[
+            "name", "order_number", "order_date", "buyer", "seller_name",
+            "status", "status_color", "status_description",
+            "grand_total", "currency", "payment_method", "payment_status",
+            "subtotal", "shipping_fee", "shipping_address",
+        ],
+        order_by="order_date desc",
+        start=(page - 1) * page_size,
+        page_length=page_size,
+        ignore_permissions=True,
+    )
+
+    for order in orders:
+        order["items"] = frappe.get_all(
+            "Buyer Order Item",
+            filters={"parent": order["name"]},
+            fields=["product_name", "variation", "unit_price", "quantity", "total_price", "image"],
+            order_by="idx asc",
+        )
+
+    return {
+        "success": True,
+        "orders": orders,
+        "total": total,
+        "page": page,
+        "page_size": page_size,
     }
 
 

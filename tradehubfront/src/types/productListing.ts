@@ -48,6 +48,8 @@ export interface ProductListingCard {
   reorderRate?: number;
   /** Selling point text, e.g. "5 günde sevkiyat" */
   sellingPoint?: string;
+  /** Category name for grouping (e.g. "Elektronik") */
+  category?: string;
 }
 
 /**

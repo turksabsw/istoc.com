@@ -2526,6 +2526,9 @@ const tr = {
         addToFavorites: 'Favorilere ekle',
         odmService: 'ODM hizmeti olanağı',
       },
+
+      noHistory: 'Henüz gezinti geçmişi yok. Ürünleri burada görmek için göz atın.',
+      welcomeTitle: 'iSTOC.com\'a Hoş Geldiniz',
     },
 
     // ============================================================
@@ -4360,6 +4363,15 @@ const tr = {
     subWasteManagement: 'Atık Yönetimi',
     subWaterPurification: 'Su Arıtma',
     subAirFiltration: 'Hava Filtreleme',
+  },
+
+  // ============================================================
+  // PROMO BANNER
+  // ============================================================
+  promo: {
+    campaignName: 'Bahar Koleksiyonu',
+    campaignMessage: 'Seçili kategorilerde %50\'ye varan indirim — sınırlı süre!',
+    exploreNow: 'Şimdi keşfet',
   },
 };
 

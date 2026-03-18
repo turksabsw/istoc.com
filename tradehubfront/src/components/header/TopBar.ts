@@ -13,6 +13,7 @@ import { mockConversations } from '../../data/mockMessages';
 import { t, getCurrentLang, updatePageTranslations } from '../../i18n';
 import type { SupportedLang } from '../../i18n';
 import { getSelectedCurrency, setSelectedCurrency } from '../../utils/currency';
+import { getSearchSuggestions } from '../../services/listingService';
 
 /** Default country options for the delivery selector */
 const countryOptions: LocaleOption[] = [
@@ -229,9 +230,6 @@ function renderCompactStickySearch(): string {
         </div>
 
         <div id="topbar-compact-reco-list" class="mt-3 space-y-2">
-          <button type="button" tabindex="-1" data-compact-expanded-interactive="true" data-search-value="women's intimates" @click="pickValue($event.currentTarget.dataset.searchValue)" class="block text-left text-[22px] font-normal leading-tight text-gray-900 transition-colors hover:text-primary-600 dark:text-white dark:hover:text-primary-400">women's intimates</button>
-          <button type="button" tabindex="-1" data-compact-expanded-interactive="true" data-search-value="iphones 15 pro max" @click="pickValue($event.currentTarget.dataset.searchValue)" class="block text-left text-[22px] font-normal leading-tight text-gray-900 transition-colors hover:text-primary-600 dark:text-white dark:hover:text-primary-400">iphones 15 pro max</button>
-          <button type="button" tabindex="-1" data-compact-expanded-interactive="true" data-search-value="watch" @click="pickValue($event.currentTarget.dataset.searchValue)" class="block text-left text-[22px] font-normal leading-tight text-gray-900 transition-colors hover:text-primary-600 dark:text-white dark:hover:text-primary-400">watch</button>
         </div>
 
         <div class="mt-4 flex items-center justify-between gap-4">
@@ -249,10 +247,7 @@ function renderCompactStickySearch(): string {
           </a>
         </div>
 
-        <div class="mt-3 grid grid-cols-1 gap-2 lg:grid-cols-3">
-          <button type="button" tabindex="-1" data-compact-expanded-interactive="true" data-search-value="Watch for Men" @click="pickValue($event.currentTarget.dataset.searchValue)" class="inline-flex items-center gap-1.5 rounded-md border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-700 transition-colors hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"><span class="text-primary-500">&#10022;</span><span>Watch for Men</span></button>
-          <button type="button" tabindex="-1" data-compact-expanded-interactive="true" data-search-value="Surron Light Bee X" @click="pickValue($event.currentTarget.dataset.searchValue)" class="inline-flex items-center gap-1.5 rounded-md border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-700 transition-colors hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"><span class="text-primary-500">&#10022;</span><span>Surron Light Bee X</span></button>
-          <button type="button" tabindex="-1" data-compact-expanded-interactive="true" data-search-value="Human Hair Wigs" @click="pickValue($event.currentTarget.dataset.searchValue)" class="inline-flex items-center gap-1.5 rounded-md border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-700 transition-colors hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"><span class="text-primary-500">&#10022;</span><span>Human Hair Wigs</span></button>
+        <div id="topbar-compact-chips" class="mt-3 grid grid-cols-1 gap-2 lg:grid-cols-3">
         </div>
       </div>
     </div>
@@ -1543,4 +1538,52 @@ export function initLanguageSelector(): void {
       window.location.reload();
     });
   });
+
+  // Load dynamic search suggestions for compact header dropdown
+  initCompactSearchSuggestions();
+}
+
+/**
+ * Loads dynamic search suggestions into the compact header dropdown.
+ * Populates recommendation list (large text) and chip buttons.
+ */
+function initCompactSearchSuggestions(): void {
+  const recoList = document.getElementById('topbar-compact-reco-list');
+  const chipsContainer = document.getElementById('topbar-compact-chips');
+  if (!recoList && !chipsContainer) return;
+
+  const loadSuggestions = async (): Promise<void> => {
+    try {
+      const data = await getSearchSuggestions();
+
+      // Populate large-text suggestion list (first 3 suggestions)
+      if (recoList) {
+        const items = data.suggestions.slice(0, 3);
+        recoList.innerHTML = items.map(item => `
+          <button type="button" tabindex="-1" data-compact-expanded-interactive="true" data-search-value="${item.text}" @click="pickValue($event.currentTarget.dataset.searchValue)" class="block w-full text-left text-[22px] font-normal leading-tight text-gray-900 transition-colors hover:text-primary-600 dark:text-white dark:hover:text-primary-400 truncate">${item.text}</button>
+        `).join('');
+      }
+
+      // Populate chip buttons (categories or fallback to remaining suggestions)
+      if (chipsContainer) {
+        const chipItems = data.chips.length > 0 ? data.chips : data.suggestions.slice(3, 6);
+        chipsContainer.innerHTML = chipItems.map(item => `
+          <button type="button" tabindex="-1" data-compact-expanded-interactive="true" data-search-value="${item.text}" @click="pickValue($event.currentTarget.dataset.searchValue)" class="inline-flex items-center gap-1.5 rounded-md border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-700 transition-colors hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 min-w-0 overflow-hidden"><span class="text-primary-500 shrink-0">&#10022;</span><span class="truncate">${item.text}</span></button>
+        `).join('');
+      }
+    } catch {
+      // Silently fail — areas stay empty
+    }
+  };
+
+  loadSuggestions();
+
+  // Wire up "Refresh" button to reload suggestions
+  const refreshBtn = recoList?.parentElement?.querySelector('button');
+  if (refreshBtn) {
+    refreshBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      loadSuggestions();
+    });
+  }
 }

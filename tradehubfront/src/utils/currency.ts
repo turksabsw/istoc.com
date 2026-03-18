@@ -61,7 +61,7 @@ export function formatStartingPrice(price: string): string {
   if (rangeMatch) {
     const a = parseFloat(rangeMatch[1]);
     const b = parseFloat(rangeMatch[2]);
-    const startingPrice = Math.max(a, b);
+    const startingPrice = Math.min(a, b);
     return `${symbol}${startingPrice.toFixed(2).replace(/\.00$/, '')}`;
   }
   // Single price — just swap symbol

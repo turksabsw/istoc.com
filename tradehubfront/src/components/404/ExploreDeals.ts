@@ -1,159 +1,194 @@
 /**
  * 404 Page — Explore Top Deals Section
- * Category-tabbed product slider reusing TopDeals visual system.
- * Fully responsive down to 320px.
+ * Fetches featured products from API and groups them by category.
+ * Falls back to empty state if API is unavailable.
  */
 
 import Swiper from 'swiper';
 import { Navigation } from 'swiper/modules';
 import 'swiper/swiper-bundle.css';
-import { formatPrice } from '../../utils/currency';
+import { searchListings } from '../../services/listingService';
+import { initCurrency } from '../../services/currencyService';
+import type { ProductListingCard } from '../../types/productListing';
 
-interface DealProduct {
+/* ── Types ── */
+
+interface ExploreProduct {
   name: string;
   href: string;
   price: string;
   moq: string;
-  image: string;
+  imageSrc: string;
   badge?: string;
 }
 
-interface DealCategory {
+interface ExploreCategory {
   label: string;
-  products: DealProduct[];
+  products: ExploreProduct[];
 }
 
-const dealCategories: DealCategory[] = [
-  {
-    label: 'Tumunu Gor',
-    products: [
-      { name: 'Wireless Bluetooth Headphones', href: '/pages/product-detail.html', price: '$12.50', moq: '2 adet', image: 'headphones', badge: 'Top pick' },
-      { name: 'Smart Fitness Watch', href: '/pages/product-detail.html', price: '$8.99', moq: '5 adet', image: 'smartwatch' },
-      { name: 'Waterproof Travel Backpack', href: '/pages/product-detail.html', price: '$6.80', moq: '10 adet', image: 'backpack' },
-      { name: 'Running Sports Sneakers', href: '/pages/product-detail.html', price: '$9.20', moq: '5 cift', image: 'sneakers' },
-      { name: 'Polarized UV Sunglasses', href: '/pages/product-detail.html', price: '$3.50', moq: '20 adet', image: 'sunglasses' },
-      { name: '10000mAh Power Bank', href: '/pages/product-detail.html', price: '$7.20', moq: '10 adet', image: 'power-bank' },
-      { name: 'Portable Bluetooth Speaker', href: '/pages/product-detail.html', price: '$5.60', moq: '10 adet', image: 'bluetooth-speaker' },
-      { name: 'Energy Saving LED Bulb', href: '/pages/product-detail.html', price: '$1.20', moq: '50 adet', image: 'led-bulb' },
-    ],
-  },
-  {
-    label: 'Elektronik',
-    products: [
-      { name: 'Wireless Bluetooth Headphones', href: '/pages/product-detail.html', price: '$12.50', moq: '2 adet', image: 'headphones' },
-      { name: 'Smart Fitness Watch', href: '/pages/product-detail.html', price: '$8.99', moq: '5 adet', image: 'smartwatch' },
-      { name: '10000mAh Power Bank', href: '/pages/product-detail.html', price: '$7.20', moq: '10 adet', image: 'power-bank' },
-      { name: 'Portable Bluetooth Speaker', href: '/pages/product-detail.html', price: '$5.60', moq: '10 adet', image: 'bluetooth-speaker' },
-      { name: 'Energy Saving LED Bulb', href: '/pages/product-detail.html', price: '$1.20', moq: '50 adet', image: 'led-bulb' },
-    ],
-  },
-  {
-    label: 'Giyim & Aksesuar',
-    products: [
-      { name: 'Running Sports Sneakers', href: '/pages/product-detail.html', price: '$9.20', moq: '5 cift', image: 'sneakers' },
-      { name: 'Polarized UV Sunglasses', href: '/pages/product-detail.html', price: '$3.50', moq: '20 adet', image: 'sunglasses' },
-      { name: 'Waterproof Travel Backpack', href: '/pages/product-detail.html', price: '$6.80', moq: '10 adet', image: 'backpack' },
-    ],
-  },
-  {
-    label: 'Ev & Yasam',
-    products: [
-      { name: 'Energy Saving LED Bulb', href: '/pages/product-detail.html', price: '$1.20', moq: '50 adet', image: 'led-bulb' },
-      { name: 'Portable Bluetooth Speaker', href: '/pages/product-detail.html', price: '$5.60', moq: '10 adet', image: 'bluetooth-speaker' },
-    ],
-  },
-  {
-    label: 'Spor & Eglence',
-    products: [
-      { name: 'Smart Fitness Watch', href: '/pages/product-detail.html', price: '$8.99', moq: '5 adet', image: 'smartwatch' },
-      { name: 'Running Sports Sneakers', href: '/pages/product-detail.html', price: '$9.20', moq: '5 cift', image: 'sneakers' },
-      { name: 'Waterproof Travel Backpack', href: '/pages/product-detail.html', price: '$6.80', moq: '10 adet', image: 'backpack' },
-    ],
-  },
-];
+/* ── Render helpers ── */
 
-const productVisuals: Record<string, { bg: string; accent: string; stroke: string; icon: string }> = {
-  headphones: {
-    bg: 'linear-gradient(180deg, #f0f4ff 0%, #e4ecff 100%)',
-    accent: 'rgba(147,170,255,0.35)',
-    stroke: '#4a5e9a',
-    icon: '<path d="M5 12.5V12a7 7 0 0 1 14 0v.5"/><path d="M3 14a2 2 0 0 1 2-2h1v5H5a2 2 0 0 1-2-2v-1ZM18 12h1a2 2 0 0 1 2 2v1a2 2 0 0 1-2 2h-1v-5Z"/>',
-  },
-  smartwatch: {
-    bg: 'linear-gradient(180deg, #f2fdf6 0%, #e2f8ec 100%)',
-    accent: 'rgba(134,224,170,0.35)',
-    stroke: '#3a7a54',
-    icon: '<rect x="7" y="3" width="10" height="18" rx="2"/><circle cx="12" cy="12" r="3.5"/><path d="M12 10v2l1.5 1"/>',
-  },
-  backpack: {
-    bg: 'linear-gradient(180deg, #fef8f0 0%, #fdefd8 100%)',
-    accent: 'rgba(240,196,120,0.35)',
-    stroke: '#8a6930',
-    icon: '<path d="M9 5a3 3 0 0 1 6 0"/><rect x="5" y="7" width="14" height="14" rx="2"/><path d="M9 7v4h6V7"/>',
-  },
-  sneakers: {
-    bg: 'linear-gradient(180deg, #f8f0fe 0%, #efe0fd 100%)',
-    accent: 'rgba(192,150,240,0.35)',
-    stroke: '#6a4a9a',
-    icon: '<path d="M3 16h18v2H3z"/><path d="M4 16c0-4 2-6 5-7l2 2h5c2 0 4 1.5 4 5"/><circle cx="7" cy="13" r="0.8"/><circle cx="10" cy="11.5" r="0.8"/>',
-  },
-  sunglasses: {
-    bg: 'linear-gradient(180deg, #fff5f0 0%, #ffe8db 100%)',
-    accent: 'rgba(255,170,120,0.35)',
-    stroke: '#a05a30',
-    icon: '<circle cx="7.5" cy="13" r="3.5"/><circle cx="16.5" cy="13" r="3.5"/><path d="M11 13h2M4 13l-1-2M20 13l1-2"/>',
-  },
-  'power-bank': {
-    bg: 'linear-gradient(180deg, #f0f8ff 0%, #dceeff 100%)',
-    accent: 'rgba(130,190,255,0.35)',
-    stroke: '#3570a0',
-    icon: '<rect x="4" y="6" width="16" height="12" rx="2"/><path d="M12 9v6M9 12h6"/><path d="M7 9h2M7 12h.01M7 15h2"/>',
-  },
-  'bluetooth-speaker': {
-    bg: 'linear-gradient(180deg, #f5f0ff 0%, #ebe0ff 100%)',
-    accent: 'rgba(170,140,255,0.35)',
-    stroke: '#5a40a0',
-    icon: '<rect x="6" y="4" width="12" height="16" rx="3"/><circle cx="12" cy="10" r="3"/><circle cx="12" cy="16" r="1.5"/>',
-  },
-  'led-bulb': {
-    bg: 'linear-gradient(180deg, #fffce8 0%, #fff5c0 100%)',
-    accent: 'rgba(255,220,80,0.35)',
-    stroke: '#9a8020',
-    icon: '<path d="M9 18h6M10 21h4"/><path d="M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2Z"/><path d="M10 14h4"/>',
-  },
-};
-
-function renderProductPlaceholder(imageKey: string): string {
-  const v = productVisuals[imageKey];
-  if (!v) return '<div class="w-full h-full bg-gray-100 rounded-md"></div>';
-  return `
-    <div class="relative w-full h-full overflow-hidden rounded-md" style="background:${v.bg}" aria-hidden="true">
-      <div class="absolute -right-4 -top-4 h-12 w-12 rounded-full opacity-60" style="background:${v.accent}"></div>
-      <div class="absolute -left-3 bottom-0 h-10 w-10 rounded-full opacity-50" style="background:${v.accent}"></div>
-      <div class="absolute inset-0 flex items-center justify-center">
-        <svg class="h-14 w-14 sm:h-16 sm:w-16" fill="none" stroke-width="1.4" viewBox="0 0 24 24" style="stroke:${v.stroke}">${v.icon}</svg>
+function renderProductImage(p: ExploreProduct): string {
+  if (!p.imageSrc) {
+    return `
+      <div class="w-full h-full bg-gray-100 rounded-md flex items-center justify-center" aria-hidden="true">
+        <svg class="h-10 w-10 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+        </svg>
       </div>
+    `;
+  }
+  return `
+    <div class="relative w-full h-full overflow-hidden rounded-md bg-gray-100" aria-hidden="true">
+      <img
+        src="${p.imageSrc}"
+        alt="${p.name}"
+        loading="lazy"
+        class="w-full h-full object-cover transition-transform duration-300 group-hover/card:scale-110"
+      />
     </div>
   `;
 }
 
-function renderProductCard(p: DealProduct): string {
+function renderProductCard(p: ExploreProduct): string {
   return `
     <div class="swiper-slide">
       <a href="${p.href}" class="group/card relative flex flex-col min-w-0" aria-label="${p.name}">
         ${p.badge ? `<span class="absolute top-2 left-2 z-10 inline-flex items-center rounded-sm text-[10px] font-bold leading-none px-1.5 py-0.5 text-white" style="background-color:#DE0505">${p.badge}</span>` : ''}
         <div class="aspect-square w-full mb-2 flex-shrink-0">
-          ${renderProductPlaceholder(p.image)}
+          ${renderProductImage(p)}
         </div>
-        <p class="text-sm sm:text-[15px] font-bold leading-tight truncate" style="color:var(--color-error-600, #dc2626)">${formatPrice(p.price)}</p>
+        <p class="text-sm sm:text-[15px] font-bold leading-tight truncate" style="color:var(--color-error-600, #dc2626)">${p.price}</p>
         <p class="mt-1 text-xs sm:text-[13px] font-medium leading-none truncate text-secondary-700 dark:text-secondary-300">MOQ: ${p.moq}</p>
       </a>
     </div>
   `;
 }
 
-function renderCategoryTabs(): string {
-  return dealCategories.map((cat, i) => `
+function renderNavArrows(index: number): string {
+  return `
+    <button aria-label="Onceki" class="explore-prev-${index} absolute left-0 top-[calc(50%-40px)] z-10 hidden h-9 w-9 -translate-x-1/2 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-500 shadow-md transition-all hover:text-gray-900 opacity-0 pointer-events-none md:flex group-hover/explore:opacity-100 group-hover/explore:pointer-events-auto disabled:opacity-0 disabled:pointer-events-none">
+      <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+    </button>
+    <button aria-label="Sonraki" class="explore-next-${index} absolute right-0 top-[calc(50%-40px)] z-10 hidden h-9 w-9 translate-x-1/2 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-500 shadow-md transition-all hover:text-gray-900 opacity-0 pointer-events-none md:flex group-hover/explore:opacity-100 group-hover/explore:pointer-events-auto disabled:opacity-0 disabled:pointer-events-none">
+      <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+    </button>
+  `;
+}
+
+/* ── Map API response to component model ── */
+
+function mapToExploreProduct(p: ProductListingCard): ExploreProduct {
+  return {
+    name: p.name,
+    href: p.href || `/pages/product-detail.html?id=${p.id}`,
+    price: p.price,
+    moq: p.moq || '1 adet',
+    imageSrc: p.imageSrc || '',
+    badge: p.sellingPoint || undefined,
+  };
+}
+
+function groupByCategory(products: ProductListingCard[]): ExploreCategory[] {
+  const allProducts = products.map(mapToExploreProduct);
+
+  // "Tümünü Gör" tab always first with all products
+  const categories: ExploreCategory[] = [
+    { label: 'Tümünü Gör', products: allProducts },
+  ];
+
+  // Group remaining by category (first category string from each product)
+  const grouped = new Map<string, ExploreProduct[]>();
+  for (const p of products) {
+    const catName = p.category || '';
+    if (!catName) continue;
+    if (!grouped.has(catName)) grouped.set(catName, []);
+    grouped.get(catName)!.push(mapToExploreProduct(p));
+  }
+
+  for (const [label, prods] of grouped) {
+    if (prods.length > 0) {
+      categories.push({ label, products: prods });
+    }
+  }
+
+  return categories;
+}
+
+/* ── Exported component ── */
+
+export function ExploreDeals(): string {
+  return `
+    <section id="explore-deals" class="py-6 sm:py-8 lg:py-10 border-t border-secondary-100 dark:border-secondary-800">
+      <div class="container-boxed">
+        <h2 class="text-lg sm:text-xl font-bold text-secondary-900 dark:text-secondary-100 mb-4">
+          En iyi fırsatları keşfedin
+        </h2>
+
+        <!-- Category tabs (populated from API) -->
+        <div id="explore-tabs" class="flex items-center gap-4 sm:gap-6 overflow-x-auto scrollbar-hide mb-6 border-b border-secondary-100 dark:border-secondary-800">
+        </div>
+
+        <!-- Product sliders (populated from API) -->
+        <div id="explore-panels">
+          <div class="flex items-center justify-center py-12">
+            <div class="text-center">
+              <svg class="w-12 h-12 mx-auto mb-3 text-gray-300 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+              </svg>
+              <p class="text-sm text-gray-400">Ürünler yükleniyor...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  `;
+}
+
+/* ── Init: fetch products, render tabs + sliders, wire up interactions ── */
+
+export function initExploreDeals(): void {
+  initCurrency()
+    .then(() => searchListings({ is_featured: true, page_size: 20 }))
+    .then(result => {
+      if (result.products.length === 0) {
+        showEmptyState();
+        return;
+      }
+
+      const categories = groupByCategory(result.products);
+      renderTabs(categories);
+      renderPanels(categories);
+      const swipers = initSwipers(categories);
+      initTabSwitching(swipers);
+    })
+    .catch(err => {
+      console.warn('[ExploreDeals] API load failed:', err);
+      showEmptyState();
+    });
+}
+
+function showEmptyState(): void {
+  const panels = document.getElementById('explore-panels');
+  if (!panels) return;
+  panels.innerHTML = `
+    <div class="flex items-center justify-center py-12">
+      <div class="text-center">
+        <svg class="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+        </svg>
+        <p class="text-sm text-gray-400">Yakında yeni ürünler eklenecek</p>
+      </div>
+    </div>
+  `;
+}
+
+function renderTabs(categories: ExploreCategory[]): void {
+  const tabsContainer = document.getElementById('explore-tabs');
+  if (!tabsContainer) return;
+
+  tabsContainer.innerHTML = categories.map((cat, i) => `
     <button
       type="button"
       class="explore-tab whitespace-nowrap px-1 pb-2 text-sm font-medium transition-colors duration-150 border-b-2 ${i === 0 ? 'text-primary-600 border-primary-500' : 'text-secondary-500 border-transparent hover:text-secondary-700'}"
@@ -162,51 +197,28 @@ function renderCategoryTabs(): string {
   `).join('');
 }
 
-function renderSwiperContainers(): string {
-  return dealCategories.map((cat, i) => `
+function renderPanels(categories: ExploreCategory[]): void {
+  const panelsContainer = document.getElementById('explore-panels');
+  if (!panelsContainer) return;
+
+  panelsContainer.innerHTML = categories.map((cat, i) => `
     <div class="explore-panel ${i === 0 ? '' : 'hidden'}" data-panel-index="${i}">
       <div class="group/explore relative">
-        <div class="swiper explore-swiper-${i} overflow-hidden" aria-label="${cat.label} urunleri">
+        <div class="swiper explore-swiper-${i} overflow-hidden" aria-label="${cat.label} ürünleri">
           <div class="swiper-wrapper">
             ${cat.products.map(p => renderProductCard(p)).join('')}
           </div>
         </div>
-        <button aria-label="Onceki" class="explore-prev-${i} absolute left-0 top-[calc(50%-40px)] z-10 hidden h-9 w-9 -translate-x-1/2 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-500 shadow-md transition-all hover:text-gray-900 opacity-0 pointer-events-none md:flex group-hover/explore:opacity-100 group-hover/explore:pointer-events-auto disabled:opacity-0 disabled:pointer-events-none">
-          <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
-        </button>
-        <button aria-label="Sonraki" class="explore-next-${i} absolute right-0 top-[calc(50%-40px)] z-10 hidden h-9 w-9 translate-x-1/2 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-500 shadow-md transition-all hover:text-gray-900 opacity-0 pointer-events-none md:flex group-hover/explore:opacity-100 group-hover/explore:pointer-events-auto disabled:opacity-0 disabled:pointer-events-none">
-          <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-        </button>
+        ${renderNavArrows(i)}
       </div>
     </div>
   `).join('');
 }
 
-export function ExploreDeals(): string {
-  return `
-    <section class="py-6 sm:py-8 lg:py-10 border-t border-secondary-100 dark:border-secondary-800">
-      <div class="container-boxed">
-        <h2 class="text-lg sm:text-xl font-bold text-secondary-900 dark:text-secondary-100 mb-4">
-          En iyi firsatlari kesfedin
-        </h2>
-
-        <!-- Category tabs -->
-        <div class="flex items-center gap-4 sm:gap-6 overflow-x-auto scrollbar-hide mb-6 border-b border-secondary-100 dark:border-secondary-800">
-          ${renderCategoryTabs()}
-        </div>
-
-        <!-- Product sliders -->
-        ${renderSwiperContainers()}
-      </div>
-    </section>
-  `;
-}
-
-export function initExploreDeals(): void {
-  // Initialize swipers for each category
+function initSwipers(categories: ExploreCategory[]): Swiper[] {
   const swipers: Swiper[] = [];
 
-  dealCategories.forEach((_, i) => {
+  categories.forEach((_, i) => {
     const el = document.querySelector<HTMLElement>(`.explore-swiper-${i}`);
     if (!el) return;
 
@@ -231,7 +243,10 @@ export function initExploreDeals(): void {
     );
   });
 
-  // Tab switching
+  return swipers;
+}
+
+function initTabSwitching(swipers: Swiper[]): void {
   const tabs = document.querySelectorAll<HTMLButtonElement>('.explore-tab');
   const panels = document.querySelectorAll<HTMLElement>('.explore-panel');
 
@@ -240,7 +255,6 @@ export function initExploreDeals(): void {
       const idx = tab.dataset.tabIndex;
       if (!idx) return;
 
-      // Update tabs
       tabs.forEach(t => {
         t.classList.remove('text-primary-600', 'border-primary-500');
         t.classList.add('text-secondary-500', 'border-transparent');
@@ -248,12 +262,10 @@ export function initExploreDeals(): void {
       tab.classList.remove('text-secondary-500', 'border-transparent');
       tab.classList.add('text-primary-600', 'border-primary-500');
 
-      // Update panels
       panels.forEach(p => p.classList.add('hidden'));
       const target = document.querySelector<HTMLElement>(`[data-panel-index="${idx}"]`);
       target?.classList.remove('hidden');
 
-      // Update swiper on show
       const swiperIdx = parseInt(idx, 10);
       if (swipers[swiperIdx]) {
         swipers[swiperIdx].update();
