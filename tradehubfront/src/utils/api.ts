@@ -54,3 +54,60 @@ export async function api<T>(
 
   return res.json()
 }
+
+// ─── Frappe API Helpers ───────────────────────────────────────────────────────
+
+/**
+ * Frappe whitelist endpoint'i çağırır (cookie session + CSRF).
+ *
+ * @param method  - tam method yolu: 'tradehub_core.api.seller.get_my_profile'
+ * @param params  - GET parametreleri veya POST body
+ * @param post    - true ise POST, false ise GET (varsayılan: false)
+ */
+export async function callMethod<T = unknown>(
+  method: string,
+  params: Record<string, unknown> = {},
+  post = false
+): Promise<T> {
+  const url = `${BASE_URL}/method/${method}`
+  const csrf = getCsrfToken()
+
+  const headers: HeadersInit = {
+    'Content-Type': 'application/json',
+    'X-Frappe-CSRF-Token': csrf,
+  }
+
+  let res: Response
+  if (post) {
+    res = await fetch(url, {
+      method: 'POST',
+      credentials: 'include',
+      headers,
+      body: JSON.stringify(params),
+    })
+  } else {
+    const qs = new URLSearchParams(
+      Object.fromEntries(
+        Object.entries(params).map(([k, v]) => [k, String(v)])
+      )
+    ).toString()
+    res = await fetch(qs ? `${url}?${qs}` : url, {
+      method: 'GET',
+      credentials: 'include',
+      headers,
+    })
+  }
+
+  if (res.status === 403) {
+    window.location.href = `${getBaseUrl()}pages/auth/login.html`
+    throw new Error('Oturum süresi doldu')
+  }
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({})) as { exception?: string; message?: string }
+    throw new Error(err.exception || err.message || `HTTP ${res.status}`)
+  }
+
+  const data = await res.json() as { message: T }
+  return data.message
+}

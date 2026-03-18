@@ -1,129 +1,377 @@
 {
- "name": "Seller Profile",
+ "actions": [],
+ "allow_rename": 0,
+ "autoname": "field:seller_code",
+ "creation": "2024-01-01 00:00:00.000000",
  "doctype": "DocType",
- "module": "TradeHub Core",
- "naming_rule": "By fieldname",
- "autoname": "field:user",
+ "editable_grid": 1,
  "engine": "InnoDB",
- "track_changes": 1,
- "sort_field": "modified",
- "sort_order": "DESC",
- "title_field": "seller_name",
+ "field_order": [
+  "tab_hesabim",
+  "seller_name",
+  "seller_code",
+  "user",
+  "cb_hesabim",
+  "status",
+  "seller_type",
+  "tab_magaza",
+  "logo",
+  "banner_image",
+  "cb_magaza",
+  "description",
+  "slogan",
+  "tab_sirket",
+  "company_name",
+  "tax_id",
+  "tax_office",
+  "cb_sirket",
+  "founded_year",
+  "staff_count",
+  "annual_revenue",
+  "factory_size",
+  "business_type",
+  "main_markets",
+  "tab_iletisim",
+  "email",
+  "phone",
+  "website",
+  "cb_iletisim",
+  "address_line1",
+  "address_line2",
+  "city",
+  "district",
+  "postal_code",
+  "country",
+  "tab_banka",
+  "bank_name",
+  "iban",
+  "account_holder",
+  "tab_performans",
+  "health_score",
+  "score_grade",
+  "cb_performans",
+  "total_orders",
+  "rating",
+  "tab_admin",
+  "commission_rate",
+  "subscription_plan",
+  "cb_admin",
+  "approved_by",
+  "approved_on"
+ ],
  "fields": [
   {
-   "fieldname": "user",
-   "fieldtype": "Link",
-   "label": "User",
-   "options": "User",
-   "reqd": 1,
-   "unique": 1,
-   "set_only_once": 1,
-   "search_index": 1,
-   "in_list_view": 1
-  },
-  {
-   "fieldname": "member_id",
-   "fieldtype": "Data",
-   "label": "Member ID",
-   "read_only": 1,
-   "in_list_view": 1,
-   "bold": 1,
-   "description": "System-generated unique membership number (TH-XXXXXXXX)"
-  },
-  {
-   "fieldname": "cb_main",
-   "fieldtype": "Column Break"
+   "fieldname": "tab_hesabim",
+   "fieldtype": "Tab Break",
+   "label": "Hesab\u0131m"
   },
   {
    "fieldname": "seller_name",
    "fieldtype": "Data",
-   "label": "Seller Name",
-   "reqd": 1,
-   "in_list_view": 1
-  },
-  {
-   "fieldname": "status",
-   "fieldtype": "Select",
-   "label": "Status",
-   "options": "Active\nSuspended\nDeactivated",
-   "default": "Active",
    "in_list_view": 1,
-   "in_standard_filter": 1
+   "label": "Ma\u011faza Ad\u0131",
+   "reqd": 1
   },
   {
-   "fieldname": "sb_details",
-   "fieldtype": "Section Break",
-   "label": "Details"
-  },
-  {
-   "fieldname": "seller_type",
-   "fieldtype": "Select",
-   "label": "Seller Type",
-   "options": "\nIndividual\nBusiness\nEnterprise"
-  },
-  {
-   "fieldname": "application",
-   "fieldtype": "Link",
-   "label": "Application",
-   "options": "Seller Application",
+   "fieldname": "seller_code",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Sat\u0131c\u0131 Kodu",
    "read_only": 1
   },
   {
-   "fieldname": "cb_details",
+   "fieldname": "user",
+   "fieldtype": "Link",
+   "label": "Kullan\u0131c\u0131",
+   "options": "User",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "cb_hesabim",
    "fieldtype": "Column Break"
   },
   {
-   "fieldname": "business_name",
+   "default": "Pending",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Durum",
+   "options": "Pending\nActive\nSuspended\nBlocked"
+  },
+  {
+   "default": "Individual",
+   "fieldname": "seller_type",
+   "fieldtype": "Select",
+   "label": "Sat\u0131c\u0131 Tipi",
+   "options": "Individual\nCorporate"
+  },
+  {
+   "fieldname": "tab_magaza",
+   "fieldtype": "Tab Break",
+   "label": "Ma\u011faza"
+  },
+  {
+   "fieldname": "logo",
+   "fieldtype": "Attach Image",
+   "label": "Logo"
+  },
+  {
+   "fieldname": "banner_image",
+   "fieldtype": "Attach Image",
+   "label": "Banner G\u00f6rsel"
+  },
+  {
+   "fieldname": "cb_magaza",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Text Editor",
+   "label": "Ma\u011faza A\u00e7\u0131klamas\u0131"
+  },
+  {
+   "fieldname": "slogan",
    "fieldtype": "Data",
-   "label": "Business Name"
+   "label": "Slogan"
+  },
+  {
+   "fieldname": "tab_sirket",
+   "fieldtype": "Tab Break",
+   "label": "\u015firket Profili"
+  },
+  {
+   "depends_on": "eval:doc.seller_type=='Corporate'",
+   "fieldname": "company_name",
+   "fieldtype": "Data",
+   "label": "\u015firket Ad\u0131"
   },
   {
    "fieldname": "tax_id",
    "fieldtype": "Data",
-   "label": "Tax ID"
+   "label": "Vergi No / TC No"
   },
   {
-   "fieldname": "contact_phone",
+   "depends_on": "eval:doc.seller_type=='Corporate'",
+   "fieldname": "tax_office",
    "fieldtype": "Data",
-   "label": "Contact Phone",
-   "options": "Phone"
+   "label": "Vergi Dairesi"
   },
   {
+   "fieldname": "cb_sirket",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "founded_year",
+   "fieldtype": "Data",
+   "label": "Kurulu\u015f Y\u0131l\u0131"
+  },
+  {
+   "fieldname": "staff_count",
+   "fieldtype": "Data",
+   "label": "Personel Say\u0131s\u0131"
+  },
+  {
+   "fieldname": "annual_revenue",
+   "fieldtype": "Data",
+   "label": "Y\u0131ll\u0131k Ciro"
+  },
+  {
+   "fieldname": "factory_size",
+   "fieldtype": "Data",
+   "label": "Fabrika B\u00fcy\u00fckl\u00fc\u011f\u00fc (m\u00b2)"
+  },
+  {
+   "default": "Manufacturer",
+   "fieldname": "business_type",
+   "fieldtype": "Select",
+   "label": "\u0130\u015fletme Tipi",
+   "options": "Manufacturer\nWholesaler\nRetailer\nOther"
+  },
+  {
+   "fieldname": "main_markets",
+   "fieldtype": "Small Text",
+   "label": "Ana Pazarlar"
+  },
+  {
+   "fieldname": "tab_iletisim",
+   "fieldtype": "Tab Break",
+   "label": "\u0130leti\u015fim"
+  },
+  {
+   "fieldname": "email",
+   "fieldtype": "Data",
+   "label": "E-posta",
+   "options": "Email",
+   "reqd": 1
+  },
+  {
+   "fieldname": "phone",
+   "fieldtype": "Data",
+   "label": "Telefon"
+  },
+  {
+   "fieldname": "website",
+   "fieldtype": "Data",
+   "label": "Web Sitesi"
+  },
+  {
+   "fieldname": "cb_iletisim",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "address_line1",
+   "fieldtype": "Data",
+   "label": "Adres"
+  },
+  {
+   "fieldname": "address_line2",
+   "fieldtype": "Data",
+   "label": "Adres 2"
+  },
+  {
+   "fieldname": "city",
+   "fieldtype": "Data",
+   "label": "\u015fehir"
+  },
+  {
+   "fieldname": "district",
+   "fieldtype": "Data",
+   "label": "\u0130l\u00e7e"
+  },
+  {
+   "fieldname": "postal_code",
+   "fieldtype": "Data",
+   "label": "Posta Kodu"
+  },
+  {
+   "default": "Turkey",
    "fieldname": "country",
    "fieldtype": "Link",
-   "label": "Country",
+   "label": "\u00dclke",
    "options": "Country"
+  },
+  {
+   "fieldname": "tab_banka",
+   "fieldtype": "Tab Break",
+   "label": "Banka"
+  },
+  {
+   "fieldname": "bank_name",
+   "fieldtype": "Data",
+   "label": "Banka"
+  },
+  {
+   "fieldname": "iban",
+   "fieldtype": "Data",
+   "label": "IBAN"
+  },
+  {
+   "fieldname": "account_holder",
+   "fieldtype": "Data",
+   "label": "Hesap Sahibi"
+  },
+  {
+   "fieldname": "tab_performans",
+   "fieldtype": "Tab Break",
+   "label": "Performans"
+  },
+  {
+   "default": "100",
+   "fieldname": "health_score",
+   "fieldtype": "Float",
+   "label": "Sa\u011fl\u0131k Skoru",
+   "read_only": 1
+  },
+  {
+   "default": "A",
+   "fieldname": "score_grade",
+   "fieldtype": "Select",
+   "label": "Not",
+   "options": "\nA\nB\nC\nD\nF",
+   "read_only": 1
+  },
+  {
+   "fieldname": "cb_performans",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "total_orders",
+   "fieldtype": "Int",
+   "label": "Toplam Sipari\u015f",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "rating",
+   "fieldtype": "Float",
+   "label": "Puan",
+   "read_only": 1
+  },
+  {
+   "fieldname": "tab_admin",
+   "fieldtype": "Tab Break",
+   "label": "Admin"
+  },
+  {
+   "default": "8",
+   "fieldname": "commission_rate",
+   "fieldtype": "Float",
+   "label": "Komisyon (%)"
+  },
+  {
+   "fieldname": "subscription_plan",
+   "fieldtype": "Select",
+   "label": "Abonelik",
+   "options": "\nBasic\nPro\nEnterprise"
+  },
+  {
+   "fieldname": "cb_admin",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "approved_by",
+   "fieldtype": "Link",
+   "label": "Onaylayan",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "approved_on",
+   "fieldtype": "Datetime",
+   "label": "Onay Tarihi",
+   "read_only": 1
   }
  ],
+ "links": [],
+ "modified": "2024-01-01 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "TradeHub Core",
+ "name": "Seller Profile",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
  "permissions": [
   {
-   "role": "System Manager",
-   "read": 1,
-   "write": 1,
    "create": 1,
    "delete": 1,
-   "email": 1,
-   "print": 1,
-   "report": 1,
-   "share": 1,
-   "export": 1,
-   "import": 1
+   "read": 1,
+   "role": "System Manager",
+   "write": 1
   },
   {
+   "read": 1,
    "role": "Marketplace Admin",
-   "read": 1,
-   "write": 1,
-   "create": 1,
-   "report": 1,
-   "export": 1
+   "write": 1
   },
   {
-   "role": "Seller",
    "read": 1,
-   "if_owner": 1
+   "role": "Marketplace Seller",
+   "write": 1
   }
  ],
- "actions": [],
- "links": [],
- "states": []
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
 }
