@@ -17,5 +17,7 @@
     "tabTag Link",
     "tabInstalled",
     "tabInstalled Application",
-    "tabDocField"
+    "tabDocField",
+    "tabError",
+    "tabError Log"
 ]

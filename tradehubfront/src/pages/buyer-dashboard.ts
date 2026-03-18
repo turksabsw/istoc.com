@@ -29,8 +29,7 @@ import { FloatingPanel, initFloatingPanel } from '../components/floating'
 import { BuyerDashboardLayout, initBuyerDashboardLayout, OtherServicesLayout, initOtherServicesLayout } from '../components/buyer-dashboard'
 import { renderSidebar } from '../components/sidebar'
 
-// Mock data (used for browsing history, promotions etc. — user data comes from Alpine)
-import { getMockBuyerDashboardData } from '../data/mockBuyerDashboard'
+import type { BuyerDashboardData } from '../types/buyerDashboard'
 
 // ── Hash routing: dashboard vs other-services sub-pages ──
 type DashboardView = 'dashboard' | 'other-services';
@@ -47,7 +46,14 @@ function renderMainContent(view: DashboardView): string {
   if (view === 'other-services') {
     return OtherServicesLayout();
   }
-  return BuyerDashboardLayout({ data: getMockBuyerDashboardData() });
+  const emptyData: BuyerDashboardData = {
+    user: { avatar: '', username: '', profileHref: '/profile' },
+    stats: [],
+    notifications: [],
+    browsingHistory: [],
+    promotions: [],
+  };
+  return BuyerDashboardLayout({ data: emptyData });
 }
 
 function getBreadcrumbItems(view: DashboardView): { label: string; href?: string }[] {

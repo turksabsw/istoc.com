@@ -9,17 +9,35 @@ export interface PaymentMethod {
   icon: string;
 }
 
+export interface CartPriceTier {
+  minQty: number;
+  maxQty: number | null;
+  price: number;
+}
+
 export interface CartSku {
   id: string;
   skuImage: string;
   variantText: string;
   unitPrice: number;
+  priceAddon: number;
   currency: string;
   unit: string;
   quantity: number;
   minQty: number;
   maxQty: number;
   selected: boolean;
+  baseUnitPrice: number;
+  basePriceAddon: number;
+  baseCurrency: string;
+}
+
+export interface CartShippingMethod {
+  id: string;
+  method: string;
+  estimatedDays: string;
+  baseCost: number;
+  baseCurrency: string;
 }
 
 export interface CartProduct {
@@ -32,6 +50,9 @@ export interface CartProduct {
   deleteIcon: string;
   skus: CartSku[];
   selected: boolean;
+  priceTiers?: CartPriceTier[];
+  baseCurrency?: string;
+  shippingMethods?: CartShippingMethod[];
 }
 
 export interface CartProductTag {

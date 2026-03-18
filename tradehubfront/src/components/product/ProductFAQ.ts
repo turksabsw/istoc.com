@@ -3,10 +3,10 @@
  * FAQ accordion using Flowbite data-accordion pattern.
  */
 
-import { getMockProduct } from '../../data/mockProduct';
+import { getCurrentProduct } from '../../alpine/product';
 
 export function ProductFAQ(): string {
-  const mockProduct = getMockProduct();
+  const mockProduct = getCurrentProduct();
   const faqs = mockProduct.faq;
 
   return `

@@ -22,7 +22,7 @@ import { startAlpine } from '../alpine'
 import { initAnimatedPlaceholder } from '../utils/animatedPlaceholder'
 
 // Manufacturers specific components
-import { ManufacturersLayout, initHorizontalCategoryBar, initCategoryFlyout, initFactorySliders } from '../components/manufacturers'
+import { ManufacturersLayout, initHorizontalCategoryBar, initCategoryFlyout, initFactorySliders, initManufacturersHeroImages } from '../components/manufacturers'
 
 const appEl = document.querySelector<HTMLDivElement>('#app')!;
 appEl.classList.add('relative');
@@ -81,3 +81,4 @@ initAnimatedPlaceholder('#topbar-compact-search-input');
 initHorizontalCategoryBar();
 initCategoryFlyout();
 initFactorySliders(); // async — satıcıları API'den çeker
+initManufacturersHeroImages();

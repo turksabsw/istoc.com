@@ -6,6 +6,8 @@
 import '../style.css'
 import { initFlowbite } from 'flowbite'
 import { initStickyHeights } from '../utils/stickyHeights'
+import { t } from '../i18n'
+import { initCurrency } from '../services/currencyService'
 
 // Header components (reuse from main page)
 import { TopBar, initMobileDrawer, SubHeader, MegaMenu, initMegaMenu, initHeaderCart } from '../components/header'
@@ -26,17 +28,30 @@ import { startAlpine } from '../alpine'
 // Cart components
 import { CartPage, initCartPage } from '../components/cart/page/CartPage'
 import { cartStore } from '../components/cart/state/CartStore'
-import { getMockCartSuppliers, getMockCartSummary, getMockAssuranceItems } from '../data/mockCart'
-const mockCartSuppliers = getMockCartSuppliers();
-const mockCartSummary = getMockCartSummary();
-const mockAssuranceItems = getMockAssuranceItems();
 
-// localStorage'dan sepet verisini yükle, yoksa mock verisini kullan
-if (!cartStore.load()) {
-  cartStore.init(mockCartSuppliers, mockCartSummary.shippingFee, mockCartSummary.currency, mockCartSummary.discount);
-}
+// localStorage'dan sepet verisini yükle
+cartStore.load();
 const cartSuppliers = cartStore.getSuppliers();
 const cartSummary = cartStore.getSummary();
+
+// Assurance items (static UI content)
+const assuranceItems = [
+  {
+    icon: '🛡️',
+    title: t('mockData.cart.assurance1Title'),
+    description: t('mockData.cart.assurance1Desc'),
+  },
+  {
+    icon: '📦',
+    title: t('mockData.cart.assurance2Title'),
+    description: t('mockData.cart.assurance2Desc'),
+  },
+  {
+    icon: '✅',
+    title: t('mockData.cart.assurance3Title'),
+    description: t('mockData.cart.assurance3Desc'),
+  },
+];
 
 const appEl = document.querySelector<HTMLDivElement>('#app')!;
 appEl.classList.add('relative');
@@ -61,7 +76,7 @@ appEl.innerHTML = `
     ${CartPage({
   suppliers: cartSuppliers,
   summary: cartSummary,
-  assuranceItems: mockAssuranceItems
+  assuranceItems
 })}
   </main>
 
@@ -82,11 +97,11 @@ initFlowbite();
 initMobileDrawer();
 initLanguageSelector();
 
-// Initialize cart page logic (store zaten load() ile yüklendi)
-initCartPage();
-
-// Header cart init'i store doldurulduktan SONRA gelsin ki badge güncellensin
-initHeaderCart();
+// Currency init → cart page → header cart (sıralı, currency load sonrası fiyat hesaplaması)
+initCurrency().then(() => {
+  initCartPage();
+  initHeaderCart();
+});
 initStickyHeights();
 
 // Start Alpine LAST — after innerHTML is set so it can find all x-data directives in the DOM

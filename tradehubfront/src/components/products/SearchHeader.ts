@@ -30,11 +30,11 @@ const defaultSortOptions: SortOption[] = [
  * Default search header info for initial render
  */
 const defaultSearchHeaderInfo: SearchHeaderInfo = {
-  keyword: 'laptop backpack',
-  totalProducts: 48562,
+  keyword: '',
+  totalProducts: 0,
   currentPage: 1,
-  totalPages: 1943,
-  freeShippingAvailable: true,
+  totalPages: 1,
+  freeShippingAvailable: false,
   sortOptions: defaultSortOptions,
   selectedSort: 'best-match',
 };

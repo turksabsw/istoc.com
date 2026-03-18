@@ -5,76 +5,11 @@
  */
 
 import { t } from '../../i18n';
-import { formatPrice } from '../../utils/currency';
-import type { TopDealsProduct } from '../../data/mockTopDeals';
-import type { ProductImageKind } from '../../types/productListing';
-
-const categoryImages: Record<ProductImageKind, string[]> = {
-  jewelry: [
-    'https://images.unsplash.com/photo-1515562141589-67f0d569b6f5?w=400&h=400&fit=crop&q=80',
-    'https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?w=400&h=400&fit=crop&q=80',
-    'https://images.unsplash.com/photo-1611591437281-460bfbe1220a?w=400&h=400&fit=crop&q=80',
-    'https://images.unsplash.com/photo-1573408301185-9146fe634ad0?w=400&h=400&fit=crop&q=80',
-    'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?w=400&h=400&fit=crop&q=80',
-    'https://images.unsplash.com/photo-1602173574767-37ac01994b2a?w=400&h=400&fit=crop&q=80',
-  ],
-  electronics: [
-    'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&h=400&fit=crop&q=80',
-    'https://images.unsplash.com/photo-1583394838336-acd977736f90?w=400&h=400&fit=crop&q=80',
-    'https://images.unsplash.com/photo-1546868871-af0de0ae72be?w=400&h=400&fit=crop&q=80',
-    'https://images.unsplash.com/photo-1572569511254-d8f925fe2cbb?w=400&h=400&fit=crop&q=80',
-    'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&h=400&fit=crop&q=80',
-    'https://images.unsplash.com/photo-1585386959984-a4155224a1ad?w=400&h=400&fit=crop&q=80',
-  ],
-  label: [
-    'https://images.unsplash.com/photo-1586075010923-2dd4570fb338?w=400&h=400&fit=crop&q=80',
-    'https://images.unsplash.com/photo-1588345921523-c2dcdb7f1dcd?w=400&h=400&fit=crop&q=80',
-    'https://images.unsplash.com/photo-1568702846914-96b305d2ead1?w=400&h=400&fit=crop&q=80',
-    'https://images.unsplash.com/photo-1607082350899-7e105aa886ae?w=400&h=400&fit=crop&q=80',
-  ],
-  crafts: [
-    'https://images.unsplash.com/photo-1513364776144-60967b0f800c?w=400&h=400&fit=crop&q=80',
-    'https://images.unsplash.com/photo-1452860606245-08f97f4c8657?w=400&h=400&fit=crop&q=80',
-    'https://images.unsplash.com/photo-1596455607563-ad6193f76b17?w=400&h=400&fit=crop&q=80',
-    'https://images.unsplash.com/photo-1595436810223-7dbab2f3bc56?w=400&h=400&fit=crop&q=80',
-  ],
-  accessory: [
-    'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=400&h=400&fit=crop&q=80',
-    'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=400&h=400&fit=crop&q=80',
-    'https://images.unsplash.com/photo-1622560480654-d96214fddae9?w=400&h=400&fit=crop&q=80',
-    'https://images.unsplash.com/photo-1590874103328-eac38a683ce7?w=400&h=400&fit=crop&q=80',
-    'https://images.unsplash.com/photo-1473188588951-1003bbe4a275?w=400&h=400&fit=crop&q=80',
-  ],
-  clothing: [
-    'https://images.unsplash.com/photo-1523381210434-271e8be1f52b?w=400&h=400&fit=crop&q=80',
-    'https://images.unsplash.com/photo-1562157873-818bc0726f68?w=400&h=400&fit=crop&q=80',
-    'https://images.unsplash.com/photo-1489987707025-afc232f7ea0f?w=400&h=400&fit=crop&q=80',
-    'https://images.unsplash.com/photo-1558171813-4c088753af8f?w=400&h=400&fit=crop&q=80',
-    'https://images.unsplash.com/photo-1434389677669-e08b4cda3f96?w=400&h=400&fit=crop&q=80',
-  ],
-  tools: [
-    'https://images.unsplash.com/photo-1504148455328-c376907d081c?w=400&h=400&fit=crop&q=80',
-    'https://images.unsplash.com/photo-1581783898377-1c85bf937427?w=400&h=400&fit=crop&q=80',
-    'https://images.unsplash.com/photo-1572981779307-38b8cabb2407?w=400&h=400&fit=crop&q=80',
-    'https://images.unsplash.com/photo-1426927308491-6380b6a9936f?w=400&h=400&fit=crop&q=80',
-  ],
-  packaging: [
-    'https://images.unsplash.com/photo-1607082349566-187342175e2f?w=400&h=400&fit=crop&q=80',
-    'https://images.unsplash.com/photo-1605000797499-95a51c5269ae?w=400&h=400&fit=crop&q=80',
-    'https://images.unsplash.com/photo-1558618666-fcd25c85f82e?w=400&h=400&fit=crop&q=80',
-    'https://images.unsplash.com/photo-1576867757603-05b134ebc379?w=400&h=400&fit=crop&q=80',
-  ],
-};
-
-function getProductImage(product: TopDealsProduct): string {
-  const urls = categoryImages[product.imageKind];
-  if (!urls || urls.length === 0) return '';
-  const hash = product.id.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
-  return urls[hash % urls.length];
-}
+import { formatStartingPrice } from '../../utils/currency';
+import type { TopDealsProduct } from '../../types/topDeals';
 
 export function renderTopDealCard(product: TopDealsProduct): string {
-  const imgSrc = getProductImage(product);
+  const imgSrc = product.imageSrc || '';
 
   // Badge — "Match" green badge on image
   let badgeHtml = '';
@@ -138,7 +73,7 @@ export function renderTopDealCard(product: TopDealsProduct): string {
 
         <!-- Price + MOQ (same line) -->
         <div class="flex items-baseline gap-1.5 mt-1.5">
-          <span class="text-xl font-bold text-[#222]">${formatPrice(product.price)}</span>
+          <span class="text-xl font-bold text-[#222]">${formatStartingPrice(product.price)}</span>
           <span class="text-xs text-[#999]">MOQ: ${product.moq.replace(/\s*pcs$/i, '')}</span>
         </div>
 
@@ -158,11 +93,22 @@ export function renderTopDealCard(product: TopDealsProduct): string {
 export function TopDealsGrid(): string {
   return `
     <section class="mt-4" aria-label="Top deals products">
+      <!-- Empty state (shown when no products) -->
+      <div id="top-deals-grid-empty" x-show="filteredProducts.length === 0" class="flex items-center justify-center py-12">
+        <div class="text-center">
+          <svg class="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+          </svg>
+          <p class="text-sm text-gray-400">Yak\u0131nda yeni \u00fcr\u00fcnler eklenecek</p>
+        </div>
+      </div>
+
       <div
         id="top-deals-grid"
         class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-2.5 sm:gap-4 md:gap-5"
         role="list"
         aria-label="Deal products"
+        x-show="filteredProducts.length > 0"
       >
         <template x-for="product in visibleProducts" :key="product.id">
           <div role="listitem" x-html="renderCard(product)"></div>

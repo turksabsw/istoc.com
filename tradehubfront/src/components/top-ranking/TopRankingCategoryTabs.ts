@@ -6,10 +6,16 @@
  */
 
 import { t } from '../../i18n';
-import { getRankingTabs } from '../../data/mockTopRanking';
 
-export function TopRankingCategoryTabs(): string {
-  const tabs = getRankingTabs();
+export interface RankingTabItem {
+  id: string;
+  labelKey: string;
+}
+
+export function TopRankingCategoryTabs(tabItems?: RankingTabItem[]): string {
+  const tabs: RankingTabItem[] = tabItems && tabItems.length > 0
+    ? tabItems
+    : [{ id: 'all', labelKey: 'topRankingPage.tabAll' }];
 
   const tabsHtml = tabs.map(tab => `
     <button

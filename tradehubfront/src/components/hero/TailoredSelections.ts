@@ -9,6 +9,8 @@ import { Navigation } from 'swiper/modules';
 import 'swiper/swiper-bundle.css';
 import { t } from '../../i18n';
 import { formatPrice } from '../../utils/currency';
+import { searchListings } from '../../services/listingService';
+import { initCurrency } from '../../services/currencyService';
 
 interface CollectionProduct {
   name: string;
@@ -25,63 +27,8 @@ interface TailoredCollection {
   products: [CollectionProduct, CollectionProduct];
 }
 
-const tailoredCollections: TailoredCollection[] = [
-  {
-    title: 'Office Tech Essentials',
-    titleKey: 'tailored.officeTech',
-    views: '28K+ views',
-    viewsCount: '28K+',
-    href: '/pages/product-detail.html',
-    products: [
-      { name: 'Business Laptop', price: '$320.00', imageSrc: 'https://images.unsplash.com/photo-1496181133206-80ce9b88a853?auto=format&fit=crop&w=400&h=400&q=80' },
-      { name: 'Drawing Tablet', price: '$85.00', imageSrc: 'https://images.unsplash.com/photo-1544244015-0df4b3ffc6b0?auto=format&fit=crop&w=400&h=400&q=80' },
-    ],
-  },
-  {
-    title: 'Photography Gear',
-    titleKey: 'tailored.photographyGear',
-    views: '15K+ views',
-    viewsCount: '15K+',
-    href: '/pages/product-detail.html',
-    products: [
-      { name: 'Mirrorless Camera', price: '$480.00', imageSrc: 'https://images.unsplash.com/photo-1516035069371-29a1b244cc32?auto=format&fit=crop&w=400&h=400&q=80' },
-      { name: 'FPV Drone', price: '$260.00', imageSrc: 'https://images.unsplash.com/photo-1507582020474-9a35b7d455d9?auto=format&fit=crop&w=400&h=400&q=80' },
-    ],
-  },
-  {
-    title: 'Fashion Forward',
-    titleKey: 'tailored.fashionForward',
-    views: '42K+ views',
-    viewsCount: '42K+',
-    href: '/pages/product-detail.html',
-    products: [
-      { name: 'Winter Jacket', price: '$45.00', imageSrc: 'https://images.unsplash.com/photo-1551028719-00167b16eac5?auto=format&fit=crop&w=400&h=400&q=80' },
-      { name: 'Leather Handbag', price: '$32.00', imageSrc: 'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?auto=format&fit=crop&w=400&h=400&q=80' },
-    ],
-  },
-  {
-    title: 'Audio & Sound',
-    titleKey: 'tailored.audioSound',
-    views: '31K+ views',
-    viewsCount: '31K+',
-    href: '/pages/product-detail.html',
-    products: [
-      { name: 'Wireless Headphones', price: '$28.50', imageSrc: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=400&h=400&q=80' },
-      { name: 'Bluetooth Speaker', price: '$19.00', imageSrc: 'https://images.unsplash.com/photo-1608043152269-423dbba4e7e1?auto=format&fit=crop&w=400&h=400&q=80' },
-    ],
-  },
-  {
-    title: 'Smart Accessories',
-    titleKey: 'tailored.smartAccessories',
-    views: '56K+ views',
-    viewsCount: '56K+',
-    href: '/pages/product-detail.html',
-    products: [
-      { name: 'Smart Watch', price: '$42.00', imageSrc: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=400&h=400&q=80' },
-      { name: 'Sport Sneakers', price: '$35.00', imageSrc: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=400&h=400&q=80' },
-    ],
-  },
-];
+// Empty — populated from API in initTailoredSelections()
+const tailoredCollections: TailoredCollection[] = [];
 
 function renderProductImage(product: CollectionProduct): string {
   return `
@@ -174,6 +121,52 @@ export function initTailoredSelections(): void {
       },
     },
   });
+
+  // Load real products grouped by category
+  initCurrency().then(() => searchListings({ page_size: 20 })).then(result => {
+    if (result.products.length >= 4) {
+      // Group products by category
+      const groups: Record<string, typeof result.products> = {};
+      for (const p of result.products) {
+        const cat = (p as any).category || 'Diger';
+        if (!groups[cat]) groups[cat] = [];
+        groups[cat].push(p);
+      }
+
+      const collections: TailoredCollection[] = [];
+      for (const [cat, products] of Object.entries(groups)) {
+        if (products.length >= 2) {
+          collections.push({
+            title: cat,
+            titleKey: '',
+            views: `${Math.floor(Math.random() * 50 + 10)}K+ views`,
+            viewsCount: '',
+            href: `/pages/products.html?category=${encodeURIComponent(cat)}`,
+            products: products.slice(0, 2).map(p => ({
+              name: p.name,
+              price: p.price,
+              imageSrc: p.imageSrc || '',
+            })) as [CollectionProduct, CollectionProduct],
+          });
+        }
+      }
+
+      if (collections.length > 0) {
+        // Hide empty state
+        const emptyState = document.getElementById('tailored-empty');
+        if (emptyState) emptyState.style.display = 'none';
+
+        const wrapper = document.querySelector('#tailored-swiper .swiper-wrapper');
+        if (wrapper) {
+          wrapper.innerHTML = collections.map(c => renderCollectionSlide(c)).join('');
+          const swiperEl = document.querySelector('#tailored-swiper') as HTMLElement;
+          if (swiperEl && (swiperEl as any).swiper) {
+            (swiperEl as any).swiper.update();
+          }
+        }
+      }
+    }
+  }).catch(err => console.warn('[TailoredSelections] API load failed:', err));
 }
 
 export function TailoredSelections(): string {
@@ -198,11 +191,21 @@ export function TailoredSelections(): string {
 
           <!-- Swiper slider -->
           <div class="group/tailored relative">
-            <div class="swiper tailored-swiper overflow-hidden" aria-label="Tailored selection collections">
+            <div id="tailored-swiper" class="swiper tailored-swiper overflow-hidden" aria-label="Tailored selection collections">
               <div class="swiper-wrapper">
-                ${tailoredCollections.map(c => renderCollectionSlide(c)).join('')}
+                ${tailoredCollections.length > 0 ? tailoredCollections.map(c => renderCollectionSlide(c)).join('') : ''}
               </div>
             </div>
+            ${tailoredCollections.length === 0 ? `
+            <div id="tailored-empty" class="flex items-center justify-center py-12">
+              <div class="text-center">
+                <svg class="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+                </svg>
+                <p class="text-sm text-gray-400">Yak\u0131nda yeni \u00fcr\u00fcnler eklenecek</p>
+              </div>
+            </div>
+            ` : ''}
 
             <!-- Navigation arrows -->
             <button
