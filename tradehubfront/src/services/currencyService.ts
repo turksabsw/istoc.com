@@ -81,7 +81,7 @@ export async function initCurrency(): Promise<void> {
   // Fetch fresh rates from API (non-blocking if cache exists)
   try {
     const response = await api<{ message: CurrencySettings }>(
-      '/method/tradehub.api.currency.get_currency_settings'
+      '/method/tradehub_core.api.currency.get_currency_settings'
     )
     _settings = response.message
     _saveCachedRates(_settings)

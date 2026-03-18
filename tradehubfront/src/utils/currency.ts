@@ -53,3 +53,17 @@ export function formatPrice(price: string): string {
     .replace(/\$(?=\d)/g, symbol)
     .replace(/\bUSD\b/g, code);
 }
+
+export function formatStartingPrice(price: string): string {
+  const { symbol } = getSelectedCurrency();
+  // Match patterns like "$0.88-1.51", "$0.88 - 1.51", "$0.88-$1.51"
+  const rangeMatch = price.match(/[\$€₺]?([\d.]+)\s*-\s*[\$€₺]?([\d.]+)/);
+  if (rangeMatch) {
+    const a = parseFloat(rangeMatch[1]);
+    const b = parseFloat(rangeMatch[2]);
+    const startingPrice = Math.max(a, b);
+    return `${symbol}${startingPrice.toFixed(2).replace(/\.00$/, '')}`;
+  }
+  // Single price — just swap symbol
+  return formatPrice(price);
+}

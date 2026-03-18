@@ -4,14 +4,14 @@
  * Contains: price tiers, variations, shipping, CTAs.
  */
 
-import { getMockProduct } from '../../data/mockProduct';
+import { getCurrentProduct } from '../../alpine/product';
 import { t } from '../../i18n';
 import { formatPrice } from '../../utils/currency';
 import type { PriceTier, ProductVariant } from '../../types/product';
-import { openShippingModal } from './CartDrawer';
+import { openShippingModal, openCartDrawer } from './CartDrawer';
 
 function renderPriceTiers(tiers: PriceTier[]): string {
-  const mockProduct = getMockProduct();
+  const mockProduct = getCurrentProduct();
   return `
     <div id="pd-price-tiers">
       ${tiers.map((tier, i) => {
@@ -34,14 +34,18 @@ function renderVariant(variant: ProductVariant): string {
 
   if (variant.type === 'color') {
     return `
-      <div class="variant-group" data-variant-type="${variant.type}">
-        <h4 class="pd-variant-label"><strong>${variant.label}:</strong> ${selectedOpt.label}</h4>
+      <div class="variant-group" data-variant-type="${variant.type}" data-variant-label="${variant.label}">
+        <h4 class="pd-variant-label"><strong>${variant.label}:</strong> <span class="variant-selected-label">${selectedOpt.label}</span></h4>
         <div class="pd-color-thumbs">
           ${variant.options.map((opt, i) => `
             <button
               type="button"
               class="variant-option pd-color-thumb ${i === 0 && opt.available ? 'active' : ''} ${opt.available ? '' : 'pd-color-thumb-disabled'}"
               data-variant-id="${opt.id}"
+              data-variant-label="${opt.label}"
+              data-variant-image="${opt.thumbnail || ''}"
+              data-variant-value="${opt.value}"
+              ${opt.price ? `data-variant-price="${opt.price}"` : ''}
               ${opt.available ? '' : 'disabled'}
               aria-label="${opt.label}"
               title="${opt.label}"
@@ -55,14 +59,16 @@ function renderVariant(variant: ProductVariant): string {
   }
 
   return `
-    <div class="variant-group" data-variant-type="${variant.type}">
-      <h4 class="pd-variant-label"><strong>${variant.label}:</strong> ${selectedOpt.label}</h4>
+    <div class="variant-group" data-variant-type="${variant.type}" data-variant-label="${variant.label}">
+      <h4 class="pd-variant-label"><strong>${variant.label}:</strong> <span class="variant-selected-label">${selectedOpt.label}</span></h4>
       <div class="flex flex-wrap gap-2 mt-2">
         ${variant.options.map((opt, i) => `
           <button
             type="button"
             class="variant-option pd-variant-btn ${i === 0 && opt.available ? 'active' : ''} ${opt.available ? '' : 'opacity-40 cursor-not-allowed'}"
             data-variant-id="${opt.id}"
+            data-variant-label="${opt.label}"
+            ${opt.price ? `data-variant-price="${opt.price}"` : ''}
             ${opt.available ? '' : 'disabled'}
           >
             ${opt.label}
@@ -74,7 +80,7 @@ function renderVariant(variant: ProductVariant): string {
 }
 
 export function ProductInfo(): string {
-  const mockProduct = getMockProduct();
+  const mockProduct = getCurrentProduct();
   const p = mockProduct;
 
   return `
@@ -93,13 +99,15 @@ export function ProductInfo(): string {
         ${renderPriceTiers(p.priceTiers)}
 
         <!-- Sample Price -->
+        ${p.samplePrice ? `
         <div id="pd-sample-price" class="flex items-center justify-between gap-2 px-4 py-2.5 rounded-lg mb-5" style="background: var(--color-surface-raised, #f5f5f5);">
           <div class="flex items-center gap-2 text-sm min-w-0" style="color: var(--color-text-body, #333333);">
             <svg class="shrink-0" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>
-            <span class="truncate">${t('product.samplePrice')}: <strong class="shrink-0">${formatPrice('$' + (p.samplePrice?.toFixed(2) ?? '30.00'))}</strong></span>
+            <span class="truncate">${t('product.samplePrice')}: <strong class="shrink-0">${formatPrice('$' + p.samplePrice.toFixed(2))}</strong></span>
           </div>
           <button type="button" data-order-sample="${mockProduct.id}" class="pd-sample-btn shrink-0 cursor-pointer">${t('cart.orderSample')}</button>
         </div>
+        ` : ''}
 
         <!-- Variations Header -->
         <div id="pd-variations-section" class="pb-4" style="border-bottom: 1px solid var(--color-border-light, #f0f0f0);">
@@ -133,8 +141,8 @@ export function ProductInfo(): string {
           <h3 class="text-sm font-bold mb-3 flex items-center gap-1.5 m-0" style="color: var(--pd-title-color, #111827);">${t('product.shippingLabel')}</h3>
           <div class="flex items-center justify-between gap-3 mt-3 px-3.5 py-3 rounded-lg border min-w-0" id="pd-shipping-card" style="background: var(--pd-spec-header-bg, #f9fafb); border-color: var(--color-border-default, #e5e5e5);">
             <div class="flex flex-col gap-0.5 min-w-0">
-              <span class="text-sm font-semibold truncate" id="pd-ship-card-method" style="color: var(--pd-title-color, #111827);">${p.shipping[0].method}</span>
-              <span class="pd-shipping-card-detail text-xs truncate" style="color: var(--pd-rating-text-color, #6b7280);">${t('product.shippingCost', { cost: p.shipping[0].cost, days: p.shipping[0].estimatedDays })}</span>
+              <span class="text-sm font-semibold truncate" id="pd-ship-card-method" style="color: var(--pd-title-color, #111827);">${p.shipping[0]?.method || t('product.shippingLabel')}</span>
+              <span class="pd-shipping-card-detail text-xs truncate" style="color: var(--pd-rating-text-color, #6b7280);">${p.shipping[0] ? t('product.shippingCost', { cost: p.shipping[0].cost, days: p.shipping[0].estimatedDays }) : ''}</span>
             </div>
             <a href="javascript:void(0)" class="text-[13px] font-medium no-underline whitespace-nowrap cursor-pointer" id="pd-ship-card-change" style="color: var(--pd-price-color, #cc9900);">${t('product.changeLabel')} ›</a>
           </div>
@@ -201,15 +209,54 @@ export function initProductInfo(): void {
     });
   });
 
-  // Variant selection
+  // "Seçim yap" link → open cart drawer
+  const makeSelectionLink = document.querySelector<HTMLAnchorElement>('#pd-variations-section a[href="#"]');
+  if (makeSelectionLink) {
+    makeSelectionLink.addEventListener('click', (e) => {
+      e.preventDefault();
+      // Find the currently selected color variant label
+      const activeColorBtn = document.querySelector<HTMLButtonElement>('.variant-group[data-variant-type="color"] .variant-option.active');
+      const colorLabel = activeColorBtn?.getAttribute('data-variant-label') || '';
+      openCartDrawer(colorLabel);
+    });
+  }
+
+  // Variant selection — updates active state, label, gallery image
   const variantGroups = document.querySelectorAll<HTMLElement>('.variant-group');
   variantGroups.forEach(group => {
     const buttons = group.querySelectorAll<HTMLButtonElement>('.variant-option:not([disabled])');
+    const labelEl = group.querySelector<HTMLElement>('.variant-selected-label');
 
     buttons.forEach(btn => {
       btn.addEventListener('click', () => {
+        // Update active state
         buttons.forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
+
+        // Update label text (e.g., "Renk: Altın" → "Renk: Gümüş")
+        const variantLabel = btn.getAttribute('data-variant-label');
+        if (labelEl && variantLabel) {
+          labelEl.textContent = variantLabel;
+        }
+
+        // Navigate gallery slider to the variant's image
+        const variantImage = btn.getAttribute('data-variant-image');
+        if (variantImage) {
+          const thumbList = document.querySelector<HTMLElement>('[x-ref="thumbList"]');
+          if (thumbList) {
+            const thumbs = thumbList.querySelectorAll<HTMLElement>('.gallery-thumb, [data-thumb-index]');
+            thumbs.forEach((thumb, idx) => {
+              const thumbImg = thumb.querySelector<HTMLImageElement>('img');
+              if (thumbImg && thumbImg.src.includes(variantImage.replace('/files/', ''))) {
+                document.dispatchEvent(new CustomEvent('gallery-go-to', { detail: { index: idx } }));
+              }
+            });
+          }
+        }
+
+        // Open cart drawer with the selected variant pre-selected
+        const clickedLabel = btn.getAttribute('data-variant-label') || '';
+        openCartDrawer(clickedLabel);
       });
     });
   });

@@ -8,7 +8,7 @@
  * Alpine.data('reviewsModal') is registered in src/alpine.ts.
  */
 
-import { getMockProduct } from '../../data/mockProduct';
+import { getCurrentProduct } from '../../alpine/product';
 import { t } from '../../i18n';
 import {
   renderReviewCard,
@@ -18,7 +18,7 @@ import {
 /* ── Modal HTML ──────────────────────────────────────── */
 
 export function ReviewsModal(): string {
-  const mockProduct = getMockProduct();
+  const mockProduct = getCurrentProduct();
   const p = mockProduct;
   const photoReviewCount = p.reviews.filter(r => r.images && r.images.length > 0).length;
 

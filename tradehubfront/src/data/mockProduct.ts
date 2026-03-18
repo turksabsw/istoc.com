@@ -293,6 +293,7 @@ export function getMockProduct(): ProductDetail {
       { label: t('mockProduct.ratingOnTime'), score: 4.6 },
       { label: t('mockProduct.ratingQuality'), score: 4.8 },
     ],
+    baseCurrency: 'USD',
     storeReviewCount: 151,
     reviewMentionTags: [
       { label: t('mockProduct.tagProfessional'), count: 1 },

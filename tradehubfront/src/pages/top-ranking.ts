@@ -37,16 +37,19 @@ import {
 } from '../components/top-ranking'
 import { renderRankingGroupCard } from '../components/top-ranking/TopRankingGrid'
 
-// Data
-import { getMockRankingGroups } from '../data/mockTopRanking'
-import type { RankingCategoryGroup } from '../data/mockTopRanking'
+// Services
+import { searchListings } from '../services/listingService'
+import { initCurrency } from '../services/currencyService'
+
+// Data (types only)
+import type { RankingCategoryGroup } from '../types/topRanking'
 
 // Utilities
 import { initAnimatedPlaceholder } from '../utils/animatedPlaceholder'
 
 /* ── Alpine Data Registration ── */
 
-const allGroups = getMockRankingGroups();
+const allGroups: RankingCategoryGroup[] = [];
 const GROUPS_PER_PAGE = 12;
 
 Alpine.data('topRankingPage', () => ({
@@ -242,6 +245,43 @@ initMobileDrawer();
 initLanguageSelector();
 initRankingCategoryTabs();
 initAnimatedPlaceholder('#topbar-compact-search-input');
+
+// Load products from API and group them into ranking groups
+initCurrency().then(() => searchListings({ page_size: 20 })).then(result => {
+  if (result.products.length >= 3) {
+    // Group products into ranking groups of 3
+    const groups: RankingCategoryGroup[] = [];
+    for (let i = 0; i + 2 < result.products.length; i += 3) {
+      const groupProducts = result.products.slice(i, i + 3);
+      const cat = (groupProducts[0] as any).category || 'Diger';
+      groups.push({
+        id: `rg-api-${i}`,
+        name: cat,
+        nameKey: '',
+        categoryId: 'all',
+        products: groupProducts.map((p, idx) => ({
+          id: p.id || `rp-${i + idx}`,
+          name: p.name,
+          href: p.href || `/pages/product-detail.html?id=${p.id}`,
+          price: p.price,
+          imageSrc: p.imageSrc || '',
+          moq: p.moq || '1 adet',
+          rank: (idx + 1) as 1 | 2 | 3,
+        })),
+      });
+    }
+
+    if (groups.length > 0) {
+      const mainEl = document.querySelector<HTMLElement>('[x-data="topRankingPage"]');
+      if (mainEl && (mainEl as any)._x_dataStack) {
+        const data = (mainEl as any)._x_dataStack[0];
+        if (data) {
+          data.allGroups = groups;
+        }
+      }
+    }
+  }
+}).catch(err => console.warn('[TopRanking Page] API load failed:', err));
 
 // Show/hide sticky compact mobile header based on hero visibility
 // Also adjust sort pills sticky position when mobile header appears

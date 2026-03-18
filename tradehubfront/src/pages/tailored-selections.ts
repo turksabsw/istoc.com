@@ -25,18 +25,25 @@ import { FloatingPanel } from '../components/floating'
 import { startAlpine } from '../alpine'
 
 // Tailored Selections components
-import { TailoredSelectionsHero, initTailoredSelectionsHero, TailoredProductGrid } from '../components/tailored-selections'
+import { TailoredSelectionsHero, initTailoredSelectionsHero, TailoredProductGrid, renderTailoredProductCard } from '../components/tailored-selections'
+
+// Services
+import { searchListings } from '../services/listingService'
+import { initCurrency } from '../services/currencyService'
 
 // Data
-import { getTailoredCategories, getTailoredProducts } from '../data/mockTailoredSelections'
+import { getTailoredCategories } from '../data/mockTailoredSelections'
+import type { TailoredProduct } from '../types/tailoredSelections'
 
 // Utilities
 import { initAnimatedPlaceholder } from '../utils/animatedPlaceholder'
 
 /* ── Data ── */
 
+// Hero categories are editorial content (curated images, descriptions, colors) — kept static
 const categories = getTailoredCategories();
-const products = getTailoredProducts();
+// Products are loaded from API below
+const products: TailoredProduct[] = [];
 
 /* ── Category Pills HTML ── */
 
@@ -148,6 +155,36 @@ initLanguageSelector();
 initTailoredSelectionsHero();
 initAnimatedPlaceholder('#topbar-compact-search-input');
 initTailoredScrollBehavior();
+
+// Load products from API
+initCurrency().then(() => searchListings({ page_size: 20 })).then(result => {
+  if (result.products.length > 0) {
+    // Hide empty state
+    const emptyState = document.getElementById('ts-product-grid-empty');
+    if (emptyState) emptyState.style.display = 'none';
+
+    const grid = document.getElementById('ts-product-grid');
+    if (grid) {
+      grid.classList.remove('hidden');
+      grid.innerHTML = result.products.map((p, i) => {
+        const product: TailoredProduct = {
+          id: p.id || '',
+          name: p.name,
+          href: p.href || `/pages/product-detail.html?id=${p.id}`,
+          price: p.price,
+          originalPrice: p.originalPrice || undefined,
+          discountPercent: p.discount ? parseInt(p.discount) : undefined,
+          moqCount: parseInt(p.moq) || 1,
+          moqUnit: 'pcs',
+          imageSrc: p.imageSrc || '',
+          soldCount: p.stats?.replace(/[^\d.+K]/gi, '') || undefined,
+          verifiedBadge: p.verified,
+        };
+        return renderTailoredProductCard(product, i);
+      }).join('');
+    }
+  }
+}).catch(err => console.warn('[TailoredSelections Page] API load failed:', err));
 
 /* ── Scroll-based header & category pills behavior ── */
 
