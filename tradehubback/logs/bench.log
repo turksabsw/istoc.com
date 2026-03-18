@@ -297,3 +297,10 @@ UPDATE `tabWorkspace` SET content='[
 2026-03-18 15:15:00,379 INFO /home/bora/.local/bin/bench build --app tradehub_core
 2026-03-18 15:36:51,178 INFO /home/bora/.local/bin/bench --site tradehub.localhost migrate
 2026-03-18 15:52:07,916 INFO /home/bora/.local/bin/bench --site tradehub.localhost migrate
+2026-03-18 16:21:50,240 INFO /home/bora/.local/bin/bench --site tradehub.localhost migrate
+2026-03-18 16:21:56,122 INFO /home/bora/.local/bin/bench --site tradehub.localhost migrate
+2026-03-18 16:56:27,347 INFO /home/bora/.local/bin/bench --site tradehub.localhost migrate
+2026-03-18 17:00:33,653 INFO /home/bora/.local/bin/bench --site tradehub.localhost clear-cache
+2026-03-18 17:00:36,810 INFO /home/bora/.local/bin/bench --site tradehub.localhost clear-cache
+2026-03-18 17:00:39,139 INFO /home/bora/.local/bin/bench --site tradehub.localhost migrate
+2026-03-18 17:01:42,973 INFO /home/bora/.local/bin/bench --site tradehub.localhost migrate

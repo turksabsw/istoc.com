@@ -116,12 +116,37 @@ async function initCartPage_async() {
       const apiCart = await fetchCart();
 
       if (apiCart.suppliers.length > 0) {
-        // Sunucu sepeti var → currency sembolüyle başlat (ISO kodu değil)
-        cartStore.init(apiCart.suppliers, 0, currencySymbol, 0);
+        // Backend'deki listing ID'leri
+        const backendListingIds = new Set(
+          apiCart.suppliers.flatMap(s => s.products.map(p => p.id))
+        );
+
+        // localStorage'da olup backend'de olmayan ürünler
+        const localOnlyItems = cartStore.getSuppliers().flatMap(s =>
+          s.products
+            .filter(p => !backendListingIds.has(p.id))
+            .flatMap(p =>
+              p.skus.map(sku => ({
+                listing: p.id,
+                quantity: sku.quantity,
+                ...(sku.listingVariant ? { listing_variant: sku.listingVariant } : {}),
+              }))
+            )
+        );
+
+        if (localOnlyItems.length > 0) {
+          // Fazladan local ürünleri backend'e merge et, sonucu kullan
+          const merged = await apiMergeGuestCart(localOnlyItems);
+          cartStore.init(
+            merged.suppliers.length > 0 ? merged.suppliers : apiCart.suppliers,
+            0, currencySymbol, 0
+          );
+        } else {
+          // Sadece backend verisini kullan
+          cartStore.init(apiCart.suppliers, 0, currencySymbol, 0);
+        }
       } else if (cartStore.getTotalSkuCount() > 0) {
-        // API sepeti boş ama localStorage'da ürün var → merge et
-        // Not: sku.id localStorage'da UUID, backend'de Cart Item adıdır.
-        // listing_variant burada gönderilemez (localStorage'da variant DB adı saklanmıyor).
+        // Backend boş, localStorage'da ürün var → tümünü merge et
         const localItems = cartStore.getSuppliers().flatMap(s =>
           s.products.flatMap(p =>
             p.skus.map(sku => ({

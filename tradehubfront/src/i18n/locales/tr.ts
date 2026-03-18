@@ -435,6 +435,7 @@ const tr = {
       supplierAssurance: 'Tedarikçi Güvencesi',
       moneyBack: 'Memnun kalmazsanız paranız iade edilir',
       moqWarning: 'Minimum sipariş adedi eksik ürünler var. "Add all" ile tamamlayın.',
+      stockError: 'Yeterli stok yok.',
       selectAtLeastOne: 'Checkout için en az 1 ürün seçin.',
       selectAll: 'Tüm ürünleri seç',
       deleteSelected: 'Seçilenleri sil',

@@ -107,8 +107,9 @@ export async function callMethod<T = unknown>(
   }
 
   if (!res.ok) {
-    const err = await res.json().catch(() => ({})) as { exception?: string; message?: string }
-    throw new Error(err.exception || err.message || `HTTP ${res.status}`)
+    const raw = await res.text()
+    const msg = extractFrappeError(raw)
+    throw new Error(msg || `HTTP ${res.status}`)
   }
 
   const data = await res.json() as { message: T }

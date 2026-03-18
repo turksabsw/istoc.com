@@ -163,7 +163,7 @@ export class CartStore {
     for (const supplier of this.suppliers) {
       for (const product of supplier.products) {
         for (const sku of product.skus) {
-          if (sku.selected) {
+          if (sku.selected && sku.isAvailable !== false) {
             selectedCount++;
             productSubtotal += sku.unitPrice * sku.quantity;
             items.push({ image: sku.skuImage, quantity: sku.quantity });
@@ -181,6 +181,34 @@ export class CartStore {
       subtotal: productSubtotal - this.discount + this.shippingFee,
       currency: getSelectedCurrencyInfo().symbol,
     };
+  }
+
+  /** Bir satıcının seçili SKU'larının ara toplamını döndür */
+  getSupplierSubtotal(supplierId: string): number {
+    const supplier = this.getSupplier(supplierId);
+    if (!supplier) return 0;
+    let subtotal = 0;
+    for (const product of supplier.products) {
+      for (const sku of product.skus) {
+        if (sku.selected && sku.isAvailable !== false) {
+          subtotal += sku.unitPrice * sku.quantity;
+        }
+      }
+    }
+    return subtotal;
+  }
+
+  /** Bir satıcıya ait kayıtlı kargo ücretini döndür */
+  getSupplierShippingFee(supplierId: string): number {
+    return this.getSupplier(supplierId)?.shippingFee ?? 0;
+  }
+
+  /** Bir satıcının kargo ücretini güncelle */
+  setSupplierShippingFee(supplierId: string, fee: number): void {
+    const supplier = this.getSupplier(supplierId);
+    if (!supplier) return;
+    supplier.shippingFee = fee;
+    this.notify();
   }
 
   getTotalSkuCount(): number {

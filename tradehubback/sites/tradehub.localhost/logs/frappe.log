@@ -7,3 +7,9 @@ Form Dict: {'cmd': 'tradehub_core.api.cart.get_cart'}
 2026-03-18 15:40:06,390 ERROR frappe New Exception collected in error log
 Site: tradehub.localhost
 Form Dict: {'cmd': 'tradehub_core.api.cart.get_cart'}
+2026-03-18 16:21:00,434 ERROR frappe New Exception collected in error log
+Site: tradehub.localhost
+Form Dict: {'cmd': 'tradehub_core.api.cart.get_cart'}
+2026-03-18 16:21:08,502 ERROR frappe New Exception collected in error log
+Site: tradehub.localhost
+Form Dict: {'cmd': 'tradehub_core.api.cart.get_cart'}

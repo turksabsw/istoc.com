@@ -6,7 +6,12 @@
  "field_order": [
   "listing",
   "listing_variant",
-  "quantity"
+  "quantity",
+  "seller",
+  "snapshot_title",
+  "snapshot_image",
+  "snapshot_price",
+  "snapshot_currency"
  ],
  "fields": [
   {
@@ -31,6 +36,32 @@
    "in_list_view": 1,
    "label": "Quantity",
    "reqd": 1
+  },
+  {
+   "fieldname": "seller",
+   "fieldtype": "Link",
+   "label": "Satıcı",
+   "options": "Admin Seller Profile"
+  },
+  {
+   "fieldname": "snapshot_title",
+   "fieldtype": "Data",
+   "label": "Ürün Adı (Snapshot)"
+  },
+  {
+   "fieldname": "snapshot_image",
+   "fieldtype": "Attach Image",
+   "label": "Görsel (Snapshot)"
+  },
+  {
+   "fieldname": "snapshot_price",
+   "fieldtype": "Float",
+   "label": "Fiyat (Snapshot)"
+  },
+  {
+   "fieldname": "snapshot_currency",
+   "fieldtype": "Data",
+   "label": "Para Birimi (Snapshot)"
   }
  ],
  "istable": 1,

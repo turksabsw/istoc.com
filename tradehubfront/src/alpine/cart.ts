@@ -2,7 +2,7 @@ import Alpine from 'alpinejs'
 import { t } from '../i18n'
 import { addToFavorites } from '../stores/favorites'
 import { cartStore } from '../components/cart/state/CartStore'
-import { showFavoriteToast } from '../components/cart/page/CartPage'
+import { showFavoriteToast, showCartError } from '../components/cart/page/CartPage'
 import { sanitizeHtml } from '../utils/sanitize'
 import { getBaseUrl } from '../components/auth/AuthLayout'
 import { apiUpdateCartItem, apiRemoveCartItem } from '../services/cartService'
@@ -153,10 +153,16 @@ Alpine.data('cartPage', () => ({
     if (!inputId) return;
 
     const skuId = inputId.replace('sku-qty-', '');
+    const prevQty = cartStore.getSku(skuId)?.sku.quantity ?? value;
     cartStore.updateSkuQuantity(skuId, value);
 
     if (isLoggedIn()) {
-      apiUpdateCartItem(skuId, value).catch(() => { /* silent */ });
+      apiUpdateCartItem(skuId, value).catch((err: Error) => {
+        // Hata: miktarı geri al ve kullanıcıya göster
+        cartStore.updateSkuQuantity(skuId, prevQty);
+        this.syncSkuQuantityInput(skuId, prevQty);
+        showCartError(err.message || t('cart.stockError'));
+      });
     }
   },
 
@@ -167,11 +173,19 @@ Alpine.data('cartPage', () => ({
     const snapshot = cartStore.getSku(skuId);
     if (!snapshot) return;
 
+    const prevQty = snapshot.sku.quantity;
     cartStore.fillSkuToMinQty(skuId);
 
     const updatedSku = cartStore.getSku(skuId)?.sku;
     if (updatedSku) {
       this.syncSkuQuantityInput(skuId, updatedSku.quantity);
+      if (isLoggedIn()) {
+        apiUpdateCartItem(skuId, updatedSku.quantity).catch((err: Error) => {
+          cartStore.updateSkuQuantity(skuId, prevQty);
+          this.syncSkuQuantityInput(skuId, prevQty);
+          showCartError(err.message || t('cart.stockError'));
+        });
+      }
     }
   },
 
