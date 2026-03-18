@@ -35,7 +35,7 @@ import {
   getRedirectUrl,
   forgotPassword,
   resetPassword,
-  completeRegistrationApplication,
+  registerSupplier,
 } from '../utils/auth'
 import {
   SupplierSetupForm,
@@ -58,6 +58,7 @@ Alpine.data('registerPage', () => ({
   otpState: null as EmailVerificationState | null,
   registration_token: '',
   seller_application: '',
+  _setupData: {} as Record<string, string>,
 
   init() {
     // Read initial step from data attribute if provided
@@ -200,14 +201,27 @@ Alpine.data('registerPage', () => ({
             onSubmit: async (formData: AccountSetupFormData) => {
               if (!this.accountType) return;
 
-              try {
-                // Register user with registration_token
-                const result = await register({
+              if (this.accountType === 'supplier') {
+                // Supplier: do NOT create account yet — store data and go to form
+                this._setupData = {
                   email: this.email,
                   password: formData.password,
                   first_name: formData.firstName,
                   last_name: formData.lastName,
-                  account_type: this.accountType,
+                  registration_token: this.registration_token,
+                };
+                this.goToStep('supplier-setup');
+                return;
+              }
+
+              // Buyer: create account immediately
+              try {
+                await register({
+                  email: this.email,
+                  password: formData.password,
+                  first_name: formData.firstName,
+                  last_name: formData.lastName,
+                  account_type: 'buyer',
                   phone: '',
                   country: 'Turkey',
                   accept_terms: true,
@@ -215,22 +229,9 @@ Alpine.data('registerPage', () => ({
                   registration_token: this.registration_token,
                 });
 
-                // Auto-login
                 await login(this.email, formData.password);
                 const user = await getSessionUser();
-
-                if (user) {
-                  // Supplier with seller_application → go to supplier setup form
-                  if (this.accountType === 'supplier' && result.seller_application) {
-                    this.seller_application = result.seller_application;
-                    this.goToStep('supplier-setup');
-                  } else {
-                    window.location.href = getRedirectUrl(user);
-                  }
-                } else {
-                  // Session check failed after login — redirect to homepage as fallback
-                  window.location.href = '/';
-                }
+                window.location.href = user ? getRedirectUrl(user) : '/';
               } catch (err) {
                 const msg = err instanceof Error ? err.message : t('common.error');
                 showToast({ message: msg, type: 'error' });
@@ -247,15 +248,22 @@ Alpine.data('registerPage', () => ({
           initSupplierSetupForm({
             onSubmit: async (formData: SupplierSetupFormData) => {
               try {
-                await completeRegistrationApplication({
-                  seller_application: this.seller_application,
+                // Register supplier atomically — account + application in one call
+                await registerSupplier({
+                  ...this._setupData,
+                  account_type: 'supplier',
+                  phone: formData.contact_phone,
+                  accept_terms: true,
+                  accept_kvkk: true,
                   ...formData,
                 });
+
+                // Auto-login and redirect
+                await login(this._setupData.email, this._setupData.password);
                 window.location.href = '/pages/seller/application-pending.html';
               } catch (err) {
                 const msg = err instanceof Error ? err.message : t('common.error');
                 showToast({ message: msg, type: 'error' });
-                // Re-enable submit button
                 const btn = document.getElementById('ss-next-btn') as HTMLButtonElement | null;
                 if (btn) {
                   btn.disabled = false;

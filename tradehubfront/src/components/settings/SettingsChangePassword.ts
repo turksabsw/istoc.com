@@ -21,15 +21,15 @@ export function SettingsChangePassword(): string {
         <div class="max-w-[640px] mx-auto">
           <div class="mb-4 max-sm:mb-3">
             <label class="block text-[13px] max-sm:text-xs font-medium mb-1.5" style="color:var(--color-text-muted, #666666)">${t('settings.currentPassword')}</label>
-            <input type="password" class="w-full max-w-[360px] max-sm:max-w-full py-2.5 px-3.5 border border-gray-300 rounded-lg text-sm outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10" x-ref="pwCurrent" placeholder="${t('settings.currentPassword')}" />
+            <input type="password" class="w-full max-w-[360px] max-sm:max-w-full py-2.5 px-3.5 border border-gray-300 rounded-lg text-sm outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10" x-ref="pwCurrent" autocomplete="off" placeholder="${t('settings.currentPassword')}" />
           </div>
           <div class="mb-4 max-sm:mb-3">
             <label class="block text-[13px] max-sm:text-xs font-medium mb-1.5" style="color:var(--color-text-muted, #666666)">${t('settings.newPassword')}</label>
-            <input type="password" class="w-full max-w-[360px] max-sm:max-w-full py-2.5 px-3.5 border border-gray-300 rounded-lg text-sm outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10" x-ref="pwNew" placeholder="${t('settings.passwordMinChars')}" />
+            <input type="password" class="w-full max-w-[360px] max-sm:max-w-full py-2.5 px-3.5 border border-gray-300 rounded-lg text-sm outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10" x-ref="pwNew" autocomplete="new-password" placeholder="${t('settings.passwordMinChars')}" />
           </div>
           <div class="mb-4 max-sm:mb-3">
             <label class="block text-[13px] max-sm:text-xs font-medium mb-1.5" style="color:var(--color-text-muted, #666666)">${t('settings.newPasswordConfirm')}</label>
-            <input type="password" class="w-full max-w-[360px] max-sm:max-w-full py-2.5 px-3.5 border border-gray-300 rounded-lg text-sm outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10" x-ref="pwConfirm" placeholder="${t('settings.reenterPassword')}" />
+            <input type="password" class="w-full max-w-[360px] max-sm:max-w-full py-2.5 px-3.5 border border-gray-300 rounded-lg text-sm outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10" x-ref="pwConfirm" autocomplete="new-password" placeholder="${t('settings.reenterPassword')}" />
           </div>
           <p class="text-[13px] text-red-500 mb-3" x-show="error" x-text="error" x-cloak></p>
           <button class="th-btn max-sm:w-full disabled:opacity-50" type="button" @click="savePassword()" :disabled="loading">

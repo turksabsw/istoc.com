@@ -60,15 +60,21 @@ def get_session_user():
 		)
 	)
 
-	pending_seller_application = bool(
-		frappe.db.exists(
+	# Seller Application status (exact value for frontend routing)
+	seller_application_status = (
+		frappe.db.get_value(
 			"Seller Application",
-			{
-				"applicant_user": frappe.session.user,
-				"status": ["in", ["Draft", "Submitted", "Under Review"]],
-			},
+			{"applicant_user": frappe.session.user},
+			"status",
 		)
+		or None
 	)
+
+	pending_seller_application = seller_application_status in (
+		"Draft", "Submitted", "Under Review",
+	)
+
+	rejected_seller_application = seller_application_status == "Rejected"
 
 	seller_profile = (
 		frappe.db.get_value(
@@ -93,6 +99,8 @@ def get_session_user():
 			"is_buyer": is_buyer,
 			"has_seller_profile": has_seller_profile,
 			"pending_seller_application": pending_seller_application,
+			"rejected_seller_application": rejected_seller_application,
+			"seller_application_status": seller_application_status,
 			"seller_profile": seller_profile,
 		},
 	}

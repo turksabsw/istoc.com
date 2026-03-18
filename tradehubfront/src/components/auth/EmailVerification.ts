@@ -225,8 +225,8 @@ export function initEmailVerification(options: EmailVerificationOptions = {}): E
         // Success — caller (alpine/auth.ts) handles navigation
       } catch (err) {
         // Verification failed — show error, clear inputs
-        const message = err instanceof Error ? err.message : t('auth.otpInvalidCode');
-        showOTPError(message);
+        const rawMsg = err instanceof Error ? err.message : '';
+        showOTPError(rawMsg || t('auth.otpInvalidCode'));
         clearOTPInputs();
         state.otp = ['', '', '', '', '', ''];
         updateContinueButton(state, continueBtn);

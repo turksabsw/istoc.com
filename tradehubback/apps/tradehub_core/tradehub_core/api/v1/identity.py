@@ -65,7 +65,7 @@ def _create_email_verification(email: str, first_name: str):
 
 
 @frappe.whitelist(allow_guest=True, methods=["POST"])
-@rate_limit(limit=5, seconds=300)
+@rate_limit(key="email", limit=5, seconds=300)
 def send_registration_otp(email: str):
 	"""Send a 6-digit OTP to the given email for registration verification.
 
@@ -104,7 +104,7 @@ def send_registration_otp(email: str):
 
 
 @frappe.whitelist(allow_guest=True, methods=["POST"])
-@rate_limit(limit=5, seconds=300)
+@rate_limit(key="email", limit=5, seconds=300)
 def verify_registration_otp(email: str, code: str):
 	"""Verify the 6-digit OTP and return a registration_token on success.
 
@@ -152,11 +152,12 @@ def verify_registration_otp(email: str, code: str):
 		)
 
 	# Code matches — generate registration_token
+	# 60 min TTL to allow time for supplier setup form
 	registration_token = frappe.generate_hash(length=32)
 	frappe.cache.set_value(
 		f"registration_token:{registration_token}",
 		email,
-		expires_in_sec=1800,
+		expires_in_sec=3600,
 	)
 
 	# Delete OTP (single-use)
@@ -166,7 +167,7 @@ def verify_registration_otp(email: str, code: str):
 
 
 @frappe.whitelist(allow_guest=True, methods=["POST"])
-@rate_limit(limit=5, seconds=3600)
+@rate_limit(key="email", limit=5, seconds=3600)
 def register_user(
 	email: str,
 	password: str,
@@ -247,24 +248,146 @@ def register_user(
 	buyer.status = "Active"
 	buyer.insert(ignore_permissions=True)
 
-	result = {
+	# ── Background email verification ──
+	_create_email_verification(email, first_name)
+
+	# ── Delete registration token (single-use) ──
+	frappe.cache.delete_value(token_cache_key)
+
+	frappe.db.commit()
+	return {
 		"success": True,
 		"user": email,
 		"account_type": account_type,
 	}
 
-	# ── Seller Application (if supplier) ──
-	if account_type == "supplier":
-		app = frappe.new_doc("Seller Application")
-		app.applicant_user = email
-		app.member_id = member_id
-		app.contact_email = email
-		app.contact_phone = phone
-		app.country = country
-		app.status = "Draft"
-		app.insert(ignore_permissions=True)
-		result["seller_application"] = app.name
-		result["seller_application_status"] = app.status
+
+@frappe.whitelist(allow_guest=True, methods=["POST"])
+@rate_limit(key="email", limit=5, seconds=3600)
+def register_supplier(
+	email: str,
+	password: str,
+	first_name: str,
+	last_name: str,
+	phone: str = "",
+	country: str = "Turkey",
+	accept_terms: int = 0,
+	accept_kvkk: int = 0,
+	registration_token: str = "",
+	# Supplier form fields
+	seller_type: str = "Business",
+	business_name: str = "",
+	contact_phone: str = "",
+	tax_id_type: str = "TCKN",
+	tax_id: str = "",
+	tax_office: str = "",
+	address_line_1: str = "",
+	city: str = "",
+	bank_name: str = "",
+	iban: str = "",
+	account_holder_name: str = "",
+	identity_document_type: str = "",
+	identity_document_number: str = "",
+	identity_document_expiry: str = "",
+	identity_document: str = "",
+	terms_accepted: int = 0,
+	privacy_accepted: int = 0,
+	kvkk_accepted: int = 0,
+	commission_accepted: int = 0,
+	return_policy_accepted: int = 0,
+):
+	"""Register a new supplier in one atomic operation.
+
+	Creates User + Buyer Profile + Seller Application (Submitted) all at once.
+	Nothing is written to the database until the full form is submitted.
+	"""
+	email = _validate_email_format(email)
+
+	# ── Token validation ──
+	token_cache_key = f"registration_token:{registration_token}"
+	cached_email = frappe.cache.get_value(token_cache_key)
+
+	if not cached_email:
+		frappe.throw(
+			_(
+				"Invalid or expired verification token. "
+				"Please restart the registration."
+			)
+		)
+
+	if isinstance(cached_email, bytes):
+		cached_email = cached_email.decode()
+
+	if cached_email != email:
+		frappe.throw(_("Verification token does not match this email."))
+
+	# ── Validations ──
+	if not accept_terms:
+		frappe.throw(_("You must accept the Terms of Service."))
+	if not accept_kvkk:
+		frappe.throw(_("You must accept the KVKK policy."))
+	_validate_password(password)
+
+	if frappe.db.exists("User", email):
+		frappe.throw(
+			_("An account with this email already exists."),
+			frappe.DuplicateEntryError,
+		)
+
+	# ── Create User ──
+	user = frappe.new_doc("User")
+	user.email = email
+	user.first_name = first_name
+	user.last_name = last_name
+	user.send_welcome_email = 0
+	user.user_type = "Website User"
+	user.flags.ignore_permissions = True
+	user.flags.ignore_password_policy = True
+	user.insert()
+
+	update_password(email, password)
+	user.add_roles("Buyer")
+
+	member_id = _generate_member_id(email, user.creation)
+
+	# ── Create Buyer Profile ──
+	buyer = frappe.new_doc("Buyer Profile")
+	buyer.user = email
+	buyer.buyer_name = f"{first_name} {last_name}"
+	buyer.member_id = member_id
+	buyer.country = country
+	buyer.phone = phone or contact_phone
+	buyer.status = "Active"
+	buyer.insert(ignore_permissions=True)
+
+	# ── Create Seller Application (Submitted) ──
+	app = frappe.new_doc("Seller Application")
+	app.applicant_user = email
+	app.member_id = member_id
+	app.contact_email = email
+	app.status = "Submitted"
+	app.seller_type = seller_type
+	app.business_name = business_name
+	app.contact_phone = contact_phone or phone
+	app.tax_id_type = tax_id_type
+	app.tax_id = tax_id
+	app.tax_office = tax_office
+	app.address_line_1 = address_line_1
+	app.city = city
+	app.country = country or "Turkey"
+	app.bank_name = bank_name
+	app.iban = iban
+	app.account_holder_name = account_holder_name
+	app.identity_document_type = identity_document_type
+	app.identity_document_number = identity_document_number
+	app.identity_document_expiry = identity_document_expiry or None
+	app.identity_document = identity_document
+	app.terms_accepted = int(terms_accepted)
+	app.privacy_accepted = int(privacy_accepted)
+	app.kvkk_accepted = int(kvkk_accepted)
+	app.commission_accepted = int(commission_accepted)
+	app.return_policy_accepted = int(return_policy_accepted)
+	app.insert(ignore_permissions=True)
 
 	# ── Background email verification ──
 	_create_email_verification(email, first_name)
@@ -273,11 +396,17 @@ def register_user(
 	frappe.cache.delete_value(token_cache_key)
 
 	frappe.db.commit()
-	return result
+	return {
+		"success": True,
+		"user": email,
+		"account_type": "supplier",
+		"seller_application": app.name,
+		"seller_application_status": app.status,
+	}
 
 
 @frappe.whitelist(allow_guest=True, methods=["POST"])
-@rate_limit(limit=3, seconds=3600)
+@rate_limit(key="email", limit=3, seconds=3600)
 def forgot_password(email: str):
 	"""Send a password reset link via email.
 
@@ -312,7 +441,7 @@ def forgot_password(email: str):
 
 
 @frappe.whitelist(allow_guest=True, methods=["POST"])
-@rate_limit(limit=5, seconds=3600)
+@rate_limit(key="key", limit=5, seconds=3600)
 def reset_password(key: str, new_password: str):
 	"""Reset password using the key from the email link.
 
@@ -453,6 +582,16 @@ def change_phone(phone: str, password: str):
 	if buyer_profile:
 		frappe.db.set_value("Buyer Profile", buyer_profile, "phone", phone)
 
+	# Update Seller Profile if exists
+	seller_profile = frappe.db.get_value("Seller Profile", {"user": user}, "name")
+	if seller_profile:
+		frappe.db.set_value("Seller Profile", seller_profile, "contact_phone", phone)
+
+	# Update Seller Application if exists
+	seller_app = frappe.db.get_value("Seller Application", {"applicant_user": user}, "name")
+	if seller_app:
+		frappe.db.set_value("Seller Application", seller_app, "contact_phone", phone)
+
 	frappe.db.commit()
 
 	return {"success": True, "message": _("Phone number updated successfully.")}
@@ -484,6 +623,11 @@ def delete_account(password: str, reason: str = ""):
 	if buyer_profile:
 		frappe.db.set_value("Buyer Profile", buyer_profile, "status", "Deactivated")
 
+	# Deactivate Seller Profile if exists
+	seller_profile = frappe.db.get_value("Seller Profile", {"user": user}, "name")
+	if seller_profile:
+		frappe.db.set_value("Seller Profile", seller_profile, "status", "Deactivated")
+
 	# Log the deletion reason
 	frappe.log_error(
 		title=f"Account deletion: {user}",
@@ -493,6 +637,54 @@ def delete_account(password: str, reason: str = ""):
 	frappe.db.commit()
 
 	return {"success": True, "message": _("Your account has been deleted.")}
+
+
+@frappe.whitelist(methods=["POST"])
+def become_seller():
+	"""Create a Seller Application for an existing buyer account.
+
+	Returns the application name so the frontend can redirect to the
+	supplier setup form.
+	"""
+	user = frappe.session.user
+	if user == "Guest":
+		frappe.throw(_("Not logged in."), frappe.AuthenticationError)
+
+	# Already has a seller application
+	existing = frappe.db.get_value(
+		"Seller Application", {"applicant_user": user}, ["name", "status"], as_dict=True
+	)
+	if existing:
+		return {
+			"success": True,
+			"seller_application": existing.name,
+			"seller_application_status": existing.status,
+			"already_exists": True,
+		}
+
+	# Generate member_id
+	user_data = frappe.db.get_value("User", user, ["email", "creation", "phone"], as_dict=True)
+	member_id = (
+		frappe.db.get_value("Buyer Profile", {"user": user}, "member_id")
+		or _generate_member_id(user_data.email, user_data.creation)
+	)
+
+	app = frappe.new_doc("Seller Application")
+	app.applicant_user = user
+	app.member_id = member_id
+	app.contact_email = user
+	app.contact_phone = user_data.phone or ""
+	app.country = frappe.db.get_value("Buyer Profile", {"user": user}, "country") or "Turkey"
+	app.status = "Draft"
+	app.insert(ignore_permissions=True)
+	frappe.db.commit()
+
+	return {
+		"success": True,
+		"seller_application": app.name,
+		"seller_application_status": app.status,
+		"already_exists": False,
+	}
 
 
 @frappe.whitelist(methods=["POST"])
