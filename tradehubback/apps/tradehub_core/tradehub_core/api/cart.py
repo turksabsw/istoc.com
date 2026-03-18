@@ -595,7 +595,7 @@ def merge_guest_cart(items):
 
 
 @frappe.whitelist()
-def create_order(orders_json, shipping_address=None, payment_method=None):
+def create_order(orders_json, shipping_address=None, payment_method=None, coupon_code=None, coupon_discount=0):
 	"""
 	Seçili sepet ürünlerinden sipariş(ler) oluşturur.
 	orders_json: JSON list of {
@@ -619,6 +619,11 @@ def create_order(orders_json, shipping_address=None, payment_method=None):
 	if not isinstance(orders_data, list) or len(orders_data) == 0:
 		frappe.throw(_("Sipariş verisi boş olamaz"))
 
+	order_count = len([o for o in orders_data if o.get("products")])
+	coupon_discount_val = float(coupon_discount or 0)
+	# Kupon indirimini siparişlere eşit dağıt
+	per_order_coupon_discount = round(coupon_discount_val / order_count, 2) if order_count > 0 else 0
+
 	created_orders = []
 
 	for order_data in orders_data:
@@ -631,7 +636,7 @@ def create_order(orders_json, shipping_address=None, payment_method=None):
 			continue
 
 		subtotal = sum(float(p.get("total_price", 0)) for p in products)
-		total = subtotal + shipping_fee
+		total = subtotal + shipping_fee - per_order_coupon_discount
 
 		order_doc = frappe.new_doc("Order")
 		order_doc.buyer = user
@@ -641,10 +646,13 @@ def create_order(orders_json, shipping_address=None, payment_method=None):
 		order_doc.currency = currency
 		order_doc.subtotal = subtotal
 		order_doc.shipping_fee = shipping_fee
-		order_doc.total = total
+		order_doc.coupon_code = coupon_code or ""
+		order_doc.coupon_discount = per_order_coupon_discount
+		order_doc.total = max(0, total)
 		order_doc.shipping_address = shipping_address or ""
 		order_doc.shipping_method = order_data.get("shipping_method", "")
 		order_doc.ship_from = order_data.get("ship_from", "")
+		order_doc.buyer_note = order_data.get("buyer_note", "") or ""
 
 		for p in products:
 			lv = p.get("listing_variant") or None
@@ -667,12 +675,19 @@ def create_order(orders_json, shipping_address=None, payment_method=None):
 			"order_name": order_doc.name,
 			"order_number": order_doc.name,
 			"seller_name": order_data.get("seller_name", ""),
-			"total": total,
+			"total": max(0, total),
 			"currency": currency,
 		})
 
 	if not created_orders:
 		frappe.throw(_("Hiçbir sipariş oluşturulamadı"))
+
+	# Kupon used_count artır
+	if coupon_code:
+		coupon_name = frappe.db.get_value("Coupon", {"code": coupon_code.strip().upper(), "is_active": 1}, "name")
+		if coupon_name:
+			current_count = int(frappe.db.get_value("Coupon", coupon_name, "used_count") or 0)
+			frappe.db.set_value("Coupon", coupon_name, "used_count", current_count + 1)
 
 	# Sepeti temizle
 	cart_name = frappe.db.get_value("Cart", {"buyer": user, "status": "Active"}, "name")

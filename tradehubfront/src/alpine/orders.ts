@@ -2,6 +2,16 @@ import Alpine from 'alpinejs'
 import { t } from '../i18n'
 import { orderStore } from '../components/orders/state/OrderStore'
 import { getOrderTabs, getOrderFilters } from '../components/buyer-dashboard/ordersData'
+import { apiGetOrders } from '../services/cartService'
+import type { Order, OrderStatus, OrderStatusColor } from '../types/order'
+
+const BACKEND_STATUS_MAP: Record<string, { status: OrderStatus; color: OrderStatusColor; desc: string }> = {
+  'Ödeme Bekleniyor': { status: 'Waiting for payment', color: 'text-amber-600', desc: 'Please complete your payment.' },
+  'Onaylanıyor':      { status: 'Confirming',          color: 'text-blue-600',  desc: 'Your order is being confirmed.' },
+  'Kargoda':          { status: 'Delivering',           color: 'text-green-600', desc: 'Your order is on its way.' },
+  'Tamamlandı':       { status: 'Completed',            color: 'text-gray-500',  desc: 'Order completed.' },
+  'İptal Edildi':     { status: 'Cancelled',            color: 'text-red-600',   desc: 'Order cancelled.' },
+};
 
 export const ORDER_STATUS_MAP: Record<string, string[]> = {
   all: [],
@@ -28,12 +38,89 @@ Alpine.data('ordersListComponent', () => ({
   copiedNumber: false,
   orders: [] as any[],
 
-  init() {
+  async init() {
     orderStore.load();
     this.orders = orderStore.getOrders();
     orderStore.subscribe(() => {
       this.orders = orderStore.getOrders();
     });
+
+    // Backend'den gerçek siparişleri çek ve localStorage ile birleştir
+    try {
+      const { orders: backendOrders } = await apiGetOrders(1);
+      if (backendOrders && backendOrders.length > 0) {
+        const existingNumbers = new Set(orderStore.getOrders().map((o) => o.orderNumber));
+        const newOrders: Order[] = backendOrders
+          .filter((o) => !existingNumbers.has(o.order_number))
+          .map((o) => {
+            const mapped = BACKEND_STATUS_MAP[o.status] ?? {
+              status: 'Waiting for payment' as OrderStatus,
+              color: 'text-amber-600' as OrderStatusColor,
+              desc: o.status,
+            };
+            const dateStr = o.order_date
+              ? new Date(o.order_date).toLocaleDateString('tr-TR', { year: 'numeric', month: 'short', day: 'numeric' })
+              : '';
+            return {
+              id: o.id,
+              orderNumber: o.order_number,
+              orderDate: dateStr,
+              total: String(o.total),
+              currency: o.currency || 'USD',
+              seller: o.seller_name || o.seller || '',
+              status: mapped.status,
+              statusColor: mapped.color,
+              statusDescription: mapped.desc,
+              products: o.products.map((p) => ({
+                name: p.name,
+                variation: p.variation || '',
+                unitPrice: p.unit_price,
+                quantity: p.quantity,
+                totalPrice: p.total_price,
+                image: p.image || '',
+              })),
+              shipping: {
+                trackingStatus: 'Pending',
+                address: '',
+                shipFrom: '',
+                method: '',
+                incoterms: '',
+              },
+              payment: {
+                status: mapped.status === 'Waiting for payment' ? 'Unpaid' : 'Paid',
+                hasRecord: false,
+                subtotal: String(o.subtotal),
+                shippingFee: String(o.shipping_fee),
+                grandTotal: String(o.total),
+              },
+              supplier: {
+                name: o.seller_name || '',
+                contact: '',
+                phone: '',
+                email: '',
+              },
+              paymentMethod: o.payment_method || 'bank_transfer',
+              createdAt: o.order_date ? new Date(o.order_date).getTime() : Date.now(),
+            } satisfies Order;
+          });
+
+        if (newOrders.length > 0) {
+          orderStore.addOrders(newOrders);
+        }
+
+        // Backend'deki mevcut siparişlerin durumunu güncelle
+        backendOrders
+          .filter((o) => existingNumbers.has(o.order_number))
+          .forEach((o) => {
+            const mapped = BACKEND_STATUS_MAP[o.status];
+            if (mapped) {
+              orderStore.updateOrderStatus(o.order_number, mapped.status, mapped.color, mapped.desc);
+            }
+          });
+      }
+    } catch {
+      // Backend erişilemiyorsa localStorage siparişlerini göstermeye devam et
+    }
   },
 
   get filteredOrders() {

@@ -10,6 +10,7 @@ import { getBaseUrl } from '../utils/url'
 import { initCurrency } from '../services/currencyService'
 import { isLoggedIn } from '../utils/auth'
 import { apiCreateOrder, apiValidateCoupon } from '../services/cartService'
+import { showToast } from '../utils/toast'
 
 // Header components (reuse from main page)
 import { TopBar, initMobileDrawer, SubHeader, initStickyHeaderSearch, MegaMenu, initMegaMenu, initHeaderCart } from '../components/header'
@@ -285,20 +286,50 @@ let checkoutDeliveryOrders: CheckoutDeliveryOrderGroup[] = [];
 let currentDefaultShippingFee = 0;
 let currentCheckoutOrderSummary: OrderSummaryData | null = null;
 
+// Seçili kargo yöntemi ve kargo ücreti takibi
+let selectedShippingMethodByOrderId: Record<string, string> = {};
+let currentShippingFee = 0;
+window.addEventListener('checkout:shipping-updated', (e: Event) => {
+  const detail = (e as CustomEvent<{ shippingFee?: number; selectedMethodByOrderId?: Record<string, string> }>).detail;
+  if (typeof detail?.shippingFee === 'number') currentShippingFee = detail.shippingFee;
+  if (detail?.selectedMethodByOrderId) selectedShippingMethodByOrderId = { ...detail.selectedMethodByOrderId };
+});
+
+// Kupon takibi — Alpine'ın checkout:coupon-updated event'inden güncellenir
+let currentCouponApplied: { code: string; type: string; value: number; description: string } | null = null;
+let currentCouponDiscount = 0;
+window.addEventListener('checkout:coupon-updated', (e: Event) => {
+  const detail = (e as CustomEvent<{ coupon: typeof currentCouponApplied; couponDiscount: number }>).detail;
+  currentCouponApplied = detail?.coupon ?? null;
+  currentCouponDiscount = detail?.couponDiscount ?? 0;
+});
+
+// Tedarikçi notları takibi — Alpine'ın checkout:notes-updated event'inden güncellenir
+let currentSupplierNotes: Record<string, string> = {};
+window.addEventListener('checkout:notes-updated', (e: Event) => {
+  const detail = (e as CustomEvent<{ notesByOrderId: Record<string, string> }>).detail;
+  if (detail?.notesByOrderId) currentSupplierNotes = { ...detail.notesByOrderId };
+});
+
 // Build Order objects from checkout data
-function buildOrdersFromCheckout(paymentMethod: string): Order[] {
+function buildOrdersFromCheckout(
+  paymentMethod: string,
+  shippingAddressStr = '',
+  backendOrderNumbers: string[] = [],
+): Order[] {
   const now = Date.now();
-  const dateStr = new Date().toLocaleDateString('en-US', {
+  const dateStr = new Date().toLocaleDateString('tr-TR', {
     month: 'short',
     day: '2-digit',
     year: 'numeric',
-  }) + ', PST';
-
-  const isCreditCard = paymentMethod === 'credit_card';
+  });
 
   return checkoutDeliveryOrders.map((deliveryOrder, idx) => {
     const supplier = cartStore.getSupplier(deliveryOrder.sellerId);
-    const selectedMethod = deliveryOrder.methods.find((m) => m.isDefault) ?? deliveryOrder.methods[0];
+    const selectedMethodId = selectedShippingMethodByOrderId[deliveryOrder.orderId];
+    const selectedMethod = (selectedMethodId
+      ? deliveryOrder.methods.find((m) => m.id === selectedMethodId)
+      : null) ?? deliveryOrder.methods.find((m) => m.isDefault) ?? deliveryOrder.methods[0];
     const shippingFee = selectedMethod?.shippingFee ?? 0;
 
     const products = deliveryOrder.products.map((p) => {
@@ -306,7 +337,7 @@ function buildOrdersFromCheckout(paymentMethod: string): Order[] {
       const totalPrice = p.skuLines.reduce((sum, sku) => sum + sku.unitPrice * sku.quantity, 0);
       return {
         name: p.title,
-        variation: p.skuLines.map((s) => s.variantText).join(', '),
+        variation: p.skuLines.map((s) => s.variantText).filter(Boolean).join(', '),
         unitPrice: (totalPrice / totalQty).toFixed(2),
         quantity: totalQty,
         totalPrice: totalPrice.toFixed(2),
@@ -316,7 +347,7 @@ function buildOrdersFromCheckout(paymentMethod: string): Order[] {
 
     const subtotal = products.reduce((sum, p) => sum + Number(p.totalPrice), 0);
     const grandTotal = subtotal + shippingFee;
-    const orderNumber = `ORD-${(now + idx).toString(36).toUpperCase()}`;
+    const orderNumber = backendOrderNumbers[idx] ?? `ORD-${(now + idx).toString(36).toUpperCase()}`;
 
     return {
       id: `ord-${now}-${idx}`,
@@ -324,22 +355,20 @@ function buildOrdersFromCheckout(paymentMethod: string): Order[] {
       orderDate: dateStr,
       total: grandTotal.toFixed(2),
       currency: getSelectedCurrencyInfo().code,
-      seller: deliveryOrder.sellerName,
-      status: isCreditCard ? 'Confirming' : 'Waiting for payment',
-      statusColor: isCreditCard ? 'text-blue-600' : 'text-amber-600',
-      statusDescription: isCreditCard
-        ? 'Your payment is being confirmed.'
-        : 'Please complete your payment soon.',
+      seller: supplier?.name ?? deliveryOrder.sellerName,
+      status: 'Waiting for payment',
+      statusColor: 'text-amber-600',
+      statusDescription: 'Ödemenizi tamamlayın.',
       products,
       shipping: {
         trackingStatus: 'Pending',
-        address: 'Turkey',
-        shipFrom: 'China',
-        method: selectedMethod?.etaLabel ?? 'Standard',
-        incoterms: 'DAP',
+        address: shippingAddressStr,
+        shipFrom: '',
+        method: selectedMethod?.etaLabel ?? '',
+        incoterms: '',
       },
       payment: {
-        status: isCreditCard ? 'Processing' : 'Unpaid',
+        status: 'Unpaid',
         hasRecord: false,
         subtotal: subtotal.toFixed(2),
         shippingFee: shippingFee.toFixed(2),
@@ -347,9 +376,9 @@ function buildOrdersFromCheckout(paymentMethod: string): Order[] {
       },
       supplier: {
         name: supplier?.name ?? deliveryOrder.sellerName,
-        contact: 'Sales Team',
-        phone: '+86 123 4567 8900',
-        email: `contact@supplier${idx + 1}.com`,
+        contact: '',
+        phone: '',
+        email: '',
       },
       paymentMethod,
       createdAt: now,
@@ -357,42 +386,50 @@ function buildOrdersFromCheckout(paymentMethod: string): Order[] {
   });
 }
 
-// Gather review data from DOM
+// Gather review data from DOM + module-level state
 function gatherReviewData() {
-  const addrParts: string[] = [];
-  const firstNameEl = document.querySelector<HTMLInputElement>('[name="firstName"]');
-  const lastNameEl = document.querySelector<HTMLInputElement>('[name="lastName"]');
-  const streetEl = document.querySelector<HTMLInputElement>('[name="streetAddress"]');
-  const cityEl = document.querySelector<HTMLInputElement>('[name="city"]');
-  const stateEl = document.querySelector<HTMLSelectElement>('[name="state"]');
-  const postalEl = document.querySelector<HTMLInputElement>('[name="postalCode"]');
-  if (firstNameEl?.value) addrParts.push(firstNameEl.value + (lastNameEl?.value ? ' ' + lastNameEl.value : ''));
-  if (streetEl?.value) addrParts.push(streetEl.value);
-  if (cityEl?.value) addrParts.push(cityEl.value);
-  if (stateEl?.value) addrParts.push(stateEl.value);
-  if (postalEl?.value) addrParts.push(postalEl.value);
-  const shippingAddress = addrParts.length > 0 ? addrParts.join(', ') : 'Not provided';
+  // Shipping address: try selected address display first, then form fields
+  const shippingSection = document.getElementById('shipping-address-section');
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const shippingAlpine = shippingSection && ((shippingSection as any)._x_dataStack as Record<string, unknown>[] | undefined)?.[0] as any;
+  let shippingAddress = '';
+  if (shippingAlpine?.selectedAddressLine) {
+    const name = shippingAlpine.selectedAddressName ?? '';
+    const phone = shippingAlpine.selectedAddressPhone ?? '';
+    const line = shippingAlpine.selectedAddressLine ?? '';
+    shippingAddress = [name, phone, line].filter(Boolean).join(', ');
+  } else {
+    const addrParts: string[] = [];
+    const firstNameEl = document.querySelector<HTMLInputElement>('#first-name');
+    const streetEl = document.querySelector<HTMLInputElement>('#street-address');
+    const postalEl = document.querySelector<HTMLInputElement>('#postal-code');
+    if (firstNameEl?.value) addrParts.push(firstNameEl.value);
+    if (streetEl?.value) addrParts.push(streetEl.value);
+    if (postalEl?.value) addrParts.push(postalEl.value);
+    shippingAddress = addrParts.join(', ');
+  }
+  if (!shippingAddress) shippingAddress = 'Belirtilmedi';
 
-  let paymentLabel = t('checkout.creditDebitCard');
+  let paymentLabel = t('checkout.bankTransfer');
   const selected = document.querySelector<HTMLInputElement>('input[name="payment_method"]:checked');
   if (selected) {
     switch (selected.value) {
-      case 'elden': paymentLabel = 'Elden Taksit'; break;
+      case 'elden': paymentLabel = t('checkout.handInstallment'); break;
       case 'anlasmali': paymentLabel = t('checkout.negotiatedWithSupplier'); break;
-      case 'kredi_karti': paymentLabel = t('checkout.creditDebitCard'); break;
-      case 'banka_havale': paymentLabel = 'Bank Transfer / EFT'; break;
+      case 'banka_havale': paymentLabel = t('checkout.bankTransfer'); break;
       case 'cek_senet': paymentLabel = t('checkout.checkDraft'); break;
-      default: paymentLabel = t('checkout.creditDebitCard');
+      default: paymentLabel = t('checkout.bankTransfer');
     }
   }
 
-  const sidebarEl = document.querySelector<HTMLElement>('.checkout-sidebar');
-  const alpineData = sidebarEl && ((sidebarEl as any)._x_dataStack as Record<string, unknown>[] | undefined)?.[0] as Record<string, unknown> | undefined; // eslint-disable-line @typescript-eslint/no-explicit-any
-  const couponDiscount = Number(alpineData?.couponDiscount ?? 0);
-  const shippingFee = Number(alpineData?.shippingFee ?? currentDefaultShippingFee);
-  const itemSubtotal = Number(alpineData?.itemSubtotal ?? currentCheckoutOrderSummary?.itemSubtotal ?? 0);
-  const discount = Number(alpineData?.discount ?? 0);
-  const total = Number((itemSubtotal + shippingFee - discount - couponDiscount).toFixed(2));
+  const itemSubtotal = currentCheckoutOrderSummary?.itemSubtotal ?? 0;
+  // implicit discount = baked-in cart discount (bulk pricing etc.)
+  const implicitDiscount = currentCheckoutOrderSummary
+    ? Number((currentCheckoutOrderSummary.itemSubtotal + currentCheckoutOrderSummary.shipping - currentCheckoutOrderSummary.total).toFixed(2))
+    : 0;
+  const shippingFee = currentShippingFee || currentDefaultShippingFee;
+  const couponDiscount = currentCouponDiscount;
+  const total = Number((itemSubtotal + shippingFee - implicitDiscount - couponDiscount).toFixed(2));
 
   return {
     shippingAddress,
@@ -412,37 +449,36 @@ window.addEventListener('checkout:confirm-order', () => {
   const orderCount = checkoutDeliveryOrders.length;
 
   const selected = document.querySelector<HTMLInputElement>('input[name="payment_method"]:checked');
-  const selectedPaymentValue = selected?.value || 'kredi_karti';
-  const isCreditCard = selectedPaymentValue === 'kredi_karti';
+  const selectedPaymentValue = selected?.value || 'banka_havale';
 
   const paymentMethodMap: Record<string, string> = {
     elden: 'installment',
     anlasmali: 'negotiated',
-    kredi_karti: 'credit_card',
     cek_senet: 'check_promissory',
     banka_havale: 'bank_transfer',
   };
   const paymentMethod = paymentMethodMap[selectedPaymentValue] || 'bank_transfer';
-  const newOrders = buildOrdersFromCheckout(paymentMethod);
-
-  orderStore.load();
-  orderStore.addOrders(newOrders);
-
-  if (isSampleMode) {
-    localStorage.removeItem('tradehub_sample_order');
-  }
 
   const reviewData = gatherReviewData();
   const shippingAddress = reviewData.shippingAddress;
 
+  // Kupon bilgisi — modül düzeyinde event'ten takip edilir
+  const couponCode = currentCouponApplied?.code ?? '';
+  const couponDiscount = currentCouponDiscount;
+
+  // Backend'e gönderilecek sipariş objeleri — notlar dahil
   const backendOrders = checkoutDeliveryOrders.map((deliveryOrder) => {
-    const selectedMethod = deliveryOrder.methods.find((m) => m.isDefault) ?? deliveryOrder.methods[0];
+    const selectedMethodId = selectedShippingMethodByOrderId[deliveryOrder.orderId];
+    const selectedMethod = (selectedMethodId
+      ? deliveryOrder.methods.find((m) => m.id === selectedMethodId)
+      : null) ?? deliveryOrder.methods.find((m) => m.isDefault) ?? deliveryOrder.methods[0];
     return {
       seller_id: deliveryOrder.sellerId || '',
       seller_name: deliveryOrder.sellerName,
       shipping_fee: selectedMethod?.shippingFee ?? 0,
       shipping_method: selectedMethod?.etaLabel ?? '',
       currency: getSelectedCurrencyInfo().code,
+      buyer_note: currentSupplierNotes[deliveryOrder.orderId] || '',
       products: deliveryOrder.products.map((p) => ({
         listing: p.id,
         listing_title: p.title,
@@ -456,28 +492,70 @@ window.addEventListener('checkout:confirm-order', () => {
     };
   });
 
-  const orderNumbers = newOrders.map((o) => o.orderNumber).join(',');
-
-  function redirect() {
-    if (isCreditCard) {
-      window.location.href = `${getBaseUrl()}pages/order/payment-processing.html?count=${orderCount}&method=credit_card&orderNumbers=${encodeURIComponent(orderNumbers)}`;
-    } else {
-      window.location.href = `${getBaseUrl()}pages/order/order-success.html?status=pending&count=${orderCount}&orderNumbers=${encodeURIComponent(orderNumbers)}`;
+  // Onay butonunu devre dışı bırak (çift tıklama önlemi)
+  const confirmBtn = document.getElementById('review-confirm-btn') as HTMLButtonElement | null;
+  function setConfirmLoading(loading: boolean) {
+    if (confirmBtn) {
+      confirmBtn.disabled = loading;
+      confirmBtn.style.opacity = loading ? '0.6' : '';
     }
   }
 
-  if (isLoggedIn()) {
-    apiCreateOrder(backendOrders, shippingAddress, paymentMethod)
-      .then(() => { redirect(); })
-      .catch(() => { redirect(); });
-  } else {
-    redirect();
+  function redirectToSuccess(orderNumbers: string) {
+    if (isSampleMode) localStorage.removeItem('tradehub_sample_order');
+    window.location.href = `${getBaseUrl()}pages/order/order-success.html?status=pending&count=${orderCount}&orderNumbers=${encodeURIComponent(orderNumbers)}`;
   }
+
+  if (!isLoggedIn()) {
+    // Misafir: frontend üretilen numaralarla devam et
+    const newOrders = buildOrdersFromCheckout(paymentMethod, shippingAddress);
+    orderStore.load();
+    orderStore.addOrders(newOrders);
+    redirectToSuccess(newOrders.map((o) => o.orderNumber).join(','));
+    return;
+  }
+
+  setConfirmLoading(true);
+
+  apiCreateOrder(backendOrders, shippingAddress, paymentMethod, couponCode, couponDiscount)
+    .then((result) => {
+      // Backend'den dönen gerçek sipariş numaralarını kullan
+      type BackendResult = { order_number?: string; order_name?: string };
+      const backendNums = (result.orders as BackendResult[])
+        .map((o) => o.order_number ?? o.order_name ?? '')
+        .filter(Boolean);
+
+      const newOrders = buildOrdersFromCheckout(paymentMethod, shippingAddress, backendNums);
+      orderStore.load();
+      orderStore.addOrders(newOrders);
+
+      const orderNumbers = backendNums.length > 0
+        ? backendNums.join(',')
+        : newOrders.map((o) => o.orderNumber).join(',');
+
+      redirectToSuccess(orderNumbers);
+    })
+    .catch((err: unknown) => {
+      setConfirmLoading(false);
+      const msg = (err as { message?: string })?.message || t('checkout.orderCreateError') || 'Sipariş oluşturulamadı. Lütfen tekrar deneyin.';
+      showToast({ message: msg, type: 'error', duration: 5000 });
+    });
 });
 
 // Checkout render'ı async — önce eksik shipping verisi çekilir, sonra sayfa render edilir
 async function renderCheckout() {
 await initCurrency();
+
+// Auth kontrolü: giriş yapmamış kullanıcıları login sayfasına yönlendir
+if (!isLoggedIn()) {
+  const { getSessionUser } = await import('../utils/auth');
+  const sessionUser = await getSessionUser().catch(() => null);
+  if (!sessionUser) {
+    window.location.replace(`/pages/auth/login.html?redirect=${encodeURIComponent(window.location.href)}`);
+    return;
+  }
+}
+
 await enrichMissingShippingMethods();
 
 checkoutDeliveryOrders = isSampleMode ? buildSampleDeliveryOrders() : buildDeliveryOrders();

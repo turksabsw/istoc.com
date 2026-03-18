@@ -15,13 +15,16 @@
   "currency",
   "subtotal",
   "shipping_fee",
+  "coupon_code",
+  "coupon_discount",
   "total",
   "items_section",
   "items",
   "shipping_section",
   "shipping_address",
   "shipping_method",
-  "ship_from"
+  "ship_from",
+  "buyer_note"
  ],
  "fields": [
   {
@@ -101,6 +104,19 @@
    "options": "currency"
   },
   {
+   "default": "",
+   "fieldname": "coupon_code",
+   "fieldtype": "Data",
+   "label": "Kupon Kodu"
+  },
+  {
+   "default": "0",
+   "fieldname": "coupon_discount",
+   "fieldtype": "Currency",
+   "label": "Kupon İndirimi",
+   "options": "currency"
+  },
+  {
    "default": "0",
    "fieldname": "total",
    "fieldtype": "Currency",
@@ -138,6 +154,11 @@
    "fieldname": "ship_from",
    "fieldtype": "Data",
    "label": "Gönderim Yeri"
+  },
+  {
+   "fieldname": "buyer_note",
+   "fieldtype": "Small Text",
+   "label": "Alıcı Notu"
   }
  ],
  "links": [],

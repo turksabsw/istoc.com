@@ -107,6 +107,7 @@ export interface BackendOrder {
   shipping_fee: number;
   shipping_method: string;
   currency: string;
+  buyer_note?: string;
   products: BackendOrderProduct[];
 }
 
@@ -126,11 +127,40 @@ export async function apiValidateCoupon(code: string, orderTotal: number): Promi
   );
 }
 
+export interface BackendOrderItem {
+  id: string;
+  order_number: string;
+  order_date: string;
+  status: string;
+  payment_method: string;
+  currency: string;
+  subtotal: number;
+  shipping_fee: number;
+  total: number;
+  seller: string;
+  seller_name: string;
+  products: {
+    name: string;
+    variation: string;
+    unit_price: string;
+    quantity: number;
+    total_price: string;
+    image: string;
+  }[];
+}
+
+/** Oturumdaki kullanıcının siparişlerini backend'den getirir. */
+export async function apiGetOrders(page = 1): Promise<{ orders: BackendOrderItem[]; total: number }> {
+  return callMethod('tradehub_core.api.cart.get_orders', { page });
+}
+
 /** Ödeme onayı sonrası siparişleri backend'e kaydeder. */
 export async function apiCreateOrder(
   orders: BackendOrder[],
   shippingAddress: string,
-  paymentMethod: string
+  paymentMethod: string,
+  couponCode?: string,
+  couponDiscount?: number
 ): Promise<{ orders: unknown[] }> {
   return callMethod<{ orders: unknown[] }>(
     'tradehub_core.api.cart.create_order',
@@ -138,6 +168,8 @@ export async function apiCreateOrder(
       orders_json: JSON.stringify(orders),
       shipping_address: shippingAddress,
       payment_method: paymentMethod,
+      coupon_code: couponCode || null,
+      coupon_discount: couponDiscount || 0,
     },
     true
   );

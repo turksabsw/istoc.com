@@ -113,7 +113,8 @@ Alpine.data('checkbox', () => ({
 Alpine.data('quantityInput', (props: { value: number; min: number; max: number; step: number; id: string }) => ({
   value: props.value,
   min: props.min,
-  max: props.max,
+  // max=0 gelirse (stok takipli ama stok girilmemiş) sınırsız say; backend zaten stok kontrolü yapıyor
+  max: props.max > 0 ? props.max : 999999,
   step: props.step,
   id: props.id,
 
