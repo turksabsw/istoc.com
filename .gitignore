@@ -1,2 +1,85 @@
-# Frappe Marketplace - git'e gönderilmeyecek
+# ============================================================
+# istoc.com — Ana .gitignore
+# ============================================================
+
+# ──────────────────────────────────────────────
+# Ortam & Gizli Dosyalar
+# ──────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+
+# ──────────────────────────────────────────────
+# Frappe Marketplace (eski proje)
+# ──────────────────────────────────────────────
 Frappe_Marketplace-main/
+
+# ──────────────────────────────────────────────
+# Backend — Python Virtual Environment
+# ──────────────────────────────────────────────
+tradehubback/env/
+
+# ──────────────────────────────────────────────
+# Backend — Framework Bağımlılıkları
+# (Sadece tradehubback/apps/tradehub custom koddur)
+# ──────────────────────────────────────────────
+tradehubback/apps/frappe/
+tradehubback/apps/erpnext/
+
+# ──────────────────────────────────────────────
+# Backend — Log Dosyaları
+# ──────────────────────────────────────────────
+tradehubback/logs/
+
+# ──────────────────────────────────────────────
+# Backend — Site Runtime Verileri
+# ──────────────────────────────────────────────
+tradehubback/sites/tradehub.localhost/locks/
+tradehubback/sites/tradehub.localhost/logs/
+tradehubback/sites/tradehub.localhost/indexes/
+tradehubback/sites/tradehub.localhost/.test_log
+tradehubback/sites/tradehub.localhost/touched_tables.json
+tradehubback/sites/tradehub.localhost/site_config.json
+tradehubback/sites/currentsite.txt
+tradehubback/sites/apps.json
+tradehubback/sites/apps.txt
+tradehubback/sites/assets/
+
+# ──────────────────────────────────────────────
+# Frontend — Node.js & Build
+# ──────────────────────────────────────────────
+tradehubfront/node_modules/
+tradehubfront/dist/
+tradehubfront/dist-ssr/
+
+# ──────────────────────────────────────────────
+# Docker
+# ──────────────────────────────────────────────
+*.pid
+
+# ──────────────────────────────────────────────
+# IDE & OS
+# ──────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# ──────────────────────────────────────────────
+# Claude / AI Araçları
+# ──────────────────────────────────────────────
+.claude/
+.auto-claude/
+.worktrees/
+
+# ──────────────────────────────────────────────
+# Genel
+# ──────────────────────────────────────────────
+*.log
+*.pyc
+__pycache__/
+*.pyo
+*.egg-info/
