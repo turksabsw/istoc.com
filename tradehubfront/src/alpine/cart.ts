@@ -5,6 +5,8 @@ import { cartStore } from '../components/cart/state/CartStore'
 import { showFavoriteToast } from '../components/cart/page/CartPage'
 import { sanitizeHtml } from '../utils/sanitize'
 import { getBaseUrl } from '../components/auth/AuthLayout'
+import { apiUpdateCartItem, apiRemoveCartItem } from '../services/cartService'
+import { isLoggedIn } from '../utils/auth'
 
 Alpine.data('cartPage', () => ({
   init() {
@@ -152,6 +154,10 @@ Alpine.data('cartPage', () => ({
 
     const skuId = inputId.replace('sku-qty-', '');
     cartStore.updateSkuQuantity(skuId, value);
+
+    if (isLoggedIn()) {
+      apiUpdateCartItem(skuId, value).catch(() => { /* silent */ });
+    }
   },
 
   handleSkuFillMin(event: CustomEvent) {
@@ -181,6 +187,10 @@ Alpine.data('cartPage', () => ({
 
     cartStore.deleteSku(skuId);
 
+    if (isLoggedIn()) {
+      apiRemoveCartItem(skuId).catch(() => { /* silent */ });
+    }
+
     const el = this.$el as HTMLElement;
     el.querySelector(`[data-sku-id="${skuId}"]`)?.remove();
 
@@ -200,7 +210,14 @@ Alpine.data('cartPage', () => ({
     const supplierId = snapshot?.supplier.id;
     const supplierProductCount = snapshot?.supplier.products.length ?? 0;
 
+    // Collect sku ids before deletion for API calls
+    const skuIds = snapshot?.product.skus.map(s => s.id) ?? [];
+
     cartStore.deleteProduct(productId);
+
+    if (isLoggedIn()) {
+      skuIds.forEach(id => apiRemoveCartItem(id).catch(() => { /* silent */ }));
+    }
 
     const el = this.$el as HTMLElement;
     el.querySelector(`[data-product-id="${productId}"]`)?.remove();
@@ -213,6 +230,10 @@ Alpine.data('cartPage', () => ({
   handleBatchDelete() {
     const selectedIds = new Set(cartStore.getSelectedSkus().map((sku) => sku.id));
     cartStore.deleteSelected();
+
+    if (isLoggedIn()) {
+      selectedIds.forEach(id => apiRemoveCartItem(id).catch(() => { /* silent */ }));
+    }
 
     const el = this.$el as HTMLElement;
     selectedIds.forEach((skuId) => {

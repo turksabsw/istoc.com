@@ -195,3 +195,44 @@ doc.save(ignore_permissions=True)
 2026-03-18 11:20:20,459 INFO ipython import frappe
 2026-03-18 11:20:20,459 INFO ipython cols = frappe.db.sql("DESCRIBE `tabWorkspace`", as_dict=True)
 2026-03-18 11:20:20,459 INFO ipython === session end ===
+2026-03-18 14:39:07,496 INFO ipython === bench console session ===
+2026-03-18 14:39:07,497 INFO ipython import frappe
+2026-03-18 14:39:07,497 INFO ipython cats = frappe.get_all('Seller Category', fields=['name','seller','category_name'])
+2026-03-18 14:39:07,497 INFO ipython print(cats)
+2026-03-18 14:39:07,497 INFO ipython === session end ===
+2026-03-18 14:39:35,525 INFO ipython === bench console session ===
+2026-03-18 14:39:35,525 INFO ipython import frappe
+2026-03-18 14:39:35,525 INFO ipython # Admin Seller Profile listesi
+2026-03-18 14:39:35,525 INFO ipython profiles = frappe.get_all('Admin Seller Profile', fields=['name', 'seller_code', 'seller_name', 'user'])
+2026-03-18 14:39:35,525 INFO ipython print("Admin Seller Profiles:", profiles)
+2026-03-18 14:39:35,525 INFO ipython # Seller Profile tablosu var mı?
+2026-03-18 14:39:35,525 INFO ipython print("Seller Profile table exists:", frappe.db.table_exists("tabSeller Profile"))
+2026-03-18 14:39:35,525 INFO ipython === session end ===
+2026-03-18 14:40:11,773 INFO ipython === bench console session ===
+2026-03-18 14:40:11,773 INFO ipython import frappe
+2026-03-18 14:40:11,773 INFO ipython # Orphan kayıtları bul ve düzelt
+2026-03-18 14:40:11,773 INFO ipython cats = frappe.get_all('Seller Category', fields=['name', 'seller', 'category_name'])
+2026-03-18 14:40:11,773 INFO ipython print("Mevcut kategoriler:", cats)
+2026-03-18 14:40:11,773 INFO ipython # SELLER-00001 → SEL-00001 düzelt (Turksab)
+2026-03-18 14:40:11,773 INFO ipython orphan_cats = [c for c in cats if not frappe.db.exists("Admin Seller Profile", c.seller)]
+2026-03-18 14:40:11,773 INFO ipython print("Düzeltilecek kayıt sayısı:", len(orphan_cats))
+2026-03-18 14:40:11,773 INFO ipython for cat in orphan_cats:
+    print(f"  Kategori {cat.name}: seller={cat.seller} → Admin Seller Profile bulunamadı, siliniyor ya da düzeltiliyor")
+2026-03-18 14:40:11,773 INFO ipython # SEL-00001 için: URL'de SEL-00001 kullanılıyor, SELLER-00001 düzelt
+2026-03-18 14:40:11,773 INFO ipython frappe.db.sql("UPDATE `tabSeller Category` SET seller='SEL-00001' WHERE seller='SELLER-00001'")
+2026-03-18 14:40:11,773 INFO ipython frappe.db.commit()
+2026-03-18 14:40:11,773 INFO ipython print("Güncellendi.")
+2026-03-18 14:40:11,773 INFO ipython # Kontrol
+2026-03-18 14:40:11,773 INFO ipython cats_after = frappe.get_all('Seller Category', fields=['name', 'seller', 'category_name'])
+2026-03-18 14:40:11,773 INFO ipython print("Güncelleme sonrası:", cats_after)
+2026-03-18 14:40:11,774 INFO ipython === session end ===
+2026-03-18 14:46:29,944 INFO ipython === bench console session ===
+2026-03-18 14:46:29,945 INFO ipython import json
+2026-03-18 14:46:29,945 INFO ipython # Mevcut content'i al
+2026-03-18 14:46:29,945 INFO ipython doc = frappe.get_doc("Workspace", "Satıcı Paneli")
+2026-03-18 14:46:29,945 INFO ipython print("Mevcut shortcut sayısı:", len(doc.shortcuts))
+2026-03-18 14:46:29,945 INFO ipython === session end ===
+2026-03-18 14:46:34,637 INFO ipython === bench console session ===
+2026-03-18 14:46:34,637 INFO ipython import json
+2026-03-18 14:46:34,637 INFO ipython doc = frappe.get_doc("Workspace", "Satıcı Paneli")
+2026-03-18 14:46:34,637 INFO ipython === session end ===

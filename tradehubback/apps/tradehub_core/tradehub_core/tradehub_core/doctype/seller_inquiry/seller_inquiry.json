@@ -18,7 +18,7 @@
   "message"
  ],
  "fields": [
-  {"fieldname": "seller", "fieldtype": "Link", "label": "Satıcı", "options": "Seller Profile", "reqd": 1, "in_list_view": 1},
+  {"fieldname": "seller", "fieldtype": "Link", "label": "Satıcı", "options": "Admin Seller Profile", "reqd": 1, "in_list_view": 1},
   {"fieldname": "seller_code", "fieldtype": "Data", "label": "Satıcı Kodu", "read_only": 1},
   {"fieldname": "cb_1", "fieldtype": "Column Break"},
   {"fieldname": "status", "fieldtype": "Select", "label": "Durum", "options": "Yeni\nOkundu\nYanıtlandı", "default": "Yeni", "in_list_view": 1},

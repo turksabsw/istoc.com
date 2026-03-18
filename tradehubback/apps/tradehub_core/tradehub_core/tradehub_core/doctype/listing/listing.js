@@ -22,5 +22,24 @@ frappe.ui.form.on('Listing', {
         if (frm.doc.has_variants && frm.fields_dict.variants_html) {
             frm.fields_dict.variants_html.$wrapper.html('');
         }
+
+        if (frm.doc.seller_profile) {
+            frm.set_query('category', function() {
+                return {
+                    filters: { seller: frm.doc.seller_profile }
+                };
+            });
+        }
+    },
+
+    seller_profile: function(frm) {
+        if (frm.doc.seller_profile) {
+            frm.set_query('category', function() {
+                return {
+                    filters: { seller: frm.doc.seller_profile }
+                };
+            });
+        }
+        frm.set_value('category', '');
     }
 });

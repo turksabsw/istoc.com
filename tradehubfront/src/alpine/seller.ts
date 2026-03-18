@@ -127,6 +127,7 @@ Alpine.data('sellerStorefront', () => ({
   activeTab: 'overview' as string,
   mobileMenuOpen: false,
   seller: null as Record<string, any> | null,
+  navCategories: [] as Record<string, any>[],
   loading: true,
 
   async init() {
@@ -134,11 +135,12 @@ Alpine.data('sellerStorefront', () => ({
     if (!code) { this.loading = false; return; }
     const apiBase = (window as any).API_BASE || '/api';
     try {
-      const res = await fetch(
-        `${apiBase}/method/tradehub_core.api.seller.get_seller?slug=${code}`,
-        { credentials: 'omit' }
-      ).then(r => r.json());
-      this.seller = res.message || null;
+      const [sellerRes, catRes] = await Promise.all([
+        fetch(`${apiBase}/method/tradehub_core.api.seller.get_seller?slug=${code}`, { credentials: 'omit' }).then(r => r.json()),
+        fetch(`${apiBase}/method/tradehub_core.api.seller.get_seller_categories?seller_code=${code}`, { credentials: 'omit' }).then(r => r.json()),
+      ]);
+      this.seller = sellerRes.message || null;
+      this.navCategories = catRes.message?.categories || [];
     } catch (e) {}
     this.loading = false;
   },
@@ -173,12 +175,17 @@ Alpine.data('sellerDashboard', () => ({
   profile: {} as Record<string, unknown>,
   products: [] as Record<string, unknown>[],
   categories: [] as Record<string, unknown>[],
+  gallery: [] as { name: string; image: string; caption: string }[],
+  galleryNewUrl: '',
+  galleryNewCaption: '',
+  galleryAdding: false,
 
   tabs: [
     { id: 'account',    label: 'Hesabım',        icon: '<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>' },
     { id: 'reviews',    label: 'Yorumlar',        icon: '<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/></svg>' },
     { id: 'products',   label: 'Ürünler',         icon: '<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>' },
     { id: 'categories', label: 'Kategoriler',     icon: '<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>' },
+    { id: 'gallery',    label: 'Galeri',          icon: '<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>' },
     { id: 'company',    label: 'Şirket Profili',  icon: '<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-2 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>' },
     { id: 'contact',    label: 'İletişim',        icon: '<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.948V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>' },
   ],
@@ -189,7 +196,7 @@ Alpine.data('sellerDashboard', () => ({
     contact: { phone: '', website: '', address_line1: '', address_line2: '', city: '', district: '', postal_code: '', iban: '' } as Record<string, unknown>,
   },
 
-  saving: { account: false, company: false, contact: false } as Record<string, boolean>,
+  saving: { account: false, company: false, contact: false, gallery: false } as Record<string, boolean>,
 
   toast: { show: false, message: '', type: 'success' as 'success' | 'error' },
 
@@ -233,8 +240,8 @@ Alpine.data('sellerDashboard', () => ({
       this.form.company = { company_name: p.company_name, business_type: p.business_type || 'Manufacturer', founded_year: p.founded_year || '', staff_count: p.staff_count || '', annual_revenue: p.annual_revenue || '', factory_size: p.factory_size || '', tax_id: p.tax_id, tax_office: p.tax_office, main_markets: p.main_markets || '' };
       this.form.contact = { phone: p.phone, website: p.website, address_line1: p.address_line1, address_line2: p.address_line2, city: p.city, district: p.district, postal_code: p.postal_code, iban: p.iban };
 
-      // Ürün ve kategorileri yükle
-      await Promise.all([this.loadProducts(), this.loadCategories()]);
+      // Ürün, kategori ve galeriyi yükle
+      await Promise.all([this.loadProducts(), this.loadCategories(), this.loadGallery()]);
 
     } catch {
       // session hatası
@@ -381,6 +388,51 @@ Alpine.data('sellerDashboard', () => ({
       this._showToast('Kategori silindi');
     } catch (e) {
       this._showToast((e as Error).message || 'Silme başarısız', 'error');
+    }
+  },
+
+  // ─── Galeri ────────────────────────────────────────────────
+  async loadGallery() {
+    try {
+      const data = await this._post('tradehub_core.api.seller.get_gallery') as { name: string; image: string; caption: string }[];
+      this.gallery = data;
+    } catch {
+      this.gallery = [];
+    }
+  },
+
+  async addGalleryImage() {
+    if (!this.galleryNewUrl.trim()) {
+      this._showToast('Görsel URL giriniz', 'error'); return;
+    }
+    if (this.gallery.length >= 20) {
+      this._showToast('Maksimum 20 fotoğraf yükleyebilirsiniz', 'error'); return;
+    }
+    this.galleryAdding = true;
+    try {
+      const data = await this._post('tradehub_core.api.seller.add_gallery_image', {
+        image_url: this.galleryNewUrl.trim(),
+        caption: this.galleryNewCaption.trim(),
+      }) as { name: string; image: string; caption: string }[];
+      this.gallery = data;
+      this.galleryNewUrl = '';
+      this.galleryNewCaption = '';
+      this._showToast('Fotoğraf eklendi');
+    } catch (e) {
+      this._showToast((e as Error).message || 'Hata', 'error');
+    } finally {
+      this.galleryAdding = false;
+    }
+  },
+
+  async removeGalleryImage(rowName: string) {
+    if (!confirm('Bu fotoğrafı kaldırmak istediğinizden emin misiniz?')) return;
+    try {
+      await this._post('tradehub_core.api.seller.remove_gallery_image', { row_name: rowName });
+      this.gallery = this.gallery.filter((g) => g.name !== rowName);
+      this._showToast('Fotoğraf kaldırıldı');
+    } catch (e) {
+      this._showToast((e as Error).message || 'Hata', 'error');
     }
   },
 }));

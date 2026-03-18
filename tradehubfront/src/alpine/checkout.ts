@@ -170,6 +170,7 @@ Alpine.data('checkoutOrderSummary', (props?: { itemSubtotal?: number; discount?:
   // Coupon state
   couponCode: '',
   couponError: '',
+  couponApplying: false,
   couponApplied: null as { code: string; type: string; value: number; description: string } | null,
   couponDiscount: 0,
 
@@ -184,27 +185,38 @@ Alpine.data('checkoutOrderSummary', (props?: { itemSubtotal?: number; discount?:
     });
   },
 
-  applyCoupon() {
+  async applyCoupon() {
     const code = this.couponCode.trim().toUpperCase();
-    if (!code) { this.couponError = 'Please enter a coupon code'; return; }
+    if (!code) { this.couponError = 'Lütfen kupon kodu girin'; return; }
+    if (this.couponApplying) return;
 
-    const coupons = (window as unknown as Record<string, unknown>).__mockCoupons as Array<{ code: string; type: string; value: number; minOrder: number; description: string }> | undefined;
-    const coupon = coupons?.find(c => c.code === code);
-    if (!coupon) { this.couponError = 'Invalid coupon code'; return; }
-
-    const subtotalBeforeCoupon = this.itemSubtotal + this.shippingFee - this.discount;
-    if (coupon.minOrder > 0 && subtotalBeforeCoupon < coupon.minOrder) {
-      this.couponError = `Minimum order amount: ${this.currency} ${coupon.minOrder.toFixed(2)}`;
-      return;
-    }
-
-    this.couponApplied = { code: coupon.code, type: coupon.type, value: coupon.value, description: coupon.description };
+    this.couponApplying = true;
     this.couponError = '';
-    this.recalcCouponDiscount();
 
-    window.dispatchEvent(new CustomEvent('checkout:coupon-updated', {
-      detail: { coupon: this.couponApplied, couponDiscount: this.couponDiscount },
-    }));
+    try {
+      const validateFn = (window as unknown as Record<string, unknown>).__validateCoupon as
+        ((code: string, total: number) => Promise<{ code: string; type: string; value: number; minOrder: number; description: string }>) | undefined;
+
+      const orderTotal = this.itemSubtotal + this.shippingFee - this.discount;
+
+      if (validateFn) {
+        const coupon = await validateFn(code, orderTotal);
+        this.couponApplied = { code: coupon.code, type: coupon.type, value: coupon.value, description: coupon.description };
+        this.couponError = '';
+        this.recalcCouponDiscount();
+
+        window.dispatchEvent(new CustomEvent('checkout:coupon-updated', {
+          detail: { coupon: this.couponApplied, couponDiscount: this.couponDiscount },
+        }));
+      } else {
+        this.couponError = 'Kupon servisi şu an kullanılamıyor';
+      }
+    } catch (e: unknown) {
+      const msg = (e as { message?: string })?.message || 'Geçersiz kupon kodu';
+      this.couponError = msg;
+    } finally {
+      this.couponApplying = false;
+    }
   },
 
   removeCoupon() {

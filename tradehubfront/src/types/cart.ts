@@ -30,6 +30,7 @@ export interface CartSku {
   baseUnitPrice: number;
   basePriceAddon: number;
   baseCurrency: string;
+  listingVariant?: string;  // Frappe Listing Variant adı (merge için)
 }
 
 export interface CartShippingMethod {

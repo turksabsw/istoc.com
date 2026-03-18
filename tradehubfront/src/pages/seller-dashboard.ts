@@ -345,6 +345,95 @@ appEl.innerHTML = `
         </div>
       </div>
 
+      <!-- ─── Galeri Tab ──────────────────────────────────────── -->
+      <div x-show="activeTab === 'gallery'" x-transition.opacity>
+        <div class="bg-white rounded-xl border border-gray-200">
+          <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+            <div>
+              <h2 class="text-base font-bold text-gray-900">Fabrika / Mağaza Fotoğrafları</h2>
+              <p class="text-xs text-gray-400 mt-0.5">Maksimum 20 fotoğraf (<span x-text="gallery.length"></span>/20)</p>
+            </div>
+          </div>
+
+          <!-- Yeni fotoğraf ekle -->
+          <div x-show="gallery.length < 20" class="px-6 py-4 border-b border-gray-100 bg-gray-50">
+            <p class="text-xs font-medium text-gray-600 mb-3">Fotoğraf Ekle</p>
+            <div class="flex gap-3 flex-wrap">
+              <input
+                x-model="galleryNewUrl"
+                type="url"
+                placeholder="Görsel URL (https://...)"
+                class="flex-1 min-w-[200px] border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-500)]"
+                @keydown.enter.prevent="addGalleryImage()"
+              />
+              <input
+                x-model="galleryNewCaption"
+                type="text"
+                placeholder="Açıklama (opsiyonel)"
+                class="w-48 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-500)]"
+              />
+              <button
+                @click="addGalleryImage()"
+                :disabled="galleryAdding || !galleryNewUrl.trim()"
+                class="flex items-center gap-2 px-4 py-2 bg-[var(--color-primary-500)] hover:bg-[var(--color-primary-600)] text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-60 disabled:cursor-not-allowed whitespace-nowrap"
+              >
+                <svg x-show="galleryAdding" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
+                <svg x-show="!galleryAdding" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                <span x-text="galleryAdding ? 'Ekleniyor...' : 'Ekle'"></span>
+              </button>
+            </div>
+            <!-- Önizleme -->
+            <template x-if="galleryNewUrl.trim()">
+              <div class="mt-3 flex items-center gap-3">
+                <img :src="galleryNewUrl" class="w-16 h-16 rounded-lg object-cover border border-gray-200 bg-gray-100" />
+                <span class="text-xs text-gray-400">Önizleme</span>
+              </div>
+            </template>
+          </div>
+
+          <!-- Fotoğraf limit uyarısı -->
+          <div x-show="gallery.length >= 20" class="px-6 py-3 bg-yellow-50 border-b border-yellow-100">
+            <p class="text-xs text-yellow-700 font-medium">Maksimum fotoğraf sayısına ulaşıldı (20/20). Yeni eklemek için mevcut fotoğrafları silin.</p>
+          </div>
+
+          <!-- Boş galeri -->
+          <div x-show="gallery.length === 0" class="text-center py-16">
+            <svg class="w-14 h-14 mx-auto mb-3 text-gray-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+            </svg>
+            <p class="text-sm font-medium text-gray-500">Henüz fotoğraf eklemediniz</p>
+            <p class="text-xs text-gray-400 mt-1">Fabrika, atölye veya mağaza fotoğrafları ekleyin</p>
+          </div>
+
+          <!-- Fotoğraf grid -->
+          <div x-show="gallery.length > 0" class="p-6 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+            <template x-for="(item, idx) in gallery" :key="item.name">
+              <div class="group relative aspect-square rounded-xl overflow-hidden border border-gray-200 bg-gray-100">
+                <img :src="item.image" :alt="item.caption || 'Galeri fotoğrafı'" class="w-full h-full object-cover" />
+                <!-- Sıra numarası -->
+                <div class="absolute top-2 left-2 bg-black/50 text-white text-[10px] px-1.5 py-0.5 rounded font-mono" x-text="idx + 1"></div>
+                <!-- Caption -->
+                <template x-if="item.caption">
+                  <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent px-2 py-2">
+                    <p class="text-white text-[11px] line-clamp-1" x-text="item.caption"></p>
+                  </div>
+                </template>
+                <!-- Sil butonu (hover'da) -->
+                <div class="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
+                  <button
+                    @click="removeGalleryImage(item.name)"
+                    class="opacity-0 group-hover:opacity-100 transition-opacity w-9 h-9 rounded-full bg-red-500 hover:bg-red-600 text-white flex items-center justify-center shadow-lg"
+                    title="Kaldır"
+                  >
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                  </button>
+                </div>
+              </div>
+            </template>
+          </div>
+        </div>
+      </div>
+
       <!-- ─── Şirket Profili Tab ────────────────────────────────── -->
       <div x-show="activeTab === 'company'" x-transition.opacity>
         <div class="bg-white rounded-xl border border-gray-200 p-6">

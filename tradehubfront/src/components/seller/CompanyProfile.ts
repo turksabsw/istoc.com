@@ -308,6 +308,7 @@ function ReviewsTab(): string {
 function ProductsTab(): string {
   return `
     <div class="company-profile__tab-content" x-show="activeTab === 'products'" x-transition.opacity.duration.300ms id="tab-products"
+      @store:nav-category.window="prodCat = String($event.detail.id)"
       x-data="{
         sellerCode: new URLSearchParams(window.location.search).get('seller') || '',
         prodCat: 'all',
@@ -327,7 +328,7 @@ function ProductsTab(): string {
         filteredProducts() {
           if (this.prodCat === 'all') return this.products;
           if (this.prodCat === 'featured') return this.products.filter(p => p.is_featured);
-          return this.products.filter(p => p.category === this.prodCat);
+          return this.products.filter(p => String(p.category) === String(this.prodCat));
         },
         formatPrice(p) {
           if (!p.price_min) return '';
@@ -359,8 +360,8 @@ function ProductsTab(): string {
           >Tümü</button>
           <template x-for="cat in categories" :key="cat.name">
             <button
-              @click="prodCat = cat.name"
-              :class="prodCat === cat.name ? 'text-[var(--color-primary-600)] font-semibold bg-[var(--color-primary-50)]' : 'text-gray-700 hover:bg-gray-50'"
+              @click="prodCat = String(cat.name)"
+              :class="String(prodCat) === String(cat.name) ? 'text-[var(--color-primary-600)] font-semibold bg-[var(--color-primary-50)]' : 'text-gray-700 hover:bg-gray-50'"
               class="text-left text-[13px] px-4 py-2 truncate transition-colors"
               x-text="cat.category_name"
             ></button>
@@ -373,13 +374,13 @@ function ProductsTab(): string {
           <div class="md:hidden flex gap-2 overflow-x-auto no-scrollbar mb-4 pb-1">
             <button @click="prodCat='all'" :class="prodCat==='all'?'bg-gray-900 text-white':'bg-white text-gray-700 border border-gray-300'" class="whitespace-nowrap px-3 py-1.5 rounded-full text-[13px] font-medium shrink-0">Tümü</button>
             <template x-for="cat in categories" :key="cat.name">
-              <button @click="prodCat=cat.name" :class="prodCat===cat.name?'bg-gray-900 text-white':'bg-white text-gray-700 border border-gray-300'" class="whitespace-nowrap px-3 py-1.5 rounded-full text-[13px] font-medium shrink-0" x-text="cat.category_name"></button>
+              <button @click="prodCat=String(cat.name)" :class="String(prodCat)===String(cat.name)?'bg-gray-900 text-white':'bg-white text-gray-700 border border-gray-300'" class="whitespace-nowrap px-3 py-1.5 rounded-full text-[13px] font-medium shrink-0" x-text="cat.category_name"></button>
             </template>
           </div>
 
           <!-- Başlık -->
           <div class="flex items-center justify-between mb-5">
-            <h3 class="text-[16px] font-bold text-gray-900" x-text="prodCat === 'all' ? 'Tüm ürünler' : prodCat === 'featured' ? 'İlk Seçilenler' : (categories.find(c=>c.name===prodCat)?.category_name || '')"></h3>
+            <h3 class="text-[16px] font-bold text-gray-900" x-text="prodCat === 'all' ? 'Tüm ürünler' : prodCat === 'featured' ? 'İlk Seçilenler' : (categories.find(c=>String(c.name)===String(prodCat))?.category_name || '')"></h3>
           </div>
 
           <!-- Loading -->
@@ -682,16 +683,6 @@ export function CompanyProfileComponent(): string {
   return `
     <section class="company-profile bg-[#f9fafb] py-8 min-h-screen" aria-label="${t('seller.sf.sellerProfile')}">
       <div class="max-w-(--container-xl) mx-auto px-[clamp(0.75rem,0.5rem+1vw,1.5rem)] lg:px-6 xl:px-8">
-
-        <!-- Main Navigation Tabs -->
-        <div class="bg-white rounded-t-(--radius-md) border-b border-gray-200 px-3 sm:px-6 py-0 flex items-center gap-4 sm:gap-8 mb-6 overflow-x-auto no-scrollbar">
-          <button @click="setTab('overview')" :class="activeTab === 'overview' ? 'active font-bold text-gray-900 border-gray-900 border-b-2' : 'font-medium text-gray-500 hover:text-gray-900 border-transparent border-b-2'" class="company-profile__main-tab py-4 text-[15px] transition-colors whitespace-nowrap">${t('seller.sf.myAccount')}</button>
-          <button @click="setTab('reviews')" :class="activeTab === 'reviews' ? 'active font-bold text-gray-900 border-gray-900 border-b-2' : 'font-medium text-gray-500 hover:text-gray-900 border-transparent border-b-2'" class="company-profile__main-tab py-4 text-[15px] transition-colors whitespace-nowrap">${t('seller.sf.reviewsTab')}</button>
-          <button @click="setTab('products')" :class="activeTab === 'products' ? 'active font-bold text-gray-900 border-gray-900 border-b-2' : 'font-medium text-gray-500 hover:text-gray-900 border-transparent border-b-2'" class="company-profile__main-tab py-4 text-[15px] transition-colors whitespace-nowrap">${t('seller.sf.productsTab')}</button>
-          <button @click="setTab('categories')" :class="activeTab === 'categories' ? 'active font-bold text-gray-900 border-gray-900 border-b-2' : 'font-medium text-gray-500 hover:text-gray-900 border-transparent border-b-2'" class="company-profile__main-tab py-4 text-[15px] transition-colors whitespace-nowrap">${t('seller.sf.categoriesTab')}</button>
-          <button @click="setTab('company')" :class="activeTab === 'company' ? 'active font-bold text-gray-900 border-gray-900 border-b-2' : 'font-medium text-gray-500 hover:text-gray-900 border-transparent border-b-2'" class="company-profile__main-tab py-4 text-[15px] transition-colors whitespace-nowrap">${t('seller.sf.companyProfile')}</button>
-          <button @click="setTab('contact')" :class="activeTab === 'contact' ? 'active font-bold text-gray-900 border-gray-900 border-b-2' : 'font-medium text-gray-500 hover:text-gray-900 border-transparent border-b-2'" class="company-profile__main-tab py-4 text-[15px] transition-colors whitespace-nowrap">${t('seller.sf.contactTab')}</button>
-        </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
 

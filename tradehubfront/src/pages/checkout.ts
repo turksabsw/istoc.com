@@ -8,6 +8,8 @@ import { initFlowbite } from 'flowbite'
 import { t } from '../i18n'
 import { getBaseUrl } from '../utils/url'
 import { initCurrency } from '../services/currencyService'
+import { isLoggedIn } from '../utils/auth'
+import { apiCreateOrder, apiValidateCoupon } from '../services/cartService'
 
 // Header components (reuse from main page)
 import { TopBar, initMobileDrawer, SubHeader, initStickyHeaderSearch, MegaMenu, initMegaMenu, initHeaderCart } from '../components/header'
@@ -37,8 +39,8 @@ import { convertPrice, getSelectedCurrencyInfo } from '../services/currencyServi
 import { orderStore } from '../components/orders/state/OrderStore'
 import type { Order } from '../types/order'
 
-// Expose coupons array for Alpine component (populated from API in future)
-(window as unknown as Record<string, unknown>).__mockCoupons = [];
+// Expose coupon validator for Alpine component
+(window as unknown as Record<string, unknown>).__validateCoupon = apiValidateCoupon;
 
 // Sample mode detection
 const isSampleMode = new URLSearchParams(window.location.search).get('mode') === 'sample';
@@ -134,6 +136,7 @@ function buildProductCard(product: CartProduct): { card: CheckoutDeliveryOrderGr
     variantText: sku.variantText,
     unitPrice: sku.unitPrice,
     quantity: sku.quantity,
+    listingVariant: sku.listingVariant,
   }));
 
   const subtotal = selectedSkus.reduce((sum, sku) => sum + (sku.unitPrice * sku.quantity), 0);
@@ -277,94 +280,11 @@ function buildDeliveryOrders(): CheckoutDeliveryOrderGroup[] {
   });
 }
 
-// Checkout render'ı async — önce eksik shipping verisi çekilir, sonra sayfa render edilir
-async function renderCheckout() {
-await initCurrency();
-await enrichMissingShippingMethods();
+// Modül düzeyinde tutulan checkout durumu — renderCheckout sonrası doldurulur
+let checkoutDeliveryOrders: CheckoutDeliveryOrderGroup[] = [];
+let currentDefaultShippingFee = 0;
+let currentCheckoutOrderSummary: OrderSummaryData | null = null;
 
-const checkoutDeliveryOrders = isSampleMode ? buildSampleDeliveryOrders() : buildDeliveryOrders();
-const defaultShippingFee = Number(
-  checkoutDeliveryOrders.reduce((sum, order) => {
-    const defaultMethod = order.methods.find((method) => method.isDefault) ?? order.methods[0];
-    return sum + (defaultMethod?.shippingFee ?? 0);
-  }, 0).toFixed(2),
-);
-
-const sampleSubtotal = sampleOrderData ? sampleOrderData.samplePrice * sampleOrderData.quantity : 0;
-
-const checkoutOrderSummary: OrderSummaryData = isSampleMode ? {
-  itemCount: 1,
-  thumbnails: sampleOrderData?.color?.imageUrl ? [{ image: sampleOrderData.color.imageUrl, quantity: 1 }] : [],
-  itemSubtotal: sampleSubtotal,
-  shipping: defaultShippingFee,
-  subtotal: sampleSubtotal + defaultShippingFee,
-  processingFee: 0,
-  total: sampleSubtotal + defaultShippingFee,
-  currency: getSelectedCurrencyInfo().code,
-} : {
-  itemCount: cartSummary!.selectedCount || cartSummary!.items.reduce((s, i) => s + i.quantity, 0),
-  thumbnails: cartSummary!.items.map(i => ({ image: i.image, quantity: i.quantity })),
-  itemSubtotal: cartSummary!.productSubtotal,
-  shipping: defaultShippingFee,
-  subtotal: cartSummary!.productSubtotal + defaultShippingFee - cartSummary!.discount,
-  processingFee: 0,
-  total: cartSummary!.productSubtotal + defaultShippingFee - cartSummary!.discount,
-  currency: getSelectedCurrencyInfo().code,
-};
-
-const appEl = document.querySelector<HTMLDivElement>('#app')!;
-appEl.classList.add('relative');
-appEl.innerHTML = `
-  <!-- Header (Not Sticky for Checkout Page) -->
-  <div id="sticky-header" class="relative bg-white border-b border-[#e5e5e5] w-full">
-    ${TopBar()}
-    ${SubHeader()}
-  </div>
-
-  ${MegaMenu()}
-
-  <!-- Main Content -->
-  <main>
-    <div class="container-boxed">
-      ${Breadcrumb([{ label: t('cart.title'), href: '/pages/cart.html' }, { label: t('checkout.paymentMethod') }])}
-    </div>
-    ${CheckoutLayout({
-  leftContent: `
-        ${CheckoutHeader()}
-        ${ShippingAddressForm()}
-        ${PaymentMethodSection({ suppliers: cartStore.getSuppliers().filter(s => s.products.some(p => p.skus.some(sku => sku.selected))), isSupplierCheckout: new URLSearchParams(window.location.search).has('supplier') })}
-        ${ItemsDeliverySection({ orders: checkoutDeliveryOrders })}
-      `,
-  rightContent: `
-        ${OrderSummary({ data: checkoutOrderSummary, protectionItems: protectionSummaryItems, tradeAssuranceText })}
-      `
-})}
-  </main>
-
-  <!-- Footer -->
-  <footer>
-    ${FooterLinks()}
-  </footer>
-
-  <!-- Floating Panel -->
-  ${FloatingPanel()}
-
-  <!-- Order Protection Modal -->
-  ${OrderProtectionModal({ sections: modalSections, paymentIcons, infoBoxBullets })}
-
-  <!-- Order Review Modal -->
-  ${OrderReviewModal()}
-`;
-
-// Initialize behaviors
-initMegaMenu();
-initFlowbite();
-startAlpine();
-initStickyHeaderSearch();
-initMobileDrawer();
-initLanguageSelector();
-initHeaderCart();
-initStickyHeights();
 // Build Order objects from checkout data
 function buildOrdersFromCheckout(paymentMethod: string): Order[] {
   const now = Date.now();
@@ -381,7 +301,6 @@ function buildOrdersFromCheckout(paymentMethod: string): Order[] {
     const selectedMethod = deliveryOrder.methods.find((m) => m.isDefault) ?? deliveryOrder.methods[0];
     const shippingFee = selectedMethod?.shippingFee ?? 0;
 
-    // Collect products from the delivery order
     const products = deliveryOrder.products.map((p) => {
       const totalQty = p.skuLines.reduce((sum, sku) => sum + sku.quantity, 0);
       const totalPrice = p.skuLines.reduce((sum, sku) => sum + sku.unitPrice * sku.quantity, 0);
@@ -440,7 +359,6 @@ function buildOrdersFromCheckout(paymentMethod: string): Order[] {
 
 // Gather review data from DOM
 function gatherReviewData() {
-  // Shipping address
   const addrParts: string[] = [];
   const firstNameEl = document.querySelector<HTMLInputElement>('[name="firstName"]');
   const lastNameEl = document.querySelector<HTMLInputElement>('[name="lastName"]');
@@ -455,7 +373,6 @@ function gatherReviewData() {
   if (postalEl?.value) addrParts.push(postalEl.value);
   const shippingAddress = addrParts.length > 0 ? addrParts.join(', ') : 'Not provided';
 
-  // Payment method
   let paymentLabel = t('checkout.creditDebitCard');
   const selected = document.querySelector<HTMLInputElement>('input[name="payment_method"]:checked');
   if (selected) {
@@ -469,12 +386,11 @@ function gatherReviewData() {
     }
   }
 
-  // Coupon discount from Alpine
   const sidebarEl = document.querySelector<HTMLElement>('.checkout-sidebar');
   const alpineData = sidebarEl && ((sidebarEl as any)._x_dataStack as Record<string, unknown>[] | undefined)?.[0] as Record<string, unknown> | undefined; // eslint-disable-line @typescript-eslint/no-explicit-any
   const couponDiscount = Number(alpineData?.couponDiscount ?? 0);
-  const shippingFee = Number(alpineData?.shippingFee ?? defaultShippingFee);
-  const itemSubtotal = Number(alpineData?.itemSubtotal ?? checkoutOrderSummary.itemSubtotal);
+  const shippingFee = Number(alpineData?.shippingFee ?? currentDefaultShippingFee);
+  const itemSubtotal = Number(alpineData?.itemSubtotal ?? currentCheckoutOrderSummary?.itemSubtotal ?? 0);
   const discount = Number(alpineData?.discount ?? 0);
   const total = Number((itemSubtotal + shippingFee - discount - couponDiscount).toFixed(2));
 
@@ -490,6 +406,163 @@ function gatherReviewData() {
     },
   };
 }
+
+// Confirm Order (from review modal) → backend API + redirect — modül düzeyinde bir kez kayıt
+window.addEventListener('checkout:confirm-order', () => {
+  const orderCount = checkoutDeliveryOrders.length;
+
+  const selected = document.querySelector<HTMLInputElement>('input[name="payment_method"]:checked');
+  const selectedPaymentValue = selected?.value || 'kredi_karti';
+  const isCreditCard = selectedPaymentValue === 'kredi_karti';
+
+  const paymentMethodMap: Record<string, string> = {
+    elden: 'installment',
+    anlasmali: 'negotiated',
+    kredi_karti: 'credit_card',
+    cek_senet: 'check_promissory',
+    banka_havale: 'bank_transfer',
+  };
+  const paymentMethod = paymentMethodMap[selectedPaymentValue] || 'bank_transfer';
+  const newOrders = buildOrdersFromCheckout(paymentMethod);
+
+  orderStore.load();
+  orderStore.addOrders(newOrders);
+
+  if (isSampleMode) {
+    localStorage.removeItem('tradehub_sample_order');
+  }
+
+  const reviewData = gatherReviewData();
+  const shippingAddress = reviewData.shippingAddress;
+
+  const backendOrders = checkoutDeliveryOrders.map((deliveryOrder) => {
+    const selectedMethod = deliveryOrder.methods.find((m) => m.isDefault) ?? deliveryOrder.methods[0];
+    return {
+      seller_id: deliveryOrder.sellerId || '',
+      seller_name: deliveryOrder.sellerName,
+      shipping_fee: selectedMethod?.shippingFee ?? 0,
+      shipping_method: selectedMethod?.etaLabel ?? '',
+      currency: getSelectedCurrencyInfo().code,
+      products: deliveryOrder.products.map((p) => ({
+        listing: p.id,
+        listing_title: p.title,
+        listing_variant: p.skuLines[0]?.listingVariant ?? null,
+        variation: p.skuLines.map((s) => s.variantText).filter(Boolean).join(', '),
+        unit_price: p.skuLines[0]?.unitPrice ?? 0,
+        quantity: p.skuLines.reduce((sum, s) => sum + s.quantity, 0),
+        total_price: p.skuLines.reduce((sum, s) => sum + s.unitPrice * s.quantity, 0),
+        image: p.image,
+      })),
+    };
+  });
+
+  const orderNumbers = newOrders.map((o) => o.orderNumber).join(',');
+
+  function redirect() {
+    if (isCreditCard) {
+      window.location.href = `${getBaseUrl()}pages/order/payment-processing.html?count=${orderCount}&method=credit_card&orderNumbers=${encodeURIComponent(orderNumbers)}`;
+    } else {
+      window.location.href = `${getBaseUrl()}pages/order/order-success.html?status=pending&count=${orderCount}&orderNumbers=${encodeURIComponent(orderNumbers)}`;
+    }
+  }
+
+  if (isLoggedIn()) {
+    apiCreateOrder(backendOrders, shippingAddress, paymentMethod)
+      .then(() => { redirect(); })
+      .catch(() => { redirect(); });
+  } else {
+    redirect();
+  }
+});
+
+// Checkout render'ı async — önce eksik shipping verisi çekilir, sonra sayfa render edilir
+async function renderCheckout() {
+await initCurrency();
+await enrichMissingShippingMethods();
+
+checkoutDeliveryOrders = isSampleMode ? buildSampleDeliveryOrders() : buildDeliveryOrders();
+currentDefaultShippingFee = Number(
+  checkoutDeliveryOrders.reduce((sum, order) => {
+    const defaultMethod = order.methods.find((method) => method.isDefault) ?? order.methods[0];
+    return sum + (defaultMethod?.shippingFee ?? 0);
+  }, 0).toFixed(2),
+);
+
+const sampleSubtotal = sampleOrderData ? sampleOrderData.samplePrice * sampleOrderData.quantity : 0;
+
+currentCheckoutOrderSummary = isSampleMode ? {
+  itemCount: 1,
+  thumbnails: sampleOrderData?.color?.imageUrl ? [{ image: sampleOrderData.color.imageUrl, quantity: 1 }] : [],
+  itemSubtotal: sampleSubtotal,
+  shipping: currentDefaultShippingFee,
+  subtotal: sampleSubtotal + currentDefaultShippingFee,
+  processingFee: 0,
+  total: sampleSubtotal + currentDefaultShippingFee,
+  currency: getSelectedCurrencyInfo().code,
+} : {
+  itemCount: cartSummary!.selectedCount || cartSummary!.items.reduce((s, i) => s + i.quantity, 0),
+  thumbnails: cartSummary!.items.map(i => ({ image: i.image, quantity: i.quantity })),
+  itemSubtotal: cartSummary!.productSubtotal,
+  shipping: currentDefaultShippingFee,
+  subtotal: cartSummary!.productSubtotal + currentDefaultShippingFee - cartSummary!.discount,
+  processingFee: 0,
+  total: cartSummary!.productSubtotal + currentDefaultShippingFee - cartSummary!.discount,
+  currency: getSelectedCurrencyInfo().code,
+};
+
+const appEl = document.querySelector<HTMLDivElement>('#app')!;
+appEl.classList.add('relative');
+appEl.innerHTML = `
+  <!-- Header (Not Sticky for Checkout Page) -->
+  <div id="sticky-header" class="relative bg-white border-b border-[#e5e5e5] w-full">
+    ${TopBar()}
+    ${SubHeader()}
+  </div>
+
+  ${MegaMenu()}
+
+  <!-- Main Content -->
+  <main>
+    <div class="container-boxed">
+      ${Breadcrumb([{ label: t('cart.title'), href: '/pages/cart.html' }, { label: t('checkout.paymentMethod') }])}
+    </div>
+    ${CheckoutLayout({
+  leftContent: `
+        ${CheckoutHeader()}
+        ${ShippingAddressForm()}
+        ${PaymentMethodSection({ suppliers: cartStore.getSuppliers().filter(s => s.products.some(p => p.skus.some(sku => sku.selected))), isSupplierCheckout: new URLSearchParams(window.location.search).has('supplier') })}
+        ${ItemsDeliverySection({ orders: checkoutDeliveryOrders })}
+      `,
+  rightContent: `
+        ${OrderSummary({ data: currentCheckoutOrderSummary!, protectionItems: protectionSummaryItems, tradeAssuranceText })}
+      `
+})}
+  </main>
+
+  <!-- Footer -->
+  <footer>
+    ${FooterLinks()}
+  </footer>
+
+  <!-- Floating Panel -->
+  ${FloatingPanel()}
+
+  <!-- Order Protection Modal -->
+  ${OrderProtectionModal({ sections: modalSections, paymentIcons, infoBoxBullets })}
+
+  <!-- Order Review Modal -->
+  ${OrderReviewModal()}
+`;
+
+// Initialize behaviors
+initMegaMenu();
+initFlowbite();
+startAlpine();
+initStickyHeaderSearch();
+initMobileDrawer();
+initLanguageSelector();
+initHeaderCart();
+initStickyHeights();
 
 // Place Order → open review modal
 const placeOrderBtn = document.getElementById('summary-place-order-btn');
@@ -516,41 +589,6 @@ if (placeOrderBtn) {
     window.dispatchEvent(new CustomEvent('checkout:open-review', { detail: reviewData }));
   });
 }
-
-// Confirm Order (from review modal) → redirect
-window.addEventListener('checkout:confirm-order', () => {
-  const orderCount = checkoutDeliveryOrders.length;
-
-  const selected = document.querySelector<HTMLInputElement>('input[name="payment_method"]:checked');
-  const selectedPaymentValue = selected?.value || 'kredi_karti';
-  const isCreditCard = selectedPaymentValue === 'kredi_karti';
-
-  const paymentMethodMap: Record<string, string> = {
-    elden: 'installment',
-    anlasmali: 'negotiated',
-    kredi_karti: 'credit_card',
-    cek_senet: 'check_promissory',
-    banka_havale: 'bank_transfer',
-  };
-  const paymentMethod = paymentMethodMap[selectedPaymentValue] || 'bank_transfer';
-  const newOrders = buildOrdersFromCheckout(paymentMethod);
-
-  orderStore.load();
-  orderStore.addOrders(newOrders);
-
-  // Sample order verisi temizle
-  if (isSampleMode) {
-    localStorage.removeItem('tradehub_sample_order');
-  }
-
-  const orderNumbers = newOrders.map((o) => o.orderNumber).join(',');
-
-  if (isCreditCard) {
-    window.location.href = `${getBaseUrl()}pages/order/payment-processing.html?count=${orderCount}&method=credit_card&orderNumbers=${encodeURIComponent(orderNumbers)}`;
-  } else {
-    window.location.href = `${getBaseUrl()}pages/order/order-success.html?status=pending&count=${orderCount}&orderNumbers=${encodeURIComponent(orderNumbers)}`;
-  }
-});
 
 } // renderCheckout sonu
 

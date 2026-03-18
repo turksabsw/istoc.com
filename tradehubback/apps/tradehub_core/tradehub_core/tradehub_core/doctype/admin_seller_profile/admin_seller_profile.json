@@ -20,6 +20,7 @@
   "cb_magaza",
   "description",
   "slogan",
+  "gallery_images",
   "tab_sirket",
   "company_name",
   "tax_id",
@@ -141,6 +142,13 @@
    "fieldname": "slogan",
    "fieldtype": "Data",
    "label": "Slogan"
+  },
+  {
+   "fieldname": "gallery_images",
+   "fieldtype": "Table",
+   "label": "Galeri Foto\u011fraflar\u0131",
+   "options": "Seller Gallery Image",
+   "description": "Fabrika veya d\u00fckkan foto\u011fraflar\u0131, maksimum 20 adet"
   },
   {
    "fieldname": "tab_sirket",
@@ -417,14 +425,16 @@
    "write": 1
   },
   {
+   "if_owner": 1,
    "read": 1,
    "role": "Marketplace Seller",
    "write": 1
   },
   {
+   "if_owner": 1,
    "read": 1,
    "role": "Seller",
-   "if_owner": 1
+   "write": 1
   }
  ],
  "sort_field": "modified",

@@ -47,6 +47,17 @@ def get_sellers(search=None, page=1, page_size=20):
         except Exception:
             s["products"] = []
             s["product_images"] = []
+        try:
+            gallery = frappe.get_all(
+                "Seller Gallery Image",
+                filters={"parent": s.get("name"), "parenttype": "Admin Seller Profile"},
+                fields=["image"],
+                order_by="idx asc",
+                limit=20
+            )
+            s["gallery_images"] = [g["image"] for g in gallery if g.get("image")]
+        except Exception:
+            s["gallery_images"] = []
     total = frappe.db.count("Admin Seller Profile", filters=filters)
     return {"sellers": sellers, "total": total, "page": int(page), "page_size": int(page_size)}
 
@@ -94,12 +105,12 @@ def get_my_admin_seller_profile():
 
 @frappe.whitelist(allow_guest=True)
 def get_seller_categories(seller_code):
-    sp_name = frappe.db.get_value("Seller Profile", {"seller_code": seller_code}, "name")
-    if not sp_name:
+    # Admin Seller Profile'da name = seller_code (autoname: field:seller_code)
+    if not frappe.db.exists("Admin Seller Profile", seller_code):
         return {"categories": []}
     cats = frappe.get_all(
         "Seller Category",
-        filters={"seller": sp_name},
+        filters={"seller": seller_code},
         fields=["name", "category_name", "image", "sort_order"],
         order_by="sort_order asc, category_name asc"
     )
@@ -137,10 +148,9 @@ def get_seller_products(seller_code, category=None, page=1, page_size=40):
 
 @frappe.whitelist(allow_guest=True)
 def get_reviews(seller_code, page=1, page_size=10):
-    sp_name = frappe.db.get_value("Seller Profile", {"seller_code": seller_code, "status": "Active"}, "name")
-    if not sp_name:
+    if not frappe.db.exists("Admin Seller Profile", seller_code):
         frappe.throw(_("Satici bulunamadi"), frappe.DoesNotExistError)
-    filters = {"seller": sp_name}
+    filters = {"seller": seller_code}
     reviews = frappe.get_all(
         "Seller Review", filters=filters,
         fields=["name", "reviewer_name", "rating", "comment", "creation", "product_name"],
@@ -151,13 +161,51 @@ def get_reviews(seller_code, page=1, page_size=10):
     return {"reviews": reviews, "total": total}
 
 
+@frappe.whitelist()
+def get_gallery():
+    """Oturumdaki satıcının galeri fotoğraflarını döndürür."""
+    user = frappe.session.user
+    profile_name = frappe.db.get_value("Admin Seller Profile", {"user": user}, "name")
+    if not profile_name:
+        frappe.throw(_("Profil bulunamadi"), frappe.DoesNotExistError)
+    doc = frappe.get_doc("Admin Seller Profile", profile_name)
+    return [{"name": r.name, "image": r.image, "caption": r.caption or ""} for r in doc.gallery_images]
+
+
+@frappe.whitelist()
+def add_gallery_image(image_url, caption=""):
+    """Galerik listesine yeni fotoğraf ekler (max 20)."""
+    user = frappe.session.user
+    profile_name = frappe.db.get_value("Admin Seller Profile", {"user": user}, "name")
+    if not profile_name:
+        frappe.throw(_("Profil bulunamadi"))
+    doc = frappe.get_doc("Admin Seller Profile", profile_name)
+    if len(doc.gallery_images) >= 20:
+        frappe.throw(_("Maksimum 20 fotograf yukleyebilirsiniz"))
+    doc.append("gallery_images", {"image": image_url, "caption": caption})
+    doc.save(ignore_permissions=True)
+    frappe.db.commit()
+    return [{"name": r.name, "image": r.image, "caption": r.caption or ""} for r in doc.gallery_images]
+
+
+@frappe.whitelist()
+def remove_gallery_image(row_name):
+    """Galeriden bir fotoğrafı kaldırır."""
+    user = frappe.session.user
+    profile_name = frappe.db.get_value("Admin Seller Profile", {"user": user}, "name")
+    if not profile_name:
+        frappe.throw(_("Profil bulunamadi"))
+    doc = frappe.get_doc("Admin Seller Profile", profile_name)
+    doc.gallery_images = [r for r in doc.gallery_images if r.name != row_name]
+    doc.save(ignore_permissions=True)
+    frappe.db.commit()
+    return True
+
+
 @frappe.whitelist(allow_guest=True)
 def send_inquiry(seller_code, message, share_business_card=0):
-    sp = frappe.db.get_value(
-        "Seller Profile", {"seller_code": seller_code, "status": "Active"},
-        ["name", "seller_code"], as_dict=True
-    )
-    if not sp:
+    # Admin Seller Profile'da name = seller_code
+    if not frappe.db.exists("Admin Seller Profile", seller_code):
         frappe.throw(_("Satici bulunamadi"), frappe.DoesNotExistError)
     sender_name, sender_email = "", ""
     if frappe.session.user and frappe.session.user != "Guest":
@@ -166,8 +214,8 @@ def send_inquiry(seller_code, message, share_business_card=0):
             sender_name = user.full_name or ""
             sender_email = user.email or ""
     doc = frappe.new_doc("Seller Inquiry")
-    doc.seller = sp.name
-    doc.seller_code = sp.seller_code
+    doc.seller = seller_code
+    doc.seller_code = seller_code
     doc.message = message.strip()
     doc.sender_name = sender_name
     doc.sender_email = sender_email
