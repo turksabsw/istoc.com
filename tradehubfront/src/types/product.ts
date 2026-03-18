@@ -29,6 +29,7 @@ export interface VariantOption {
   value: string;
   thumbnail?: string;
   available: boolean;
+  price?: number;
 }
 
 export interface ProductSpec {
@@ -120,6 +121,8 @@ export interface ProductDetail {
   orderCount: string;
   reviews: ProductReview[];
   samplePrice?: number;
+  baseSamplePrice?: number;
+  baseCurrency?: string;
   supplier: SupplierInfo;
   faq: FAQItem[];
   leadTimeRanges: LeadTimeRange[];

@@ -1,191 +1,574 @@
+import json
+import re
+import secrets
+
 import frappe
 from frappe import _
-import random
-import string
+from frappe.rate_limiter import rate_limit
+from frappe.utils import get_url, now_datetime
+from frappe.utils.password import check_password, update_password
+from tradehub_core.api.v1.auth import _generate_member_id
+
+PASSWORD_MIN_LENGTH = 8
+_EMAIL_RE = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
 
 
-def _generate_otp(length=6):
-    """Generate a numeric OTP code."""
-    return "".join(random.choices(string.digits, k=length))
+# ── Helpers ────────────────────────────────────────────
 
 
-@frappe.whitelist(allow_guest=True)
-def send_registration_otp(email):
-    """Send OTP code to the given email for registration verification."""
-    if not email:
-        frappe.throw(_("Email is required"), frappe.ValidationError)
-
-    # Check if user already exists
-    if frappe.db.exists("User", {"email": email, "enabled": 1}):
-        frappe.throw(_("This email is already registered"), frappe.ValidationError)
-
-    otp = _generate_otp()
-
-    # Store OTP in cache with 10 minute expiry
-    cache_key = f"registration_otp:{email}"
-    frappe.cache.set_value(cache_key, otp, expires_in_sec=600)
-
-    # Send OTP via email
-    frappe.sendmail(
-        recipients=[email],
-        subject=_("TradeHub - Registration Verification Code"),
-        message=_(
-            "<h3>Your Verification Code</h3>"
-            "<p>Your registration verification code is: <strong>{0}</strong></p>"
-            "<p>This code will expire in 10 minutes.</p>"
-        ).format(otp),
-        now=True,
-    )
-
-    return {"message": _("Verification code sent to {0}").format(email)}
+def _validate_email_format(email: str) -> str:
+	"""Return lowered-trimmed email or throw 400."""
+	email = (email or "").strip().lower()
+	if not _EMAIL_RE.match(email):
+		frappe.local.response["http_status_code"] = 400
+		frappe.throw(_("Please enter a valid email address."), frappe.ValidationError)
+	return email
 
 
-@frappe.whitelist(allow_guest=True)
-def verify_registration_otp(email, otp):
-    """Verify the OTP code sent during registration."""
-    if not email or not otp:
-        frappe.throw(_("Email and OTP are required"), frappe.ValidationError)
-
-    cache_key = f"registration_otp:{email}"
-    stored_otp = frappe.cache.get_value(cache_key)
-
-    if not stored_otp:
-        frappe.throw(_("Verification code has expired. Please request a new one."), frappe.ValidationError)
-
-    if str(stored_otp) != str(otp):
-        frappe.throw(_("Invalid verification code"), frappe.ValidationError)
-
-    # Mark email as verified in cache
-    frappe.cache.set_value(f"email_verified:{email}", True, expires_in_sec=1800)
-    frappe.cache.delete_value(cache_key)
-
-    return {"message": _("Email verified successfully"), "verified": True}
+def _validate_password(password: str):
+	"""Enforce password policy: 8+ chars, uppercase, lowercase, digit."""
+	if len(password) < PASSWORD_MIN_LENGTH:
+		frappe.throw(
+			_("Password must be at least {0} characters.").format(PASSWORD_MIN_LENGTH)
+		)
+	if not re.search(r"[A-Z]", password):
+		frappe.throw(_("Password must contain at least one uppercase letter."))
+	if not re.search(r"[a-z]", password):
+		frappe.throw(_("Password must contain at least one lowercase letter."))
+	if not re.search(r"[0-9]", password):
+		frappe.throw(_("Password must contain at least one digit."))
 
 
-@frappe.whitelist(allow_guest=True)
-def register_user(email, full_name, password, account_type="Buyer"):
-    """Register a new user after email verification."""
-    if not email or not full_name or not password:
-        frappe.throw(_("Email, full name, and password are required"), frappe.ValidationError)
-
-    # Check email was verified
-    verified = frappe.cache.get_value(f"email_verified:{email}")
-    if not verified:
-        frappe.throw(_("Please verify your email first"), frappe.ValidationError)
-
-    # Check if user already exists
-    if frappe.db.exists("User", {"email": email}):
-        frappe.throw(_("This email is already registered"), frappe.ValidationError)
-
-    # Create user
-    user = frappe.get_doc({
-        "doctype": "User",
-        "email": email,
-        "first_name": full_name.split()[0] if full_name else full_name,
-        "last_name": " ".join(full_name.split()[1:]) if len(full_name.split()) > 1 else "",
-        "enabled": 1,
-        "new_password": password,
-        "send_welcome_email": 0,
-    })
-    user.insert(ignore_permissions=True)
-
-    # Clean up verification cache
-    frappe.cache.delete_value(f"email_verified:{email}")
-
-    frappe.db.commit()
-
-    return {
-        "message": _("Registration successful"),
-        "user": email,
-    }
+def _generate_otp() -> str:
+	"""Generate a cryptographically secure 6-digit OTP."""
+	return "".join([str(secrets.randbelow(10)) for _ in range(6)])
 
 
-@frappe.whitelist(allow_guest=True)
-def complete_registration_application(email, company_name=None, phone=None, account_type="Buyer"):
-    """Complete registration with additional business information."""
-    if not email:
-        frappe.throw(_("Email is required"), frappe.ValidationError)
+def _create_email_verification(email: str, first_name: str):
+	"""Send a background email verification link after registration."""
+	key = frappe.generate_hash(length=32)
+	frappe.cache.set_value(
+		f"email_verification:{key}", email, expires_in_sec=86400
+	)
+	link = f"{get_url()}/api/method/tradehub_core.api.v1.identity.verify_email?key={key}"
 
-    if not frappe.db.exists("User", {"email": email}):
-        frappe.throw(_("User not found"), frappe.DoesNotExistError)
-
-    # Update user with additional info
-    user = frappe.get_doc("User", email)
-    if phone:
-        user.phone = phone
-    user.save(ignore_permissions=True)
-
-    # Create Supplier Profile if selling
-    if account_type == "Seller" and company_name:
-        if not frappe.db.exists("Supplier Profile", {"user": email}):
-            profile = frappe.get_doc({
-                "doctype": "Supplier Profile",
-                "user": email,
-                "company_name": company_name,
-                "status": "Pending",
-            })
-            profile.insert(ignore_permissions=True)
-
-    frappe.db.commit()
-
-    return {"message": _("Registration application completed")}
+	frappe.sendmail(
+		recipients=email,
+		subject="iSTOC — Email Adresinizi Doğrulayın",
+		template="tradehub_email_verification",
+		args={"link": link, "first_name": first_name},
+		now=True,
+	)
 
 
-@frappe.whitelist(allow_guest=True)
-def forgot_password(email):
-    """Send password reset link to the given email."""
-    if not email:
-        frappe.throw(_("Email is required"), frappe.ValidationError)
-
-    if not frappe.db.exists("User", {"email": email, "enabled": 1}):
-        # Don't reveal whether email exists
-        return {"message": _("If the email exists, a reset link has been sent")}
-
-    # Use Frappe's built-in reset password
-    frappe.sendmail(
-        recipients=[email],
-        subject=_("TradeHub - Password Reset"),
-        message=_("Please use the link below to reset your password."),
-        now=True,
-    )
-
-    otp = _generate_otp()
-    frappe.cache.set_value(f"password_reset_otp:{email}", otp, expires_in_sec=600)
-
-    frappe.sendmail(
-        recipients=[email],
-        subject=_("TradeHub - Password Reset Code"),
-        message=_(
-            "<h3>Password Reset</h3>"
-            "<p>Your password reset code is: <strong>{0}</strong></p>"
-            "<p>This code will expire in 10 minutes.</p>"
-        ).format(otp),
-        now=True,
-    )
-
-    return {"message": _("If the email exists, a reset code has been sent")}
+# ── Endpoints ──────────────────────────────────────────
 
 
-@frappe.whitelist(allow_guest=True)
-def reset_password(email, otp, new_password):
-    """Reset password using OTP code."""
-    if not email or not otp or not new_password:
-        frappe.throw(_("Email, OTP, and new password are required"), frappe.ValidationError)
+@frappe.whitelist(allow_guest=True, methods=["POST"])
+@rate_limit(limit=5, seconds=300)
+def send_registration_otp(email: str):
+	"""Send a 6-digit OTP to the given email for registration verification.
 
-    cache_key = f"password_reset_otp:{email}"
-    stored_otp = frappe.cache.get_value(cache_key)
+	Errors:
+	  400 — invalid email format
+	  409 — email already registered
+	  429 — rate limit exceeded
+	"""
+	email = _validate_email_format(email)
 
-    if not stored_otp or str(stored_otp) != str(otp):
-        frappe.throw(_("Invalid or expired reset code"), frappe.ValidationError)
+	if frappe.db.exists("User", email):
+		frappe.local.response["http_status_code"] = 409
+		frappe.throw(
+			_("An account with this email already exists."),
+			frappe.DuplicateEntryError,
+		)
 
-    if not frappe.db.exists("User", {"email": email, "enabled": 1}):
-        frappe.throw(_("User not found"), frappe.DoesNotExistError)
+	otp_code = _generate_otp()
 
-    user = frappe.get_doc("User", email)
-    user.new_password = new_password
-    user.save(ignore_permissions=True)
+	# Store OTP in Redis — overwrites any previous OTP for this email
+	frappe.cache.set_value(
+		f"registration_otp:{email}",
+		json.dumps({"code": otp_code, "attempts": 0}),
+		expires_in_sec=600,
+	)
 
-    frappe.cache.delete_value(cache_key)
-    frappe.db.commit()
+	frappe.sendmail(
+		recipients=email,
+		subject="iSTOC — Kayıt Doğrulama Kodu",
+		template="registration_otp",
+		args={"code": otp_code},
+		now=True,
+	)
 
-    return {"message": _("Password reset successful")}
+	return {"success": True, "expires_in_minutes": 10}
+
+
+@frappe.whitelist(allow_guest=True, methods=["POST"])
+@rate_limit(limit=5, seconds=300)
+def verify_registration_otp(email: str, code: str):
+	"""Verify the 6-digit OTP and return a registration_token on success.
+
+	Errors:
+	  404 — OTP not found or expired
+	  401 — wrong code
+	  429 — too many wrong attempts (5+)
+	"""
+	email = (email or "").strip().lower()
+	code = (code or "").strip()
+
+	cache_key = f"registration_otp:{email}"
+	cached = frappe.cache.get_value(cache_key)
+
+	if not cached:
+		frappe.local.response["http_status_code"] = 404
+		frappe.throw(
+			_("Verification code not found or expired."),
+			frappe.DoesNotExistError,
+		)
+
+	otp_data = json.loads(cached) if isinstance(cached, str) else cached
+
+	# Too many wrong attempts — invalidate the OTP
+	if otp_data.get("attempts", 0) >= 5:
+		frappe.cache.delete_value(cache_key)
+		frappe.local.response["http_status_code"] = 429
+		frappe.throw(
+			_("Too many wrong attempts. Please request a new code."),
+			frappe.TooManyRequestsError,
+		)
+
+	# Wrong code — increment attempts
+	if code != otp_data["code"]:
+		otp_data["attempts"] = otp_data.get("attempts", 0) + 1
+		frappe.cache.set_value(
+			cache_key,
+			json.dumps(otp_data),
+			expires_in_sec=600,
+		)
+		frappe.local.response["http_status_code"] = 401
+		frappe.throw(
+			_("Wrong verification code."),
+			frappe.AuthenticationError,
+		)
+
+	# Code matches — generate registration_token
+	registration_token = frappe.generate_hash(length=32)
+	frappe.cache.set_value(
+		f"registration_token:{registration_token}",
+		email,
+		expires_in_sec=1800,
+	)
+
+	# Delete OTP (single-use)
+	frappe.cache.delete_value(cache_key)
+
+	return {"success": True, "registration_token": registration_token}
+
+
+@frappe.whitelist(allow_guest=True, methods=["POST"])
+@rate_limit(limit=5, seconds=3600)
+def register_user(
+	email: str,
+	password: str,
+	first_name: str,
+	last_name: str,
+	account_type: str = "buyer",
+	phone: str = "",
+	country: str = "Turkey",
+	accept_terms: bool = False,
+	accept_kvkk: bool = False,
+	registration_token: str = "",
+):
+	"""Register a new user after OTP verification.
+
+	The registration_token must have been obtained from verify_registration_otp().
+	"""
+	email = _validate_email_format(email)
+
+	# ── Token validation ──
+	token_cache_key = f"registration_token:{registration_token}"
+	cached_email = frappe.cache.get_value(token_cache_key)
+
+	if not cached_email:
+		frappe.throw(
+			_(
+				"Invalid or expired verification token. "
+				"Please restart the registration."
+			)
+		)
+
+	# Handle bytes from Redis
+	if isinstance(cached_email, bytes):
+		cached_email = cached_email.decode()
+
+	if cached_email != email:
+		frappe.throw(_("Verification token does not match this email."))
+
+	# ── Terms validation ──
+	if not accept_terms:
+		frappe.throw(_("You must accept the Terms of Service."))
+	if not accept_kvkk:
+		frappe.throw(_("You must accept the KVKK policy."))
+
+	# ── Password validation ──
+	_validate_password(password)
+
+	# ── Duplicate check ──
+	if frappe.db.exists("User", email):
+		frappe.throw(
+			_("An account with this email already exists."),
+			frappe.DuplicateEntryError,
+		)
+
+	# ── Create User ──
+	user = frappe.new_doc("User")
+	user.email = email
+	user.first_name = first_name
+	user.last_name = last_name
+	user.send_welcome_email = 0
+	user.user_type = "Website User"
+	user.flags.ignore_permissions = True
+	user.flags.ignore_password_policy = True
+	user.insert()
+
+	update_password(email, password)
+	user.add_roles("Buyer")
+
+	# ── Generate unique member ID ──
+	member_id = _generate_member_id(email, user.creation)
+
+	# ── Create Buyer Profile ──
+	buyer = frappe.new_doc("Buyer Profile")
+	buyer.user = email
+	buyer.buyer_name = f"{first_name} {last_name}"
+	buyer.member_id = member_id
+	buyer.country = country
+	buyer.phone = phone
+	buyer.status = "Active"
+	buyer.insert(ignore_permissions=True)
+
+	result = {
+		"success": True,
+		"user": email,
+		"account_type": account_type,
+	}
+
+	# ── Seller Application (if supplier) ──
+	if account_type == "supplier":
+		app = frappe.new_doc("Seller Application")
+		app.applicant_user = email
+		app.member_id = member_id
+		app.contact_email = email
+		app.contact_phone = phone
+		app.country = country
+		app.status = "Draft"
+		app.insert(ignore_permissions=True)
+		result["seller_application"] = app.name
+		result["seller_application_status"] = app.status
+
+	# ── Background email verification ──
+	_create_email_verification(email, first_name)
+
+	# ── Delete registration token (single-use) ──
+	frappe.cache.delete_value(token_cache_key)
+
+	frappe.db.commit()
+	return result
+
+
+@frappe.whitelist(allow_guest=True, methods=["POST"])
+@rate_limit(limit=3, seconds=3600)
+def forgot_password(email: str):
+	"""Send a password reset link via email.
+
+	Always returns success to prevent email enumeration.
+	"""
+	email = (email or "").strip().lower()
+
+	# Always return success — email enumeration protection
+	if frappe.db.exists("User", email):
+		user = frappe.get_doc("User", email)
+
+		# Generate reset key
+		reset_key = frappe.generate_hash(length=32)
+		user.db_set("reset_password_key", reset_key)
+		user.db_set("last_reset_password_key_generated_on", now_datetime())
+
+		# Build reset link pointing to the storefront page
+		link = f"{get_url()}/pages/auth/reset-password.html?key={reset_key}"
+
+		frappe.sendmail(
+			recipients=email,
+			subject="iSTOC — Şifre Sıfırlama",
+			template="tradehub_password_reset",
+			args={"link": link, "full_name": user.full_name},
+			now=True,
+		)
+
+	return {
+		"success": True,
+		"message": _("If this email is registered, a password reset link has been sent."),
+	}
+
+
+@frappe.whitelist(allow_guest=True, methods=["POST"])
+@rate_limit(limit=5, seconds=3600)
+def reset_password(key: str, new_password: str):
+	"""Reset password using the key from the email link.
+
+	The key must match User.reset_password_key and be within 24 hours.
+	"""
+	key = (key or "").strip()
+
+	if not key:
+		frappe.throw(
+			_("Invalid or expired password reset link."),
+			frappe.AuthenticationError,
+		)
+
+	# Find user with this reset key
+	user_data = frappe.db.get_value(
+		"User",
+		{"reset_password_key": key},
+		["name", "last_reset_password_key_generated_on"],
+		as_dict=True,
+	)
+
+	if not user_data:
+		frappe.throw(
+			_("Invalid or expired password reset link."),
+			frappe.AuthenticationError,
+		)
+
+	# Check 24-hour expiry
+	if user_data.last_reset_password_key_generated_on:
+		age = (
+			now_datetime() - user_data.last_reset_password_key_generated_on
+		).total_seconds()
+		if age > 86400:
+			frappe.throw(
+				_("This reset link has expired. Please request a new one."),
+				frappe.AuthenticationError,
+			)
+
+	# Validate new password
+	_validate_password(new_password)
+
+	# Update password and clear reset key
+	update_password(user_data.name, new_password, logout_all_sessions=True)
+	frappe.db.set_value("User", user_data.name, "reset_password_key", None)
+
+	return {
+		"success": True,
+		"message": _("Your password has been reset successfully."),
+	}
+
+
+@frappe.whitelist(allow_guest=True, methods=["GET"])
+def verify_email(key: str):
+	"""Verify user email via the link sent after registration."""
+	key = (key or "").strip()
+
+	cache_key = f"email_verification:{key}"
+	email = frappe.cache.get_value(cache_key)
+
+	if not email:
+		frappe.throw(
+			_("Invalid or expired verification link."),
+			frappe.AuthenticationError,
+		)
+
+	# Handle bytes from Redis
+	if isinstance(email, bytes):
+		email = email.decode()
+
+	# Mark email as verified on Buyer Profile
+	if frappe.db.exists("Buyer Profile", {"user": email}):
+		frappe.db.set_value("Buyer Profile", {"user": email}, "email_verified", 1)
+
+	# Delete verification key (single-use)
+	frappe.cache.delete_value(cache_key)
+
+	return {"success": True, "message": _("Email verified."), "user": email}
+
+
+def _verify_password(user: str, password: str):
+	"""Verify user password. Raises ValidationError (400) instead of
+	AuthenticationError (401) so the frontend api() wrapper does not
+	redirect to the login page."""
+	try:
+		check_password(user, password)
+	except frappe.AuthenticationError:
+		frappe.local.response["http_status_code"] = 400
+		frappe.throw(
+			_("Incorrect password."),
+			frappe.ValidationError,
+		)
+
+
+@frappe.whitelist(methods=["POST"])
+def change_password(current_password: str, new_password: str):
+	"""Change password for the currently logged-in user."""
+	user = frappe.session.user
+
+	if user == "Guest":
+		frappe.throw(_("Not logged in."), frappe.AuthenticationError)
+
+	# Verify current password — returns 400 on failure (not 401)
+	_verify_password(user, current_password)
+
+	# Validate new password rules
+	_validate_password(new_password)
+
+	# Update password and invalidate all other sessions
+	update_password(user, new_password, logout_all_sessions=True)
+	frappe.db.commit()
+
+	return {"success": True, "message": _("Password changed successfully.")}
+
+
+@frappe.whitelist(methods=["POST"])
+def change_phone(phone: str, password: str):
+	"""Change the phone number for the currently logged-in user.
+
+	Requires the current password for security verification.
+	"""
+	user = frappe.session.user
+	if user == "Guest":
+		frappe.throw(_("Not logged in."), frappe.AuthenticationError)
+
+	phone = (phone or "").strip()
+	if not phone:
+		frappe.local.response["http_status_code"] = 400
+		frappe.throw(_("Phone number is required."), frappe.ValidationError)
+
+	# Verify password — returns 400 on failure (not 401)
+	_verify_password(user, password)
+
+	# Update User.phone
+	frappe.db.set_value("User", user, "phone", phone)
+
+	# Update Buyer Profile if exists
+	buyer_profile = frappe.db.get_value("Buyer Profile", {"user": user}, "name")
+	if buyer_profile:
+		frappe.db.set_value("Buyer Profile", buyer_profile, "phone", phone)
+
+	frappe.db.commit()
+
+	return {"success": True, "message": _("Phone number updated successfully.")}
+
+
+@frappe.whitelist(methods=["POST"])
+def delete_account(password: str, reason: str = ""):
+	"""Soft-delete the currently logged-in user's account.
+
+	Requires the current password for security verification.
+	The user is disabled (not physically deleted) so data can be recovered
+	within a grace period.
+
+	Session cleanup is handled by the frontend (calls /api/method/logout
+	after receiving the success response).
+	"""
+	user = frappe.session.user
+	if user == "Guest":
+		frappe.throw(_("Not logged in."), frappe.AuthenticationError)
+
+	# Verify password — returns 400 on failure (not 401)
+	_verify_password(user, password)
+
+	# Disable the user (soft-delete)
+	frappe.db.set_value("User", user, "enabled", 0)
+
+	# Deactivate Buyer Profile if exists
+	buyer_profile = frappe.db.get_value("Buyer Profile", {"user": user}, "name")
+	if buyer_profile:
+		frappe.db.set_value("Buyer Profile", buyer_profile, "status", "Deactivated")
+
+	# Log the deletion reason
+	frappe.log_error(
+		title=f"Account deletion: {user}",
+		message=f"User {user} requested account deletion.\nReason: {reason or 'Not specified'}",
+	)
+
+	frappe.db.commit()
+
+	return {"success": True, "message": _("Your account has been deleted.")}
+
+
+@frappe.whitelist(methods=["POST"])
+def complete_registration_application(
+	seller_application,
+	seller_type=None,
+	business_name=None,
+	contact_phone=None,
+	tax_id_type=None,
+	tax_id=None,
+	tax_office=None,
+	address_line_1=None,
+	city=None,
+	country=None,
+	bank_name=None,
+	iban=None,
+	account_holder_name=None,
+	identity_document_type=None,
+	identity_document_number=None,
+	identity_document_expiry=None,
+	identity_document=None,
+	terms_accepted=0,
+	privacy_accepted=0,
+	kvkk_accepted=0,
+	commission_accepted=0,
+	return_policy_accepted=0,
+):
+	"""Complete a supplier registration application with business details.
+
+	The caller must be the owner of the Seller Application.
+	"""
+	user = frappe.session.user
+	if user == "Guest":
+		frappe.throw(_("Not logged in."), frappe.AuthenticationError)
+
+	# Security: verify ownership
+	owner = frappe.db.get_value("Seller Application", seller_application, "applicant_user")
+	if not owner or owner != user:
+		frappe.throw(
+			_("You do not have permission to update this application."),
+			frappe.PermissionError,
+		)
+
+	doc = frappe.get_doc("Seller Application", seller_application)
+
+	# Assign all fields
+	field_map = {
+		"seller_type": seller_type,
+		"business_name": business_name,
+		"contact_phone": contact_phone,
+		"tax_id_type": tax_id_type,
+		"tax_id": tax_id,
+		"tax_office": tax_office,
+		"address_line_1": address_line_1,
+		"city": city,
+		"country": country,
+		"bank_name": bank_name,
+		"iban": iban,
+		"account_holder_name": account_holder_name,
+		"identity_document_type": identity_document_type,
+		"identity_document_number": identity_document_number,
+		"identity_document_expiry": identity_document_expiry,
+		"identity_document": identity_document,
+		"terms_accepted": int(terms_accepted),
+		"privacy_accepted": int(privacy_accepted),
+		"kvkk_accepted": int(kvkk_accepted),
+		"commission_accepted": int(commission_accepted),
+		"return_policy_accepted": int(return_policy_accepted),
+	}
+
+	for field, value in field_map.items():
+		if value is not None:
+			doc.set(field, value)
+
+	doc.status = "Submitted"
+	doc.save(ignore_permissions=True)
+	frappe.db.commit()
+
+	return {"success": True, "application": doc.name}
