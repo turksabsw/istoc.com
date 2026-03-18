@@ -305,3 +305,68 @@ def get_payment_records(order_number):
         "refunds": refunds,
         "wire_transfers": wire_transfers,
     }
+
+
+@frappe.whitelist()
+def submit_remittance(order_number, beneficiary_account, remittance_date,
+                      currency="USD", amount=0, bank_name="", sender_name=""):
+    """
+    Submit a wire transfer remittance proof for an order.
+
+    POST /api/method/tradehub_core.api.order.submit_remittance
+    """
+    buyer = _require_buyer()
+
+    order_name = frappe.db.get_value(
+        "Buyer Order",
+        {"order_number": order_number, "buyer": buyer},
+        "name",
+    )
+
+    # If no specific order, just record the payment with buyer info
+    if not order_name:
+        # Find any unpaid order for this buyer
+        order_name = frappe.db.get_value(
+            "Buyer Order",
+            {"buyer": buyer, "status": "Waiting for payment"},
+            "name",
+            order_by="order_date desc",
+        )
+
+    if not order_name:
+        frappe.throw(_("No matching order found"))
+
+    from frappe.utils import flt
+
+    doc = frappe.get_doc({
+        "doctype": "Buyer Payment",
+        "buyer_order": order_name,
+        "buyer": buyer,
+        "payment_type": "Wire Transfer",
+        "payment_date": remittance_date or now_datetime(),
+        "method": "Bank Transfer",
+        "amount": flt(amount),
+        "currency": currency or "USD",
+        "status": "Pending",
+        "reference": "BANK: {} / ACC: {}".format(bank_name, beneficiary_account),
+        "reason": "Sender: {}".format(sender_name),
+    })
+    doc.insert(ignore_permissions=True)
+
+    # Update order status to Confirming
+    order = frappe.get_doc("Buyer Order", order_name)
+    if order.status == "Waiting for payment":
+        order.status = "Confirming"
+        order.status_color = "text-blue-600"
+        order.status_description = "Payment proof submitted. Awaiting confirmation."
+        order.payment_status = "Processing"
+        order.save(ignore_permissions=True)
+
+    frappe.db.commit()
+
+    return {
+        "success": True,
+        "payment_name": doc.name,
+        "order_number": order.order_number,
+        "order_status": order.status,
+    }

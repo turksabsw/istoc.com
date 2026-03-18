@@ -58,7 +58,8 @@ function renderAllOrders(): string {
       <!-- Header -->
       <div class="flex items-center justify-between gap-2 px-5 max-sm:px-3 pt-6 max-[480px]:pt-4 pb-5 max-[480px]:pb-3 border-b border-gray-100">
         <h1 class="text-[22px] max-sm:text-lg max-[480px]:text-base font-bold text-gray-900" data-i18n="orders.yourOrders">${t('orders.yourOrders')}</h1>
-        <button data-modal="remittance-modal" class="px-5 max-sm:px-3 max-[480px]:px-2.5 py-2 text-sm max-sm:text-xs text-gray-700 bg-white border border-gray-300 rounded-full cursor-pointer whitespace-nowrap transition-colors hover:border-gray-400 hover:bg-gray-50">
+        <button @click="document.getElementById('remittance-modal')?.classList.remove('hidden'); document.getElementById('remittance-modal')?.classList.add('flex'); document.body.style.overflow = 'hidden'"
+          class="px-5 max-sm:px-3 max-[480px]:px-2.5 py-2 text-sm max-sm:text-xs text-gray-700 bg-white border border-gray-300 rounded-full cursor-pointer whitespace-nowrap transition-colors hover:border-gray-400 hover:bg-gray-50">
           ${t('orders.submitRemittanceProof')}
         </button>
       </div>
@@ -830,21 +831,64 @@ function renderAllOrders(): string {
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M6 18L18 6M6 6l12 12"/></svg>
               </button>
             </div>
-            <!-- Body -->
+            <!-- Body — Dynamic timeline based on order status -->
             <div class="px-6 py-5 overflow-y-auto max-h-[60vh]">
               <div class="relative pl-6 border-l-2 border-gray-200 space-y-6">
-                <!-- Timeline item -->
+                <!-- Step 1: Order submitted (always) -->
                 <div class="relative">
                   <div class="absolute -left-[25px] top-1 w-3 h-3 bg-amber-500 rounded-full border-2 border-white"></div>
                   <p class="text-sm font-medium text-gray-900">${t('orders.orderSubmitted')}</p>
                   <p class="text-xs text-gray-500 mt-0.5" x-text="selectedOrder.orderDate"></p>
                   <p class="text-xs text-gray-400 mt-1" x-text="'${t('orders.orderPrefix')} ' + selectedOrder.orderNumber"></p>
                 </div>
-                <div class="relative">
-                  <div class="absolute -left-[25px] top-1 w-3 h-3 bg-gray-300 rounded-full border-2 border-white"></div>
-                  <p class="text-sm font-medium text-gray-600">${t('orders.awaitingPayment')}</p>
-                  <p class="text-xs text-gray-400 mt-1">${t('orders.waitingPaymentMessage')}</p>
-                </div>
+
+                <!-- Cancelled -->
+                <template x-if="selectedOrder.status === 'Cancelled'">
+                  <div class="relative">
+                    <div class="absolute -left-[25px] top-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white"></div>
+                    <p class="text-sm font-medium text-red-600">${t('orders.orderCancelled')}</p>
+                    <p class="text-xs text-gray-400 mt-1" x-text="selectedOrder.statusDescription"></p>
+                  </div>
+                </template>
+
+                <!-- Normal flow steps -->
+                <template x-if="selectedOrder.status !== 'Cancelled'">
+                  <div class="space-y-6">
+                    <!-- Step 2: Payment -->
+                    <div class="relative">
+                      <div class="absolute -left-[25px] top-1 w-3 h-3 rounded-full border-2 border-white"
+                           :class="getStepIndex(selectedOrder) >= 1 ? 'bg-amber-500' : 'bg-gray-300'"></div>
+                      <p class="text-sm font-medium" :class="getStepIndex(selectedOrder) >= 1 ? 'text-gray-900' : 'text-gray-400'"
+                         x-text="getStepIndex(selectedOrder) === 0 ? '${t('orders.awaitingPayment')}' : '${t('orders.orderConfirming')}'"></p>
+                      <p class="text-xs text-gray-400 mt-1"
+                         x-text="getStepIndex(selectedOrder) === 0 ? '${t('orders.waitingPaymentMessage')}' : '${t('orders.orderConfirmingMessage')}'"></p>
+                    </div>
+                    <!-- Step 3: Preparing -->
+                    <template x-if="getStepIndex(selectedOrder) >= 2">
+                      <div class="relative">
+                        <div class="absolute -left-[25px] top-1 w-3 h-3 bg-amber-500 rounded-full border-2 border-white"></div>
+                        <p class="text-sm font-medium text-gray-900">${t('orders.orderPreparing')}</p>
+                        <p class="text-xs text-gray-400 mt-1">${t('orders.orderPreparingMessage')}</p>
+                      </div>
+                    </template>
+                    <!-- Step 4: Delivering -->
+                    <template x-if="getStepIndex(selectedOrder) >= 3">
+                      <div class="relative">
+                        <div class="absolute -left-[25px] top-1 w-3 h-3 bg-amber-500 rounded-full border-2 border-white"></div>
+                        <p class="text-sm font-medium text-gray-900">${t('orders.orderDelivering')}</p>
+                        <p class="text-xs text-gray-400 mt-1">${t('orders.orderDeliveringMessage')}</p>
+                      </div>
+                    </template>
+                    <!-- Step 5: Completed -->
+                    <template x-if="getStepIndex(selectedOrder) >= 4">
+                      <div class="relative">
+                        <div class="absolute -left-[25px] top-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
+                        <p class="text-sm font-medium text-green-700">${t('orders.orderCompleted')}</p>
+                        <p class="text-xs text-gray-400 mt-1">${t('orders.orderCompletedMessage')}</p>
+                      </div>
+                    </template>
+                  </div>
+                </template>
               </div>
             </div>
             <!-- Footer -->
