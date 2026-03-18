@@ -1670,3 +1670,77 @@ alter table `tabDocType` add column if not exists migration_hash varchar(140)
 ALTER TABLE `tabPrint Heading` DROP INDEX `print_heading`
 2026-03-18 09:43:58,349 WARNING database DDL Query made to DB:
 ALTER TABLE `tabPrint Heading` ADD UNIQUE INDEX IF NOT EXISTS print_heading (`print_heading`)
+2026-03-18 10:01:36,393 WARNING database DDL Query made to DB:
+alter table `tabDocType` add column if not exists migration_hash varchar(140)
+2026-03-18 10:01:36,729 WARNING database DDL Query made to DB:
+ALTER TABLE `tabPrint Heading` DROP INDEX `print_heading`
+2026-03-18 10:01:37,053 WARNING database DDL Query made to DB:
+ALTER TABLE `tabPrint Heading` ADD UNIQUE INDEX IF NOT EXISTS print_heading (`print_heading`)
+2026-03-18 10:01:37,297 WARNING database DDL Query made to DB:
+create table `tabAdmin Seller Profile` (
+			name varchar(140) primary key,
+			creation datetime(6),
+			modified datetime(6),
+			modified_by varchar(140),
+			owner varchar(140),
+			docstatus int(1) not null default '0',
+			idx int(8) not null default '0',
+			`seller_name` varchar(140),
+`seller_code` varchar(140),
+`user` varchar(140) unique,
+`status` varchar(140) default 'Pending',
+`seller_type` varchar(140) default 'Individual',
+`logo` text,
+`banner_image` text,
+`description` longtext,
+`slogan` varchar(140),
+`company_name` varchar(140),
+`tax_id` varchar(140),
+`tax_office` varchar(140),
+`founded_year` varchar(140),
+`staff_count` varchar(140),
+`annual_revenue` varchar(140),
+`factory_size` varchar(140),
+`business_type` varchar(140) default 'Manufacturer',
+`main_markets` text,
+`email` varchar(140),
+`phone` varchar(140),
+`website` varchar(140),
+`address_line1` varchar(140),
+`address_line2` varchar(140),
+`city` varchar(140),
+`district` varchar(140),
+`postal_code` varchar(140),
+`country` varchar(140) default 'Turkey',
+`bank_name` varchar(140),
+`iban` varchar(140),
+`account_holder` varchar(140),
+`health_score` decimal(21,9) not null default 100.0,
+`score_grade` varchar(140) default 'A',
+`total_orders` int(11) not null default 0,
+`rating` decimal(21,9) not null default 0,
+`commission_rate` decimal(21,9) not null default 8.0,
+`subscription_plan` varchar(140),
+`approved_by` varchar(140),
+`approved_on` datetime(6),
+`_user_tags` text,
+`_comments` text,
+`_assign` text,
+`_liked_by` text,
+index modified(modified))
+			ENGINE=InnoDB
+			ROW_FORMAT=DYNAMIC
+			CHARACTER SET=utf8mb4
+			COLLATE=utf8mb4_unicode_ci
+2026-03-18 10:01:38,997 WARNING database DDL Query made to DB:
+alter table `tabDocType` add column if not exists migration_hash varchar(140)
+2026-03-18 10:01:39,290 WARNING database DDL Query made to DB:
+ALTER TABLE `tabPrint Heading` DROP INDEX `print_heading`
+2026-03-18 10:01:39,628 WARNING database DDL Query made to DB:
+ALTER TABLE `tabPrint Heading` ADD UNIQUE INDEX IF NOT EXISTS print_heading (`print_heading`)
+2026-03-18 10:02:04,947 WARNING database DDL Query made to DB:
+alter table `tabDocType` add column if not exists migration_hash varchar(140)
+2026-03-18 10:02:05,300 WARNING database DDL Query made to DB:
+ALTER TABLE `tabPrint Heading` DROP INDEX `print_heading`
+2026-03-18 10:02:05,599 WARNING database DDL Query made to DB:
+ALTER TABLE `tabPrint Heading` ADD UNIQUE INDEX IF NOT EXISTS print_heading (`print_heading`)
