@@ -348,7 +348,7 @@
  "modified": "2024-01-01 00:00:00.000000",
  "modified_by": "Administrator",
  "module": "Tradehub Core",
- "name": "Seller Profile",
+ "name": "Admin Seller Profile",
  "naming_rule": "By fieldname",
  "owner": "Administrator",
  "permissions": [
