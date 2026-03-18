@@ -2,3 +2,77 @@
 Frappe_Marketplace/
 Frappe_Marketplace-main/
 SELLER_MODULE_STATUS.md
+
+# ── Python ────────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+
+# ── Frappe Bench — Python Virtualenv ──────────────────────────────────────────
+# Her geliştirici kendi ortamını kurar, conflict'in %90'ı buradan geliyor
+tradehubback/env/
+
+# ── Frappe Bench — Runtime / Process dosyaları ────────────────────────────────
+tradehubback/logs/
+tradehubback/config/pids/
+tradehubback/config/scheduler_process
+
+# ── Frappe Bench — Redis runtime dosyaları ────────────────────────────────────
+*.rdb
+*.pid
+
+# ── Frappe Bench — Site runtime dosyaları ─────────────────────────────────────
+# site_config.json kasıtlı olarak burada YOK (paylaşılan DB ayarları)
+tradehubback/sites/*/logs/
+tradehubback/sites/*/locks/
+tradehubback/sites/*/indexes/
+tradehubback/sites/*/private/backups/
+tradehubback/sites/*/private/files/
+tradehubback/sites/*/public/files/
+tradehubback/sites/*/touched_tables.json
+tradehubback/tradehub.localhost
+
+# ── Docker ────────────────────────────────────────────────────────────────────
+# docker-compose.yml paylaşılır, override her dev'e özel
+docker-compose.override.yml
+docker-compose.override.yaml
+.env
+.env.local
+.env.*.local
+
+# ── Frontend (tradehubfront) ───────────────────────────────────────────────────
+tradehubfront/node_modules/
+tradehubfront/dist/
+tradehubfront/dist-ssr/
+tradehubfront/*.local
+
+# ── Editor / IDE ──────────────────────────────────────────────────────────────
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# ── Log dosyaları ─────────────────────────────────────────────────────────────
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ── Auto Claude ───────────────────────────────────────────────────────────────
+.auto-claude/
+.auto-claude-security.json
+.auto-claude-status
+.claude_settings.json
+.worktrees/
+.security-key
+logs/security/

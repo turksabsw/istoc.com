@@ -1,6 +1,0 @@
-{
- "allow_cors": "http://localhost:5173",
- "db_name": "_a442feea467abfcc",
- "db_password": "rCN4UEwX6mG2wWui",
- "db_type": "mariadb"
-}
