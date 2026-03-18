@@ -522,7 +522,10 @@ def _format_listing_card(listing):
             pass
 
     # Get price range from pricing tiers
-    price_display = _format_price(listing.get("selling_price"), listing.get("currency"))
+    selling_price = listing.get("selling_price") or 0
+    min_price_val = selling_price
+    max_price_val = selling_price
+    price_display = _format_price(selling_price, listing.get("currency"))
 
     if listing.get("b2b_enabled"):
         tiers = frappe.get_all(
@@ -532,12 +535,12 @@ def _format_listing_card(listing):
             order_by="price ASC",
         )
         if tiers:
-            min_price = min(t.price for t in tiers)
-            max_price = max(t.price for t in tiers)
-            if min_price != max_price:
-                price_display = f"${min_price:.2f}-{max_price:.2f}"
+            min_price_val = min(t.price for t in tiers)
+            max_price_val = max(t.price for t in tiers)
+            if min_price_val != max_price_val:
+                price_display = f"${min_price_val:.2f}-{max_price_val:.2f}"
             else:
-                price_display = f"${min_price:.2f}"
+                price_display = f"${min_price_val:.2f}"
 
     # Get first image
     primary_image = listing.get("primary_image", "")
@@ -548,6 +551,9 @@ def _format_listing_card(listing):
         "name": listing.title,
         "href": f"/pages/product-detail.html?id={listing.name}",
         "price": price_display,
+        "sellingPrice": selling_price,
+        "minPrice": min_price_val,
+        "maxPrice": max_price_val,
         "originalPrice": _format_price(listing.get("compare_at_price"), listing.get("currency")) if listing.get("compare_at_price") else None,
         "discount": f"%{int(listing.get('discount_percentage', 0))} indirim" if listing.get("discount_percentage") else None,
         "moq": f"{listing.get('min_order_qty', 1)} {listing.get('stock_uom', 'Adet')}",

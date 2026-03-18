@@ -22,6 +22,8 @@ interface TopDealCard {
   badge?: string;
   badgeKey?: string;
   imageSrc: string;
+  /** Numeric starting price for display (already converted to selected currency) */
+  startingPrice?: string;
 }
 
 // Empty — populated from API in initTopDeals()
@@ -84,7 +86,7 @@ function renderDealSlide(card: TopDealCard): string {
             <span
               class="text-(length:--text-product-price) font-bold leading-none"
               style="color: var(--topdeals-price-color, #dc2626); font-size: var(--text-product-price, 15px);"
-            >${formatStartingPrice(card.price)}</span>
+            >${card.startingPrice || card.price}</span>
           </span>
         </div>
 
@@ -151,6 +153,7 @@ export function initTopDeals(): void {
             name: p.name,
             href: p.href || `/pages/product-detail.html?id=${p.id}`,
             price: p.price,
+            startingPrice: formatStartingPrice(p.price),
             originalPrice: p.originalPrice || '',
             moqCount: parseInt(p.moq) || 1,
             moqUnitKey: 'topDeals.pieces',

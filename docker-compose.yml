@@ -147,6 +147,21 @@ services:
       - redis-queue-data:/data
     restart: unless-stopped
 
+  # ──────────────────────────────────────────────
+  # Mailpit — E-posta test sunucusu
+  # ──────────────────────────────────────────────
+  mailpit:
+    image: axllent/mailpit:latest
+    ports:
+      - "${MAILPIT_SMTP_PORT:-1025}:1025"
+      - "${MAILPIT_UI_PORT:-8025}:8025"
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8025/api/v1/info"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
 volumes:
   db-data:
   redis-cache-data:

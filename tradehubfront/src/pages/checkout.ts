@@ -28,6 +28,7 @@ import { startAlpine } from '../alpine'
 import { CheckoutHeader, CheckoutLayout, ShippingAddressForm, OrderSummary, PaymentMethodSection, ItemsDeliverySection, OrderProtectionModal, OrderReviewModal } from '../components/checkout'
 import { protectionSummaryItems, tradeAssuranceText, modalSections, paymentIcons, infoBoxBullets, mockCoupons } from '../data/mockCheckout'
 import { cartStore } from '../components/cart/state/CartStore'
+import { getSelectedCurrency } from '../services/currencyService'
 import type { OrderSummary as OrderSummaryData } from '../types/checkout'
 import type { CartProduct, CartSku } from '../types/cart'
 import type { CheckoutDeliveryOrderGroup } from '../components/checkout'
@@ -153,7 +154,7 @@ const checkoutOrderSummary: OrderSummaryData = {
   subtotal: cartSummary.productSubtotal + defaultShippingFee - cartSummary.discount,
   processingFee: 0,
   total: cartSummary.productSubtotal + defaultShippingFee - cartSummary.discount,
-  currency: 'USD',
+  currency: getSelectedCurrency(),
 };
 
 const appEl = document.querySelector<HTMLDivElement>('#app')!;
@@ -249,7 +250,7 @@ function buildOrdersFromCheckout(paymentMethod: string): Order[] {
       orderNumber,
       orderDate: dateStr,
       total: grandTotal.toFixed(2),
-      currency: 'USD',
+      currency: getSelectedCurrency(),
       seller: deliveryOrder.sellerName,
       status: isCreditCard ? 'Confirming' : 'Waiting for payment',
       statusColor: isCreditCard ? 'text-blue-600' : 'text-amber-600',

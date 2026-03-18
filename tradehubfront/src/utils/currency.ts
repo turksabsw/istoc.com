@@ -55,14 +55,31 @@ export function formatPrice(price: string): string {
 }
 
 export function formatStartingPrice(price: string): string {
-  const { symbol } = getSelectedCurrency();
-  // Match patterns like "$0.88-1.51", "$0.88 - 1.51", "$0.88-$1.51"
-  const rangeMatch = price.match(/[\$€₺]?([\d.]+)\s*-\s*[\$€₺]?([\d.]+)/);
+  const { symbol, code } = getSelectedCurrency();
+  // Match range patterns in both formats:
+  //   USD/EUR: "$0.88-1.51", "$0.88 - $1.51"
+  //   TRY:     "₺50,00-90,00", "₺1.925,00-3.850,00"
+  const rangeMatch = price.match(/[\$€₺£¥]?([\d.,]+)\s*-\s*[\$€₺£¥]?([\d.,]+)/);
   if (rangeMatch) {
-    const a = parseFloat(rangeMatch[1]);
-    const b = parseFloat(rangeMatch[2]);
-    const startingPrice = Math.min(a, b);
-    return `${symbol}${startingPrice.toFixed(2).replace(/\.00$/, '')}`;
+    const parseNum = (s: string): number => {
+      if (code === 'TRY') {
+        // TRY format: 1.925,50 → remove dots (thousands), replace comma with dot (decimal)
+        return parseFloat(s.replace(/\./g, '').replace(',', '.'));
+      }
+      // USD/EUR format: 1,925.50 → remove commas
+      return parseFloat(s.replace(/,/g, ''));
+    };
+    const a = parseNum(rangeMatch[1]);
+    const b = parseNum(rangeMatch[2]);
+    if (!isNaN(a) && !isNaN(b)) {
+      const startingPrice = Math.max(a, b);
+      if (code === 'TRY') {
+        // TRY format with comma decimal
+        const formatted = startingPrice.toFixed(2).replace('.', ',').replace(/,00$/, '');
+        return `${symbol}${formatted}`;
+      }
+      return `${symbol}${startingPrice.toFixed(2).replace(/\.00$/, '')}`;
+    }
   }
   // Single price — just swap symbol
   return formatPrice(price);
