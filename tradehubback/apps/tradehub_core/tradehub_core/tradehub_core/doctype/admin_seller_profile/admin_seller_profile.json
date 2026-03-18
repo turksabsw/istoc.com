@@ -31,6 +31,7 @@
   "factory_size",
   "business_type",
   "main_markets",
+  "certifications",
   "tab_iletisim",
   "email",
   "phone",
@@ -47,11 +48,17 @@
   "iban",
   "account_holder",
   "tab_performans",
+  "is_verified",
+  "verification_type",
   "health_score",
   "score_grade",
   "cb_performans",
   "total_orders",
   "rating",
+  "review_count",
+  "response_time",
+  "response_rate",
+  "on_time_delivery",
   "tab_admin",
   "commission_rate",
   "subscription_plan",
@@ -194,6 +201,12 @@
    "label": "Ana Pazarlar"
   },
   {
+   "fieldname": "certifications",
+   "fieldtype": "Small Text",
+   "label": "Sertifikalar",
+   "description": "Virgülle ayrılmış sertifikalar, örn: ISO 9001, CE, RoHS"
+  },
+  {
    "fieldname": "tab_iletisim",
    "fieldtype": "Tab Break",
    "label": "\u0130leti\u015fim"
@@ -277,6 +290,18 @@
    "label": "Performans"
   },
   {
+   "default": "0",
+   "fieldname": "is_verified",
+   "fieldtype": "Check",
+   "label": "Doğrulanmış Tedarikçi"
+  },
+  {
+   "fieldname": "verification_type",
+   "fieldtype": "Data",
+   "label": "Doğrulama Tipi",
+   "description": "Örn: Verified Multispecialty Supplier, Verified PRO Supplier"
+  },
+  {
    "default": "100",
    "fieldname": "health_score",
    "fieldtype": "Float",
@@ -307,6 +332,33 @@
    "fieldname": "rating",
    "fieldtype": "Float",
    "label": "Puan",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "review_count",
+   "fieldtype": "Int",
+   "label": "Değerlendirme Sayısı",
+   "read_only": 1
+  },
+  {
+   "fieldname": "response_time",
+   "fieldtype": "Data",
+   "label": "Yanıt Süresi",
+   "description": "Örn: < 24 saat"
+  },
+  {
+   "default": "0",
+   "fieldname": "response_rate",
+   "fieldtype": "Percent",
+   "label": "Yanıt Oranı",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "on_time_delivery",
+   "fieldtype": "Percent",
+   "label": "Zamanında Teslimat",
    "read_only": 1
   },
   {
@@ -368,6 +420,11 @@
    "read": 1,
    "role": "Marketplace Seller",
    "write": 1
+  },
+  {
+   "read": 1,
+   "role": "Seller",
+   "if_owner": 1
   }
  ],
  "sort_field": "modified",

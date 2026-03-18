@@ -48,7 +48,8 @@
  "permissions": [
   {"create": 1, "delete": 1, "read": 1, "role": "System Manager", "write": 1},
   {"read": 1, "role": "Marketplace Admin", "write": 1, "delete": 1},
-  {"read": 1, "role": "Marketplace Seller", "write": 1, "delete": 1}
+  {"read": 1, "role": "Marketplace Seller", "write": 1, "delete": 1},
+  {"read": 1, "role": "Seller"}
  ],
  "sort_field": "date",
  "sort_order": "DESC",

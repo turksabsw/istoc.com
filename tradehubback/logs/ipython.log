@@ -1,0 +1,197 @@
+2026-03-18 10:54:16,716 INFO ipython === bench console session ===
+2026-03-18 10:54:16,716 INFO ipython import frappe, json
+2026-03-18 10:54:16,717 INFO ipython with open("apps/tradehub_core/tradehub_core/tradehub_core/workspace/tradehub_seller/tradehub_seller.json") as f:
+    data = json.load(f)
+2026-03-18 10:54:16,717 INFO ipython === session end ===
+2026-03-18 10:54:22,776 INFO ipython === bench console session ===
+2026-03-18 10:54:22,776 INFO ipython import frappe, json
+2026-03-18 10:54:22,776 INFO ipython path = "/home/bora/Masaüstü/istoc.com/tradehubback/apps/tradehub_core/tradehub_core/tradehub_core/workspace/tradehub_seller/tradehub_seller.json"
+2026-03-18 10:54:22,776 INFO ipython with open(path) as f:
+    data = json.load(f)
+2026-03-18 10:54:22,776 INFO ipython doc = frappe.get_doc("Workspace", "Tradehub Seller")
+2026-03-18 10:54:22,776 INFO ipython doc.content = data["content"]
+2026-03-18 10:54:22,776 INFO ipython doc.shortcuts = []
+2026-03-18 10:54:22,777 INFO ipython for s in data["shortcuts"]:
+    doc.append("shortcuts", s)
+doc.save(ignore_permissions=True)
+2026-03-18 10:54:22,777 INFO ipython frappe.db.commit()
+2026-03-18 10:54:22,777 INFO ipython print("Workspace güncellendi")
+2026-03-18 10:54:22,777 INFO ipython === session end ===
+2026-03-18 10:55:23,205 INFO ipython === bench console session ===
+2026-03-18 10:55:23,205 INFO ipython import frappe
+2026-03-18 10:55:23,205 INFO ipython doc = frappe.get_doc("Workspace", "Tradehub Seller")
+2026-03-18 10:55:23,205 INFO ipython print("Content:", doc.content[:200])
+2026-03-18 10:55:23,205 INFO ipython print("Shortcuts count:", len(doc.shortcuts))
+2026-03-18 10:55:23,205 INFO ipython === session end ===
+2026-03-18 10:55:50,970 INFO ipython === bench console session ===
+2026-03-18 10:55:50,970 INFO ipython import frappe, json
+2026-03-18 10:55:50,970 INFO ipython path = "/home/bora/Masaüstü/istoc.com/tradehubback/apps/tradehub_core/tradehub_core/tradehub_core/workspace/tradehub_seller/tradehub_seller.json"
+2026-03-18 10:55:50,970 INFO ipython with open(path) as f:
+    data = json.load(f)
+2026-03-18 10:55:50,970 INFO ipython doc = frappe.get_doc("Workspace", "Tradehub Seller")
+2026-03-18 10:55:50,970 INFO ipython # Content güncelle
+2026-03-18 10:55:50,970 INFO ipython doc.content = data["content"]
+2026-03-18 10:55:50,970 INFO ipython # Shortcuts tamamen sil ve yeniden ekle
+2026-03-18 10:55:50,970 INFO ipython frappe.db.delete("Workspace Shortcut", {"parent": "Tradehub Seller"})
+2026-03-18 10:55:50,970 INFO ipython for s in data["shortcuts"]:
+    doc.append("shortcuts", {
+        "type": s.get("type", "DocType"),
+        "label": s.get("label", ""),
+        "link_to": s.get("link_to", ""),
+        "format": s.get("format", "Card"),
+        "color": s.get("color", "Grey"),
+        "doc_view": s.get("doc_view", ""),
+    })
+2026-03-18 10:55:50,970 INFO ipython doc.save(ignore_permissions=True)
+2026-03-18 10:55:50,970 INFO ipython frappe.db.commit()
+2026-03-18 10:55:50,970 INFO ipython print("Toplam shortcut:", len(doc.shortcuts))
+2026-03-18 10:55:50,971 INFO ipython print("Güncellendi!")
+2026-03-18 10:55:50,971 INFO ipython === session end ===
+2026-03-18 10:57:52,141 INFO ipython === bench console session ===
+2026-03-18 10:57:52,141 INFO ipython import frappe, json
+2026-03-18 10:57:52,141 INFO ipython new_content = json.dumps([
+  {"id":"section-seller","type":"section","data":{"label":"Satıcı Yönetimi","columns":4},"items":[
+    {"id":"lnk-seller-profile","type":"shortcut","data":{"label":"Satıcı Profili","format":"card","link_to":"Seller Profile","type":"DocType","icon":"es-line-building"}},
+    {"id":"lnk-admin-seller-profile","type":"shortcut","data":{"label":"Admin Satıcı Profili","format":"card","link_to":"Admin Seller Profile","type":"DocType","icon":"es-line-shield"}},
+    {"id":"lnk-seller-application","type":"shortcut","data":{"label":"Satıcı Başvuruları","format":"card","link_to":"Seller Application","type":"DocType","icon":"es-line-file-text"}},
+    {"id":"lnk-seller-balance","type":"shortcut","data":{"label":"Satıcı Bakiye","format":"card","link_to":"Seller Balance","type":"DocType","icon":"es-line-wallet"}}
+  ]},
+  {"id":"section-buyer","type":"section","data":{"label":"Alıcı & İnceleme","columns":4},"items":[
+    {"id":"lnk-buyer-profile","type":"shortcut","data":{"label":"Alıcı Profili","format":"card","link_to":"Buyer Profile","type":"DocType","icon":"es-line-user"}},
+    {"id":"lnk-seller-inquiry","type":"shortcut","data":{"label":"Satıcı Sorgular","format":"card","link_to":"Seller Inquiry","type":"DocType","icon":"es-line-chat"}},
+    {"id":"lnk-seller-review","type":"shortcut","data":{"label":"Satıcı Değerlendirme","format":"card","link_to":"Seller Review","type":"DocType","icon":"es-line-star"}}
+  ]},
+  {"id":"section-listing","type":"section","data":{"label":"Ürün & İlanlar","columns":4},"items":[
+    {"id":"lnk-listing","type":"shortcut","data":{"label":"İlanlar","format":"card","link_to":"Listing","type":"DocType","icon":"es-line-package"}},
+    {"id":"lnk-listing-variant","type":"shortcut","data":{"label":"İlan Varyantları","format":"card","link_to":"Listing Variant","type":"DocType","icon":"es-line-settings"}},
+    {"id":"lnk-seller-product","type":"shortcut","data":{"label":"Satıcı Ürünleri","format":"card","link_to":"Seller Product","type":"DocType","icon":"es-line-tag"}},
+    {"id":"lnk-supplier-profile","type":"shortcut","data":{"label":"Tedarikçi Profili","format":"card","link_to":"Supplier Profile","type":"DocType","icon":"es-line-truck"}}
+  ]},
+  {"id":"section-category","type":"section","data":{"label":"Kategori & Kargo","columns":4},"items":[
+    {"id":"lnk-product-category","type":"shortcut","data":{"label":"Ürün Kategorileri","format":"card","link_to":"Product Category","type":"DocType","icon":"es-line-layers"}},
+    {"id":"lnk-seller-category","type":"shortcut","data":{"label":"Satıcı Kategorileri","format":"card","link_to":"Seller Category","type":"DocType","icon":"es-line-tag-double"}},
+    {"id":"lnk-shipping-method","type":"shortcut","data":{"label":"Kargo Yöntemleri","format":"card","link_to":"Shipping Method","type":"DocType","icon":"es-line-truck"}}
+  ]},
+  {"id":"section-currency","type":"section","data":{"label":"Para Birimi","columns":4},"items":[
+    {"id":"lnk-currency-rate","type":"shortcut","data":{"label":"Döviz Kurları","format":"card","link_to":"Currency Rate","type":"DocType","icon":"es-line-currency"}}
+  ]}
+], ensure_ascii=False)
+2026-03-18 10:57:52,142 INFO ipython frappe.db.sql("UPDATE `tabWorkspace` SET content=%s WHERE name='Satıcı Paneli'", new_content)
+2026-03-18 10:57:52,142 INFO ipython frappe.db.commit()
+2026-03-18 10:57:52,142 INFO ipython frappe.cache().delete_key("workspace_sidebar_items")
+2026-03-18 10:57:52,142 INFO ipython frappe.cache().delete_value("workspace_sidebar_items")
+2026-03-18 10:57:52,142 INFO ipython print("Güncellendi! content uzunluğu:", len(new_content))
+2026-03-18 10:57:52,142 INFO ipython === session end ===
+2026-03-18 11:00:10,235 INFO ipython === bench console session ===
+2026-03-18 11:00:10,236 INFO ipython import frappe
+2026-03-18 11:00:10,236 INFO ipython # Mevcut Satıcı Paneli shortcut'larını al
+2026-03-18 11:00:10,236 INFO ipython existing = {s.link_to: s.name for s in frappe.get_all("Workspace Shortcut", 
+    filters={"parent": "Satıcı Paneli"}, fields=["name", "link_to"])}
+2026-03-18 11:00:10,236 INFO ipython print("Mevcut:", existing)
+2026-03-18 11:00:10,236 INFO ipython # Eklenecek yeni shortcut'lar
+2026-03-18 11:00:10,236 INFO ipython new_shortcuts = [
+    {"label": "Admin Satıcı Profili", "link_to": "Admin Seller Profile", "type": "DocType", "format": "Card", "color": "Grey"},
+    {"label": "Satıcı Başvuruları", "link_to": "Seller Application", "type": "DocType", "format": "Card", "color": "Grey"},
+    {"label": "Alıcı Profili", "link_to": "Buyer Profile", "type": "DocType", "format": "Card", "color": "Grey"},
+    {"label": "Satıcı Sorgular", "link_to": "Seller Inquiry", "type": "DocType", "format": "Card", "color": "Grey"},
+    {"label": "Satıcı Değerlendirme", "link_to": "Seller Review", "type": "DocType", "format": "Card", "color": "Grey"},
+    {"label": "İlanlar", "link_to": "Listing", "type": "DocType", "format": "Card", "color": "Grey"},
+    {"label": "İlan Varyantları", "link_to": "Listing Variant", "type": "DocType", "format": "Card", "color": "Grey"},
+    {"label": "Satıcı Ürünleri", "link_to": "Seller Product", "type": "DocType", "format": "Card", "color": "Grey"},
+    {"label": "Tedarikçi Profili", "link_to": "Supplier Profile", "type": "DocType", "format": "Card", "color": "Grey"},
+    {"label": "Ürün Kategorileri", "link_to": "Product Category", "type": "DocType", "format": "Card", "color": "Grey"},
+    {"label": "Kargo Yöntemleri", "link_to": "Shipping Method", "type": "DocType", "format": "Card", "color": "Grey"},
+    {"label": "Döviz Kurları", "link_to": "Currency Rate", "type": "DocType", "format": "Card", "color": "Grey"},
+]
+2026-03-18 11:00:10,236 INFO ipython for s in new_shortcuts:
+    if s["link_to"] not in existing:
+        sc = frappe.new_doc("Workspace Shortcut")
+        sc.update(s)
+        sc.parent = "Satıcı Paneli"
+        sc.parenttype = "Workspace"
+        sc.parentfield = "shortcuts"
+        sc.insert(ignore_permissions=True)
+        existing[s["link_to"]] = sc.name
+        print("Eklendi:", s["label"], "->", sc.name)
+2026-03-18 11:00:10,236 INFO ipython frappe.db.commit()
+2026-03-18 11:00:10,236 INFO ipython print("\nTüm shortcut'lar:", existing)
+2026-03-18 11:00:10,236 INFO ipython === session end ===
+2026-03-18 11:00:24,815 INFO ipython === bench console session ===
+2026-03-18 11:00:24,815 INFO ipython import frappe, json
+2026-03-18 11:00:24,815 INFO ipython content = [
+  {"id":"hdr-seller","type":"header","data":{"text":"<span class=\"h4\"><b>Satıcı Yönetimi</b></span>","col":12}},
+  {"id":"nc7kqag7ft","type":"shortcut","data":{"shortcut_name":"nc7kqag7ft","col":3}},
+  {"id":"4r5g4d4jef","type":"shortcut","data":{"shortcut_name":"4r5g4d4jef","col":3}},
+  {"id":"4r6ke5kpm4","type":"shortcut","data":{"shortcut_name":"4r6ke5kpm4","col":3}},
+  {"id":"nc7m983eo1","type":"shortcut","data":{"shortcut_name":"nc7m983eo1","col":3}},
+  {"id":"hdr-buyer","type":"header","data":{"text":"<span class=\"h4\"><b>Alıcı & İnceleme</b></span>","col":12}},
+  {"id":"4r6pjlkab6","type":"shortcut","data":{"shortcut_name":"4r6pjlkab6","col":3}},
+  {"id":"4r6b8u0q55","type":"shortcut","data":{"shortcut_name":"4r6b8u0q55","col":3}},
+  {"id":"4r64co465l","type":"shortcut","data":{"shortcut_name":"4r64co465l","col":3}},
+  {"id":"hdr-listing","type":"header","data":{"text":"<span class=\"h4\"><b>Ürün & İlanlar</b></span>","col":12}},
+  {"id":"4r6pccjq4j","type":"shortcut","data":{"shortcut_name":"4r6pccjq4j","col":3}},
+  {"id":"4r6hscsoqo","type":"shortcut","data":{"shortcut_name":"4r6hscsoqo","col":3}},
+  {"id":"nc774ggqoh","type":"shortcut","data":{"shortcut_name":"nc774ggqoh","col":3}},
+  {"id":"4r6fb2m3vh","type":"shortcut","data":{"shortcut_name":"4r6fb2m3vh","col":3}},
+  {"id":"hdr-category","type":"header","data":{"text":"<span class=\"h4\"><b>Kategori & Kargo</b></span>","col":12}},
+  {"id":"4r6aeakmjt","type":"shortcut","data":{"shortcut_name":"4r6aeakmjt","col":3}},
+  {"id":"nc78oqh4qh","type":"shortcut","data":{"shortcut_name":"nc78oqh4qh","col":3}},
+  {"id":"4r6kpdic76","type":"shortcut","data":{"shortcut_name":"4r6kpdic76","col":3}},
+  {"id":"hdr-currency","type":"header","data":{"text":"<span class=\"h4\"><b>Para Birimi</b></span>","col":12}},
+  {"id":"4r6qrv993b","type":"shortcut","data":{"shortcut_name":"4r6qrv993b","col":3}},
+]
+2026-03-18 11:00:24,815 INFO ipython frappe.db.sql("UPDATE `tabWorkspace` SET content=%s WHERE name='Satıcı Paneli'", json.dumps(content, ensure_ascii=False))
+2026-03-18 11:00:24,815 INFO ipython frappe.db.commit()
+2026-03-18 11:00:24,815 INFO ipython frappe.clear_cache()
+2026-03-18 11:00:24,815 INFO ipython print("Content güncellendi, cache temizlendi")
+2026-03-18 11:00:24,815 INFO ipython === session end ===
+2026-03-18 11:02:33,169 INFO ipython === bench console session ===
+2026-03-18 11:02:33,169 INFO ipython import frappe, json
+2026-03-18 11:02:33,169 INFO ipython content = [
+  {"id":"hdr-seller","type":"header","data":{"text":"<span class=\"h4\"><b>Satıcı Yönetimi</b></span>","col":12}},
+  {"id":"sc1","type":"shortcut","data":{"shortcut_name":"Satıcı Profili","col":3}},
+  {"id":"sc2","type":"shortcut","data":{"shortcut_name":"Admin Satıcı Profili","col":3}},
+  {"id":"sc3","type":"shortcut","data":{"shortcut_name":"Satıcı Başvuruları","col":3}},
+  {"id":"sc4","type":"shortcut","data":{"shortcut_name":"Bakiye","col":3}},
+  {"id":"hdr-buyer","type":"header","data":{"text":"<span class=\"h4\"><b>Alıcı & İnceleme</b></span>","col":12}},
+  {"id":"sc5","type":"shortcut","data":{"shortcut_name":"Alıcı Profili","col":3}},
+  {"id":"sc6","type":"shortcut","data":{"shortcut_name":"Satıcı Sorgular","col":3}},
+  {"id":"sc7","type":"shortcut","data":{"shortcut_name":"Satıcı Değerlendirme","col":3}},
+  {"id":"hdr-listing","type":"header","data":{"text":"<span class=\"h4\"><b>Ürün & İlanlar</b></span>","col":12}},
+  {"id":"sc8","type":"shortcut","data":{"shortcut_name":"İlanlar","col":3}},
+  {"id":"sc9","type":"shortcut","data":{"shortcut_name":"İlan Varyantları","col":3}},
+  {"id":"sc10","type":"shortcut","data":{"shortcut_name":"Ürünler","col":3}},
+  {"id":"sc11","type":"shortcut","data":{"shortcut_name":"Tedarikçi Profili","col":3}},
+  {"id":"hdr-cat","type":"header","data":{"text":"<span class=\"h4\"><b>Kategori & Kargo</b></span>","col":12}},
+  {"id":"sc12","type":"shortcut","data":{"shortcut_name":"Ürün Kategorileri","col":3}},
+  {"id":"sc13","type":"shortcut","data":{"shortcut_name":"Kategoriler","col":3}},
+  {"id":"sc14","type":"shortcut","data":{"shortcut_name":"Kargo Yöntemleri","col":3}},
+  {"id":"hdr-cur","type":"header","data":{"text":"<span class=\"h4\"><b>Para Birimi</b></span>","col":12}},
+  {"id":"sc15","type":"shortcut","data":{"shortcut_name":"Döviz Kurları","col":3}},
+]
+2026-03-18 11:02:33,169 INFO ipython frappe.db.sql("UPDATE `tabWorkspace` SET content=%s WHERE name='Satıcı Paneli'", json.dumps(content, ensure_ascii=False))
+2026-03-18 11:02:33,169 INFO ipython frappe.db.commit()
+2026-03-18 11:02:33,169 INFO ipython frappe.clear_cache()
+2026-03-18 11:02:33,169 INFO ipython print("Güncellendi!")
+2026-03-18 11:02:33,169 INFO ipython === session end ===
+2026-03-18 11:04:36,002 INFO ipython === bench console session ===
+2026-03-18 11:04:36,002 INFO ipython import frappe
+2026-03-18 11:04:36,002 INFO ipython # Tradehub grup workspace'ini sil
+2026-03-18 11:04:36,002 INFO ipython for name in ["Tradehub", "TradeHub Core"]:
+    if frappe.db.exists("Workspace", name):
+        frappe.delete_doc("Workspace", name, ignore_permissions=True, force=True)
+        print(f"Silindi: {name}")
+2026-03-18 11:04:36,002 INFO ipython # Satıcı Paneli'nin parent_page'ini temizle (üstte gruba bağlı kalmasın)
+2026-03-18 11:04:36,002 INFO ipython frappe.db.sql("UPDATE `tabWorkspace` SET parent_page='' WHERE name='Satıcı Paneli'")
+2026-03-18 11:04:36,002 INFO ipython frappe.db.commit()
+2026-03-18 11:04:36,002 INFO ipython frappe.clear_cache()
+2026-03-18 11:04:36,002 INFO ipython print("Tamamlandı!")
+2026-03-18 11:04:36,002 INFO ipython === session end ===
+2026-03-18 11:20:09,949 INFO ipython === bench console session ===
+2026-03-18 11:20:09,949 INFO ipython import frappe
+2026-03-18 11:20:09,949 INFO ipython ws_list = frappe.get_all("Workspace", fields=["name", "is_standard", "public"], order_by="name")
+2026-03-18 11:20:09,949 INFO ipython === session end ===
+2026-03-18 11:20:20,459 INFO ipython === bench console session ===
+2026-03-18 11:20:20,459 INFO ipython import frappe
+2026-03-18 11:20:20,459 INFO ipython cols = frappe.db.sql("DESCRIBE `tabWorkspace`", as_dict=True)
+2026-03-18 11:20:20,459 INFO ipython === session end ===

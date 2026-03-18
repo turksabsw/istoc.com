@@ -150,7 +150,7 @@ function OverviewTab(): string {
         <!-- Products -->
         <div x-show="!loading && products.length > 0" class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-4 product-grid">
           <template x-for="(p, idx) in products" :key="p.name">
-            <a :href="'/pages/product-detail.html'" class="product-card flex flex-col gap-2 overflow-hidden text-sm text-start no-underline group">
+            <a :href="'/pages/product-detail.html?id=' + encodeURIComponent(p.name)" class="product-card flex flex-col gap-2 overflow-hidden text-sm text-start no-underline group">
               <div class="product-card__image-area relative rounded-lg overflow-hidden bg-gray-100 aspect-square">
                 <img x-show="p.image" :src="p.image" :alt="p.product_name" class="product-card__img block w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy" />
                 <div x-show="!p.image" class="w-full h-full flex items-center justify-center text-gray-200">
@@ -394,7 +394,7 @@ function ProductsTab(): string {
             <div x-show="filteredProducts().length === 0" class="text-gray-400 text-[14px] py-12 text-center">Bu kategoride ürün bulunamadı.</div>
             <div class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3 xl:gap-4 product-grid">
               <template x-for="(p, idx) in filteredProducts()" :key="p.name">
-                <a :href="'/pages/product-detail.html'" class="product-card flex flex-col gap-2 overflow-hidden text-sm text-start no-underline">
+                <a :href="'/pages/product-detail.html?id=' + encodeURIComponent(p.name)" class="product-card flex flex-col gap-2 overflow-hidden text-sm text-start no-underline">
                   <div class="product-card__image-area relative">
                     <div class="product-card__image-wrap relative w-full overflow-hidden rounded-md bg-gray-100">
                       <img x-show="p.image" :src="p.image" :alt="p.product_name" class="product-card__img block w-full h-full object-cover" loading="lazy" />

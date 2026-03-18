@@ -60,6 +60,10 @@
    "read": 1,
    "role": "Marketplace Seller",
    "write": 1
+  },
+  {
+   "read": 1,
+   "role": "Seller"
   }
  ],
  "sort_field": "sort_order",

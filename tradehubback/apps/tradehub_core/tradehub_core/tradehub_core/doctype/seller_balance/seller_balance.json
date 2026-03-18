@@ -87,6 +87,10 @@
   {
    "read": 1,
    "role": "Marketplace Seller"
+  },
+  {
+   "read": 1,
+   "role": "Seller"
   }
  ],
  "sort_field": "modified",

@@ -83,7 +83,7 @@ export async function searchListings(params: ListingSearchParams): Promise<Listi
   if (params.free_shipping) queryParams.set('free_shipping', '1')
 
   const qs = queryParams.toString()
-  const url = `/method/tradehub.api.listing.get_listings${qs ? '?' + qs : ''}`
+  const url = `/method/tradehub_core.api.listing.get_listings${qs ? '?' + qs : ''}`
   const response = await api<FrappeResponse<Record<string, unknown>[]>>(url)
   const msg = response.message
 
@@ -119,7 +119,7 @@ export async function searchListings(params: ListingSearchParams): Promise<Listi
  */
 export async function getListingDetail(listingId: string): Promise<ProductDetail> {
   const response = await api<FrappeResponse<Record<string, unknown>>>(
-    `/method/tradehub.api.listing.get_listing_detail?listing_id=${encodeURIComponent(listingId)}`
+    `/method/tradehub_core.api.listing.get_listing_detail?listing_id=${encodeURIComponent(listingId)}`
   )
   return mapListingDetail(response.message.data)
 }
@@ -129,7 +129,7 @@ export async function getListingDetail(listingId: string): Promise<ProductDetail
  */
 export async function getRelatedListings(listingId: string, limit = 8): Promise<ProductListingCard[]> {
   const response = await api<FrappeResponse<Record<string, unknown>[]>>(
-    `/method/tradehub.api.listing.get_related_listings?listing_id=${encodeURIComponent(listingId)}&limit=${limit}`
+    `/method/tradehub_core.api.listing.get_related_listings?listing_id=${encodeURIComponent(listingId)}&limit=${limit}`
   )
   return (response.message.data || []).map(mapListingCard)
 }
@@ -139,7 +139,7 @@ export async function getRelatedListings(listingId: string, limit = 8): Promise<
  */
 export async function getFeaturedListings(limit = 10): Promise<ProductListingCard[]> {
   const response = await api<FrappeResponse<Record<string, unknown>[]>>(
-    `/method/tradehub.api.listing.get_featured_listings?limit=${limit}`
+    `/method/tradehub_core.api.listing.get_featured_listings?limit=${limit}`
   )
   return (response.message.data || []).map(mapListingCard)
 }
@@ -150,7 +150,7 @@ export async function getFeaturedListings(limit = 10): Promise<ProductListingCar
 export async function getCategories(parent?: string) {
   const params = parent ? `?parent=${encodeURIComponent(parent)}` : ''
   const response = await api<FrappeResponse<Record<string, unknown>[]>>(
-    `/method/tradehub.api.listing.get_categories${params}`
+    `/method/tradehub_core.api.listing.get_categories${params}`
   )
   return response.message.data || []
 }
@@ -161,7 +161,7 @@ export async function getCategories(parent?: string) {
 export async function getShippingMethods(listingId?: string) {
   const params = listingId ? `?listing_id=${encodeURIComponent(listingId)}` : ''
   const response = await api<FrappeResponse<Record<string, unknown>[]>>(
-    `/method/tradehub.api.listing.get_shipping_methods${params}`
+    `/method/tradehub_core.api.listing.get_shipping_methods${params}`
   )
   return response.message.data || []
 }

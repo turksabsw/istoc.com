@@ -2,13 +2,6 @@ import { getBaseUrl } from './url'
 
 const BASE_URL = import.meta.env.VITE_API_URL || ''
 
-function getCsrfToken(): string {
-  return document.cookie
-    .split('; ')
-    .find(row => row.startsWith('csrf_token='))
-    ?.split('=')[1] || 'Guest';
-}
-
 /** Extract a human-readable error message from a Frappe JSON error body. */
 function extractFrappeError(raw: string): string {
   try {

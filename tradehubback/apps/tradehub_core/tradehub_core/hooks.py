@@ -12,6 +12,8 @@ app_color = "#0066CC"
 
 required_apps = []
 
+app_include_js = "seller_redirect.js"
+
 fixtures = [
 	{
 		"dt": "Role",

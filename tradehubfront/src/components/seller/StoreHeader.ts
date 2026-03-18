@@ -69,7 +69,7 @@ export function StoreHeader(): string {
 
             <!-- Description / Main Categories -->
             <template x-if="seller?.description">
-              <p class="store-header__categories text-[13px] text-(--color-text-tertiary) dark:text-gray-400 break-words" x-text="seller.description"></p>
+              <p class="store-header__categories text-[13px] text-(--color-text-tertiary) dark:text-gray-400 break-words" x-text="seller.short_description || seller.description"></p>
             </template>
 
             <!-- Email -->

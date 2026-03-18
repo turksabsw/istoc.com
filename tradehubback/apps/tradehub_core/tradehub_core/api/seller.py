@@ -1,5 +1,14 @@
+import re
 import frappe
 from frappe import _
+
+
+def _strip_html(text):
+    """Strip HTML tags from text for plain-text display."""
+    if not text:
+        return ""
+    return re.sub(r'<[^>]+>', '', text).strip()
+
 
 @frappe.whitelist(allow_guest=True)
 def get_sellers(search=None, page=1, page_size=20):
@@ -7,99 +16,131 @@ def get_sellers(search=None, page=1, page_size=20):
     if search:
         filters["seller_name"] = ["like", "%" + search + "%"]
     sellers = frappe.get_all(
-        "Seller Profile", filters=filters,
+        "Admin Seller Profile", filters=filters,
         fields=["name", "seller_code", "seller_name", "city", "country",
-                "logo", "banner_image", "description",
-                "is_featured", "average_rating", "total_reviews",
-                "joined_at", "status", "verification_status",
-                "is_top_seller", "is_premium_seller", "email", "website"],
+                "logo", "banner_image", "description", "slogan",
+                "email", "website", "phone", "status",
+                "rating", "total_orders", "health_score"],
         limit_start=(int(page)-1)*int(page_size), limit_page_length=int(page_size),
         order_by="seller_name asc"
     )
     for s in sellers:
-        s["slug"] = s.get("seller_code", "")
-        s["rating"] = s.get("average_rating", 0)
-        s["review_count"] = s.get("total_reviews", 0)
-        s["member_since"] = s.get("joined_at", "")
+        s["slug"] = s.get("seller_code") or s.get("name", "")
+        s["rating"] = float(s.get("rating") or 0)
+        s["review_count"] = int(s.get("total_orders") or 0)
         s["cover_image"] = s.get("banner_image", "")
-        s["short_description"] = s.get("description", "")
-        s["verified"] = s.get("verification_status") in ["Verified", "Onaylı"]
+        s["short_description"] = _strip_html(s.get("description", ""))
+        s["verified"] = bool(s.get("health_score", 0) >= 80)
         try:
-            products = frappe.get_all(
-                "Seller Product",
-                filters={"seller": s.name, "status": "Active"},
-                fields=["name", "product_name", "image", "price_min", "price_max", "moq", "moq_unit"],
+            seller_code = s.get("seller_code") or s.get("name", "")
+            listings = frappe.get_all(
+                "Listing",
+                filters={"seller_profile": seller_code, "status": "Active"},
+                fields=["name", "title", "primary_image", "selling_price", "base_price", "min_order_qty"],
                 limit=4
             )
+            products = [{"name": l.name, "product_name": l.title, "image": l.primary_image,
+                         "price_min": l.selling_price or l.base_price, "price_max": l.base_price,
+                         "moq": l.min_order_qty or 1, "moq_unit": "Adet"} for l in listings]
             s["products"] = products
-            s["product_images"] = [p.image for p in products if p.image]
+            s["product_images"] = [p["image"] for p in products if p.get("image")]
         except Exception:
             s["products"] = []
             s["product_images"] = []
-    total = frappe.db.count("Seller Profile", filters=filters)
+    total = frappe.db.count("Admin Seller Profile", filters=filters)
     return {"sellers": sellers, "total": total, "page": int(page), "page_size": int(page_size)}
+
 
 @frappe.whitelist(allow_guest=True)
 def get_seller(slug):
     seller = frappe.db.get_value(
-        "Seller Profile", {"seller_code": slug, "status": "Active"},
+        "Admin Seller Profile", {"seller_code": slug, "status": "Active"},
         ["name", "seller_code", "seller_name", "city", "country",
-         "logo", "banner_image", "description",
-         "average_rating", "total_reviews", "joined_at",
-         "email", "phone", "website", "status", "verification_status",
-         "is_featured", "is_top_seller"],
+         "logo", "banner_image", "description", "slogan",
+         "email", "phone", "website", "status",
+         "rating", "total_orders", "health_score",
+         "founded_year", "staff_count", "annual_revenue",
+         "factory_size", "business_type", "main_markets"],
         as_dict=True
     )
     if not seller:
         frappe.throw(_("Satici bulunamadi"), frappe.DoesNotExistError)
     seller["slug"] = seller.get("seller_code", "")
-    seller["rating"] = seller.get("average_rating", 0)
-    seller["review_count"] = seller.get("total_reviews", 0)
-    seller["member_since"] = seller.get("joined_at", "")
+    seller["rating"] = float(seller.get("rating") or 0)
+    seller["review_count"] = int(seller.get("total_orders") or 0)
     seller["cover_image"] = seller.get("banner_image", "")
-    seller["short_description"] = seller.get("description", "")
-    seller["verified"] = seller.get("verification_status") in ["Verified", "Onaylı"]
+    seller["short_description"] = _strip_html(seller.get("description", ""))
+    seller["verified"] = bool(seller.get("health_score", 0) >= 80)
     return seller
+
+
+@frappe.whitelist()
+def get_my_supplier_profile():
+    """Returns the Admin Seller Profile name for the logged-in seller."""
+    user = frappe.session.user
+    if not user or user == "Guest":
+        return None
+    return frappe.db.get_value("Admin Seller Profile", {"user": user}, "name")
+
+
+@frappe.whitelist()
+def get_my_admin_seller_profile():
+    """Returns the Admin Seller Profile name (seller_code) for the logged-in seller."""
+    user = frappe.session.user
+    if not user or user == "Guest":
+        return None
+    return frappe.db.get_value("Admin Seller Profile", {"user": user}, "name")
+
 
 @frappe.whitelist(allow_guest=True)
 def get_seller_categories(seller_code):
-    seller = frappe.db.get_value("Seller Profile", {"seller_code": seller_code}, "name")
-    if not seller:
+    sp_name = frappe.db.get_value("Seller Profile", {"seller_code": seller_code}, "name")
+    if not sp_name:
         return {"categories": []}
     cats = frappe.get_all(
         "Seller Category",
-        filters={"seller": seller},
+        filters={"seller": sp_name},
         fields=["name", "category_name", "image", "sort_order"],
         order_by="sort_order asc, category_name asc"
     )
     return {"categories": cats}
 
+
 @frappe.whitelist(allow_guest=True)
 def get_seller_products(seller_code, category=None, page=1, page_size=40):
-    seller = frappe.db.get_value("Seller Profile", {"seller_code": seller_code}, "name")
-    if not seller:
+    # seller_code = Admin Seller Profile name
+    if not frappe.db.exists("Admin Seller Profile", seller_code):
         return {"products": [], "total": 0}
-    filters = {"seller": seller, "status": "Active"}
+    filters = {"seller_profile": seller_code, "status": "Active"}
     if category:
         filters["category"] = category
-    products = frappe.get_all(
-        "Seller Product",
+    listings = frappe.get_all(
+        "Listing",
         filters=filters,
-        fields=["name", "product_name", "image", "price_min", "price_max",
-                "moq", "moq_unit", "is_featured", "category", "description"],
+        fields=["name", "title", "primary_image", "selling_price", "base_price",
+                "min_order_qty", "category", "short_description"],
         limit_start=(int(page)-1)*int(page_size),
         limit_page_length=int(page_size),
-        order_by="is_featured desc, creation desc"
+        order_by="creation desc"
     )
-    total = frappe.db.count("Seller Product", filters=filters)
-    return {"products": products, "total": total}
+    for l in listings:
+        l["id"] = l.get("name", "")
+        l["product_name"] = l.get("title", "")
+        l["image"] = l.get("primary_image", "")
+        l["price_min"] = l.get("selling_price") or l.get("base_price", 0)
+        l["price_max"] = l.get("base_price", 0)
+        l["moq"] = l.get("min_order_qty", 1)
+        l["moq_unit"] = "Adet"
+    total = frappe.db.count("Listing", filters=filters)
+    return {"products": listings, "total": total}
+
 
 @frappe.whitelist(allow_guest=True)
 def get_reviews(seller_code, page=1, page_size=10):
-    seller = frappe.db.get_value("Seller Profile", {"seller_code": seller_code, "status": "Active"}, "name")
-    if not seller:
+    sp_name = frappe.db.get_value("Seller Profile", {"seller_code": seller_code, "status": "Active"}, "name")
+    if not sp_name:
         frappe.throw(_("Satici bulunamadi"), frappe.DoesNotExistError)
-    filters = {"seller": seller}
+    filters = {"seller": sp_name}
     reviews = frappe.get_all(
         "Seller Review", filters=filters,
         fields=["name", "reviewer_name", "rating", "comment", "creation", "product_name"],
@@ -109,13 +150,14 @@ def get_reviews(seller_code, page=1, page_size=10):
     total = frappe.db.count("Seller Review", filters=filters)
     return {"reviews": reviews, "total": total}
 
+
 @frappe.whitelist(allow_guest=True)
 def send_inquiry(seller_code, message, share_business_card=0):
-    seller = frappe.db.get_value(
+    sp = frappe.db.get_value(
         "Seller Profile", {"seller_code": seller_code, "status": "Active"},
         ["name", "seller_code"], as_dict=True
     )
-    if not seller:
+    if not sp:
         frappe.throw(_("Satici bulunamadi"), frappe.DoesNotExistError)
     sender_name, sender_email = "", ""
     if frappe.session.user and frappe.session.user != "Guest":
@@ -124,8 +166,8 @@ def send_inquiry(seller_code, message, share_business_card=0):
             sender_name = user.full_name or ""
             sender_email = user.email or ""
     doc = frappe.new_doc("Seller Inquiry")
-    doc.seller = seller.name
-    doc.seller_code = seller.seller_code
+    doc.seller = sp.name
+    doc.seller_code = sp.seller_code
     doc.message = message.strip()
     doc.sender_name = sender_name
     doc.sender_email = sender_email
