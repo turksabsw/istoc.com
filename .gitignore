@@ -21,7 +21,7 @@ tradehubback/env/
 
 # ──────────────────────────────────────────────
 # Backend — Framework Bağımlılıkları
-# (Sadece tradehubback/apps/tradehub custom koddur)
+# (Sadece tradehubback/apps/tradehub/ custom koddur)
 # ──────────────────────────────────────────────
 tradehubback/apps/frappe/
 tradehubback/apps/erpnext/
@@ -40,10 +40,13 @@ tradehubback/sites/tradehub.localhost/indexes/
 tradehubback/sites/tradehub.localhost/.test_log
 tradehubback/sites/tradehub.localhost/touched_tables.json
 tradehubback/sites/tradehub.localhost/site_config.json
+tradehubback/sites/tradehub.localhost/private/
+tradehubback/sites/tradehub.localhost/public/files/
 tradehubback/sites/currentsite.txt
 tradehubback/sites/apps.json
 tradehubback/sites/apps.txt
 tradehubback/sites/assets/
+tradehubback/sites/common_site_config.json
 
 # ──────────────────────────────────────────────
 # Frontend — Node.js & Build
@@ -56,6 +59,13 @@ tradehubfront/dist-ssr/
 # Docker
 # ──────────────────────────────────────────────
 *.pid
+
+# ──────────────────────────────────────────────
+# Database Dump & Backup
+# ──────────────────────────────────────────────
+*.sql
+*.sql.gz
+*.dump
 
 # ──────────────────────────────────────────────
 # IDE & OS
@@ -76,10 +86,15 @@ Thumbs.db
 .worktrees/
 
 # ──────────────────────────────────────────────
-# Genel
+# Python — Genel
 # ──────────────────────────────────────────────
 *.log
 *.pyc
 __pycache__/
 *.pyo
 *.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
