@@ -68,6 +68,62 @@ def _find_existing_cart_item(cart_name, listing, listing_variant):
 	return None
 
 
+def _get_inline_variant_stock(listing_name, synthetic_variant_id):
+	"""
+	Synthetic variantId formatı: "{listing_name}-{attribute_type}-{attribute_value}"
+	Listing Variant Item child table'dan variant_stock değerini döndürür.
+	Eşleşme bulunamazsa None döner.
+	"""
+	prefix = listing_name + "-"
+	if not synthetic_variant_id or not synthetic_variant_id.startswith(prefix):
+		return None
+	remainder = synthetic_variant_id[len(prefix):]
+	inline_variants = frappe.get_all(
+		"Listing Variant Item",
+		filters={"parent": listing_name, "parenttype": "Listing"},
+		fields=["attribute_type", "attribute_value", "variant_stock"],
+	)
+	for iv in inline_variants:
+		expected = f"{iv.attribute_type}-{iv.attribute_value}"
+		if remainder == expected:
+			return float(iv.variant_stock or 0)
+	return None
+
+
+def _check_stock(listing_doc, listing_name, listing_variant, total_qty):
+	"""
+	Stok kontrolü: track_inventory açıksa toplam miktarı (mevcut + yeni) kontrol et.
+	Sırasıyla: 1) Listing Variant doc stoğu, 2) inline variant item stoğu, 3) listing stoğu.
+	"""
+	if not listing_doc.track_inventory or listing_doc.allow_backorders:
+		return  # Stok takibi kapalı veya backorder açık — kontrol gerekmez
+
+	available = None
+
+	if listing_variant:
+		# 1) Gerçek Listing Variant doc'u dene
+		variant_doc = frappe.db.get_value(
+			"Listing Variant", listing_variant, ["stock_qty"], as_dict=True
+		)
+		if variant_doc and (variant_doc.stock_qty or 0) > 0:
+			available = float(variant_doc.stock_qty)
+		else:
+			# 2) Inline variant item dene (synthetic ID: "{listing}-{type}-{value}")
+			inline_stock = _get_inline_variant_stock(listing_name, listing_variant)
+			if inline_stock is not None:
+				available = inline_stock
+
+	if available is None:
+		# 3) Listing seviyesi stok
+		available = float(listing_doc.stock_qty or 0)
+
+	if total_qty > available:
+		if available <= 0:
+			frappe.throw(_("Bu üründen yeterli stok bulunmamaktadır."))
+		else:
+			frappe.throw(_("Bu üründen bu kadar stok yok. En fazla {0} adet eklenebilir.").format(int(available)))
+
+
 def _build_cart_response(cart_name):
 	"""
 	Build a CartSupplier[] response from a Cart document.
@@ -89,7 +145,8 @@ def _build_cart_response(cart_name):
 			"Listing",
 			item.listing,
 			["name", "title", "seller_profile", "primary_image",
-			 "selling_price", "base_price", "min_order_qty", "currency", "status"],
+			 "selling_price", "base_price", "min_order_qty", "currency", "status",
+			 "track_inventory", "allow_backorders", "stock_qty"],
 			as_dict=True,
 		)
 		is_available = bool(listing and listing.status == "Active")
@@ -183,11 +240,12 @@ def _build_cart_response(cart_name):
 			variant_text = ""
 			base_price_addon = 0.0
 
+			variant = None
 			if item.listing_variant:
 				variant = frappe.db.get_value(
 					"Listing Variant",
 					item.listing_variant,
-					["variant_name", "price", "primary_image"],
+					["variant_name", "price", "primary_image", "stock_qty"],
 					as_dict=True,
 				)
 				if variant:
@@ -196,6 +254,15 @@ def _build_cart_response(cart_name):
 						sku_image = variant.primary_image
 					if variant.price:
 						base_price_addon = float(variant.price) - base_price
+
+			# maxQty: track_inventory açıksa variant stoğunu, yoksa listing stoğunu kullan
+			if listing.track_inventory and not listing.allow_backorders:
+				if variant:
+					max_qty = max(0, int(variant.stock_qty or 0))
+				else:
+					max_qty = max(0, int(listing.stock_qty or 0))
+			else:
+				max_qty = 999999
 
 			sellers_map[seller_id]["products"][listing_name]["skus"].append({
 				"id": item.name,
@@ -207,7 +274,7 @@ def _build_cart_response(cart_name):
 				"unit": "Adet",
 				"quantity": item.quantity,
 				"minQty": listing.min_order_qty or 1,
-				"maxQty": 999999,
+				"maxQty": max_qty,
 				"selected": True,
 				"baseUnitPrice": base_price,
 				"basePriceAddon": base_price_addon,
@@ -272,6 +339,31 @@ def get_cart():
 
 
 @frappe.whitelist()
+def check_stock(listing, quantity=1, listing_variant=None):
+	"""
+	Stok kontrolü yapar ama sepete eklemez.
+	Ürün sayfasındaki drawer için kullanılır — gerçek kayıt cart.add_to_cart ile yapılır.
+	Hata yoksa {"ok": True} döner, hata varsa frappe.throw() ile exception fırlatır.
+	"""
+	if not frappe.db.exists("Listing", listing):
+		frappe.throw(_("Ürün bulunamadı"), frappe.DoesNotExistError)
+
+	listing_doc = frappe.db.get_value(
+		"Listing",
+		listing,
+		["status", "stock_qty", "track_inventory", "allow_backorders"],
+		as_dict=True,
+	)
+	if listing_doc.status != "Active":
+		frappe.throw(_("Bu ürün şu an satışta değil"))
+
+	qty = int(quantity)
+	listing_variant = listing_variant or None
+	_check_stock(listing_doc, listing, listing_variant, qty)
+	return {"ok": True}
+
+
+@frappe.whitelist()
 def add_to_cart(listing, quantity=1, listing_variant=None):
 	"""
 	Add a listing (optionally a specific variant) to cart.
@@ -309,12 +401,7 @@ def add_to_cart(listing, quantity=1, listing_variant=None):
 	existing_qty = existing_row.quantity if existing_row else 0
 	total_qty = existing_qty + qty
 
-	if listing_doc.track_inventory and not listing_doc.allow_backorders:
-		available = float(listing_doc.stock_qty or 0)
-		if available <= 0:
-			frappe.throw(_("Bu ürün stokta yok"))
-		if total_qty > available:
-			frappe.throw(_("Yeterli stok yok. Sepetinizle birlikte en fazla {0} adet ekleyebilirsiniz").format(int(available)))
+	_check_stock(listing_doc, listing, listing_variant, total_qty)
 
 	# Snapshot verisi hazırla
 	snap_price = float(listing_doc.selling_price or listing_doc.base_price or 0)
@@ -369,8 +456,10 @@ def update_cart_item(cart_item, quantity):
 	if qty <= 0:
 		frappe.throw(_("Miktar sıfırdan büyük olmalıdır"))
 
-	# Stok kontrolü (MOQ kontrolü yalnızca checkout'ta yapılır)
-	listing_name = frappe.db.get_value("Cart Item", cart_item, "listing")
+	# Stok kontrolü — variant varsa variant stoğu kullanılır (MOQ kontrolü checkout'ta)
+	listing_name, listing_variant_name = frappe.db.get_value(
+		"Cart Item", cart_item, ["listing", "listing_variant"]
+	) or (None, None)
 	if listing_name:
 		listing_doc = frappe.db.get_value(
 			"Listing",
@@ -378,12 +467,8 @@ def update_cart_item(cart_item, quantity):
 			["stock_qty", "track_inventory", "allow_backorders"],
 			as_dict=True,
 		)
-		if listing_doc and listing_doc.track_inventory and not listing_doc.allow_backorders:
-			available = float(listing_doc.stock_qty or 0)
-			if available <= 0:
-				frappe.throw(_("Bu ürün stokta yok"))
-			if qty > available:
-				frappe.throw(_("Yeterli stok yok. Mevcut stok: {0}").format(int(available)))
+		if listing_doc:
+			_check_stock(listing_doc, listing_name, listing_variant_name, qty)
 
 	frappe.db.set_value("Cart Item", cart_item, "quantity", qty)
 	frappe.db.commit()

@@ -13,6 +13,8 @@ export class CartStore {
   private suppliers: CartSupplier[] = [];
   private shippingFee = 0;
   private discount = 0;
+  private couponDiscount = 0;
+  private couponCode = '';
   private currency = '$';
   private listeners = new Set<() => void>();
 
@@ -177,10 +179,28 @@ export class CartStore {
       items,
       productSubtotal,
       discount: this.discount,
+      couponDiscount: this.couponDiscount,
+      couponCode: this.couponCode,
       shippingFee: this.shippingFee,
-      subtotal: productSubtotal - this.discount + this.shippingFee,
+      subtotal: productSubtotal - this.discount - this.couponDiscount + this.shippingFee,
       currency: getSelectedCurrencyInfo().symbol,
     };
+  }
+
+  setCouponDiscount(amount: number, code: string): void {
+    this.couponDiscount = amount;
+    this.couponCode = code;
+    this.notify();
+  }
+
+  clearCoupon(): void {
+    this.couponDiscount = 0;
+    this.couponCode = '';
+    this.notify();
+  }
+
+  getCouponCode(): string {
+    return this.couponCode;
   }
 
   /** Bir satıcının seçili SKU'larının ara toplamını döndür */

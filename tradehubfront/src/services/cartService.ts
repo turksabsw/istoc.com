@@ -38,6 +38,19 @@ export async function apiAddToCart(
   );
 }
 
+/** Stok kontrolü yapar, sepete eklemez. Yetersiz stokta hata fırlatır. */
+export async function apiCheckStock(
+  listing: string,
+  quantity: number,
+  listingVariant?: string
+): Promise<void> {
+  await callMethod<{ ok: boolean }>(
+    'tradehub_core.api.cart.check_stock',
+    { listing, quantity, ...(listingVariant ? { listing_variant: listingVariant } : {}) },
+    true
+  );
+}
+
 /** Sepet öğesinin miktarını günceller. */
 export async function apiUpdateCartItem(cartItem: string, quantity: number): Promise<{ success: boolean }> {
   return callMethod<{ success: boolean }>(

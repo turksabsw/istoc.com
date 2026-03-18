@@ -38,9 +38,7 @@ tradehubback/tradehub.localhost
 # docker-compose.yml paylaşılır, override her dev'e özel
 docker-compose.override.yml
 docker-compose.override.yaml
-.env
-.env.local
-.env.*.local
+
 
 # ── Frontend (tradehubfront) ───────────────────────────────────────────────────
 tradehubfront/node_modules/

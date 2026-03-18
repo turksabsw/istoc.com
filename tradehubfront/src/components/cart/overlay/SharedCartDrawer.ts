@@ -3,6 +3,9 @@ import { cartStore } from '../state/CartStore';
 import type { CartSku } from '../../../types/cart';
 import { t } from '../../../i18n';
 import { formatCurrency, getSelectedCurrencyInfo } from '../../../services/currencyService';
+import { isLoggedIn } from '../../../utils/auth';
+import { apiCheckStock } from '../../../services/cartService';
+import { showCartError } from '../page/CartPage';
 
 /** Format an already-converted price with the user's selected currency symbol & locale */
 function fmtPrice(amount: number): string {
@@ -835,11 +838,35 @@ function syncToCartStore(item: CartDrawerItemModel): void {
   }
 }
 
-function dispatchCartAdd(): void {
-  if (!state.item) return;
+async function dispatchCartAdd(): Promise<boolean> {
+  if (!state.item) return false;
 
   const totals = getTotals();
-  if (totals.totalQty <= 0) return;
+  if (totals.totalQty <= 0) return false;
+
+  // Giriş yapmışsa backend'e stok kontrolü + ekleme yap
+  if (isLoggedIn()) {
+    try {
+      if (isMultiVariant()) {
+        // Multi-variant: seçili renk/varyant kombinasyonu
+        await apiCheckStock(
+          state.item.id,
+          state.combinedQuantity,
+          state.selectedColorId || undefined,
+        );
+      } else {
+        // Single-variant: her renk için ayrı stok kontrolü
+        for (const [colorId, qty] of state.colorQuantities) {
+          if (qty <= 0) continue;
+          await apiCheckStock(state.item.id, qty, colorId || undefined);
+        }
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      showCartError(msg || t('cart.stockError'));
+      return false;
+    }
+  }
 
   // CartStore'a kaydet
   syncToCartStore(state.item);
@@ -881,6 +908,7 @@ function dispatchCartAdd(): void {
       groupedItems,
     },
   }));
+  return true;
 }
 
 function openDrawer(itemId?: string, mode: 'cart' | 'sample' = 'cart', preselectedColorLabel?: string): void {
@@ -1257,8 +1285,9 @@ export function initSharedCartDrawer(items: CartDrawerItemModel[]): void {
         const base = (typeof import.meta !== 'undefined' ? import.meta.env?.BASE_URL : undefined) || '/';
         window.location.href = `${base}pages/order/checkout.html?mode=sample`;
       } else {
-        dispatchCartAdd();
-        applyDrawerTransform(false);
+        dispatchCartAdd().then(success => {
+          if (success) applyDrawerTransform(false);
+        });
       }
     }
   });

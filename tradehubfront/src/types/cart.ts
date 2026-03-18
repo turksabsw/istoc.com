@@ -79,6 +79,8 @@ export interface CartSummaryData {
   items: CartSummaryItem[];
   productSubtotal: number;
   discount: number;
+  couponDiscount: number;
+  couponCode: string;
   shippingFee: number;
   subtotal: number;
   currency: string;
