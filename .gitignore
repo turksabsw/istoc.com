@@ -21,10 +21,8 @@ tradehubback/env/
 
 # ──────────────────────────────────────────────
 # Backend — Framework Bağımlılıkları
-# (Sadece tradehubback/apps/tradehub/ custom koddur)
+# Frappe ve ERPNext repoda kalıyor (proje bağımlılığı)
 # ──────────────────────────────────────────────
-tradehubback/apps/frappe/
-tradehubback/apps/erpnext/
 
 # ──────────────────────────────────────────────
 # Backend — Log Dosyaları
