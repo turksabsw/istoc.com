@@ -1,0 +1,77 @@
+{
+ "charts": [],
+ "content": "[{\"id\": \"hdr-seller\", \"type\": \"header\", \"data\": {\"text\": \"<span class=h4><b>Sat\\u0131c\\u0131 Y\\u00f6netimi</b></span>\", \"col\": 12}}, {\"id\": \"sc-profile\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Sat\\u0131c\\u0131 Profili\", \"col\": 3}}, {\"id\": \"sc-product\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"\\u00dcr\\u00fcnler\", \"col\": 3}}, {\"id\": \"sc-category\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Kategoriler\", \"col\": 3}}, {\"id\": \"sc-balance\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Bakiye\", \"col\": 3}}]",
+ "creation": "2026-03-17 09:30:54.704293",
+ "custom_blocks": [],
+ "docstatus": 0,
+ "doctype": "Workspace",
+ "hide_custom": 0,
+ "idx": 0,
+ "indicator_color": "green",
+ "is_hidden": 0,
+ "label": "Sat\u0131c\u0131 Paneli",
+ "links": [],
+ "modified": "2026-03-17 10:14:40.218245",
+ "modified_by": "Administrator",
+ "module": "Tradehub Core",
+ "name": "Sat\u0131c\u0131 Paneli",
+ "number_cards": [],
+ "owner": "Administrator",
+ "public": 1,
+ "quick_lists": [],
+ "roles": [
+  {
+   "role": "Marketplace Seller"
+  },
+  {
+   "role": "Marketplace Admin"
+  },
+  {
+   "role": "System Manager"
+  }
+ ],
+ "sequence_id": 99.0,
+ "shortcuts": [
+  {
+   "color": "Grey",
+   "doc_view": "",
+   "format": "Card",
+   "label": "Sat\u0131c\u0131 Profili",
+   "link_to": "Seller Profile",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "",
+   "format": "Card",
+   "label": "\u00dcr\u00fcnler",
+   "link_to": "Seller Product",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "",
+   "format": "Card",
+   "label": "Kategoriler",
+   "link_to": "Seller Category",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "",
+   "format": "Card",
+   "label": "Bakiye",
+   "link_to": "Seller Balance",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "",
+   "format": "Card",
+   "label": "Yorumlar",
+   "link_to": "Seller Review",
+   "type": "DocType"
+  }
+ ],
+ "title": "Sat\u0131c\u0131 Paneli"
+}

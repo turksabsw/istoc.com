@@ -76,6 +76,24 @@ interface SimpleResponse {
 let _cachedUser: AuthUser | null = null;
 
 /** Check if user is logged in (synchronous, cache-based) */
+/** Frappe get_current_user response tipi */
+export interface FrappeCurrentUser {
+  is_guest: boolean;
+  email?: string;
+  full_name?: string;
+  is_seller?: boolean;
+  seller?: {
+    name: string;
+    seller_name: string;
+    seller_code: string;
+    status: string;
+    logo?: string;
+    health_score?: number;
+    score_grade?: string;
+  } | null;
+}
+
+/** Check if user is logged in */
 export function isLoggedIn(): boolean {
   return _cachedUser !== null;
 }
@@ -282,4 +300,18 @@ export async function resetPassword(
     }
   );
   return res.message;
+}
+
+/**
+ * Frappe backend'den mevcut oturum + seller bilgisini alır.
+ * Auth geliştirici login/register'dan sonra bu fonksiyonu kullanarak
+ * UI'ı güncelleyebilir.
+ *
+ * @example
+ *   const user = await getCurrentUser()
+ *   if (user.is_seller) { ... }
+ */
+export async function getCurrentUser(): Promise<FrappeCurrentUser> {
+  const { callMethod } = await import('./api');
+  return callMethod<FrappeCurrentUser>('tradehub_core.api.auth.get_current_user');
 }

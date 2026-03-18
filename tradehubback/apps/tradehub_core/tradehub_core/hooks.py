@@ -1,17 +1,21 @@
 app_name = "tradehub_core"
 app_title = "TradeHub Core"
-app_publisher = "TradeHub"
-app_description = "TradeHub B2B E-Commerce Backend"
+app_publisher = "TradeHub Team"
+app_description = "TradeHub B2B Marketplace Backend"
 app_email = "dev@tradehub.com"
 app_license = "MIT"
 
 after_install = "tradehub_core.setup.install.after_install"
 after_migrate = "tradehub_core.setup.install.after_install"
+app_icon = "octicon octicon-organization"
+app_color = "#0066CC"
+
+required_apps = []
 
 fixtures = [
 	{
 		"dt": "Role",
-		"filters": [["name", "in", ["Buyer", "Seller", "Marketplace Admin"]]],
+		"filters": [["name", "in", ["Marketplace Seller","Buyer", "Seller", "Marketplace Admin", "Marketplace Buyer"]]],
 	},
 	{
 		"dt": "Workspace",

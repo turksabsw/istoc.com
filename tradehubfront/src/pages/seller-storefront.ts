@@ -1,6 +1,6 @@
 /**
  * Seller Storefront — Page Orchestrator
- * Imports all components, renders into #app, initializes interactions
+ * All seller data is fetched dynamically from API via Alpine.js sellerStorefront store
  */
 import '../style.css';
 import '../styles/seller/seller-storefront.css';
@@ -11,21 +11,15 @@ import { startAlpine } from '../alpine';
 // Components
 import { TopBar } from '../components/header';
 import { initLanguageSelector } from '../components/header/TopBar'
-import {
-  StoreHeader,
-  StoreNav,
-} from '../components/seller';
-
+import { StoreHeader, StoreNav } from '../components/seller';
 import { CompanyProfileComponent } from '../components/seller/CompanyProfile';
-
-// Mock Data
-import { getSellerData, getSellerStats, getSellerReviews } from '../data/seller/mockData';
-const sellerData = getSellerData();
-const sellerStats = getSellerStats();
-const sellerReviews = getSellerReviews();
 
 // Interactions
 import { initSellerStorefront } from '../utils/seller/interactions';
+
+// Minimal static nav structure (page-level navigation, not seller data)
+import { getNavData } from '../data/seller/mockData';
+const navData = getNavData();
 
 // ─── Render ─────────────────────────────────────────────
 const appEl = document.querySelector<HTMLDivElement>('#app')!;
@@ -34,16 +28,12 @@ appEl.innerHTML = `
   <!-- MAIN PLATFORM HEADER -->
   ${TopBar()}
 
-  <main class="seller-storefront flex flex-col min-h-screen" data-seller-slug="${sellerData.seller.slug}" x-data="sellerStorefront">
-    ${StoreHeader(sellerData.seller)}
-    ${StoreNav(sellerData.navData)}
+  <main class="seller-storefront flex flex-col min-h-screen" x-data="sellerStorefront">
+    ${StoreHeader()}
+    ${StoreNav(navData)}
 
     <!-- PROFILE VIEW -->
-    ${CompanyProfileComponent(
-  sellerData,
-  sellerStats,
-  sellerReviews
-)}
+    ${CompanyProfileComponent()}
 
   </main>
 

@@ -1,0 +1,66 @@
+{
+ "charts": [],
+ "content": "[{\"id\":\"section-seller\",\"type\":\"section\",\"data\":{\"label\":\"Satıcı Yönetimi\",\"columns\":3},\"items\":[{\"id\":\"lnk-seller-profile\",\"type\":\"shortcut\",\"data\":{\"label\":\"Satıcı Profili\",\"format\":\"card\",\"link_to\":\"Seller Profile\",\"type\":\"DocType\",\"icon\":\"es-line-building\"}},{\"id\":\"lnk-seller-product\",\"type\":\"shortcut\",\"data\":{\"label\":\"Ürünler\",\"format\":\"card\",\"link_to\":\"Seller Product\",\"type\":\"DocType\",\"icon\":\"es-line-package\"}},{\"id\":\"lnk-seller-category\",\"type\":\"shortcut\",\"data\":{\"label\":\"Kategoriler\",\"format\":\"card\",\"link_to\":\"Seller Category\",\"type\":\"DocType\",\"icon\":\"es-line-layers\"}}]}]",
+ "creation": "2024-01-01 00:00:00.000000",
+ "developer_mode_only": 0,
+ "disable_user_customization": 0,
+ "doctype": "Workspace",
+ "extends": "",
+ "extends_another_page": 0,
+ "hide_custom": 0,
+ "is_default": 0,
+ "is_standard": 1,
+ "label": "Satıcı Paneli",
+ "modified": "2024-01-01 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Tradehub Core",
+ "name": "Tradehub Seller",
+ "owner": "Administrator",
+ "public": 1,
+ "restrict_to_domain": "",
+ "roles": [
+  {"role": "Marketplace Seller"},
+  {"role": "Marketplace Admin"},
+  {"role": "System Manager"}
+ ],
+ "sequence_id": 99,
+ "shortcuts": [
+  {
+   "color": "Grey",
+   "doc_view": "",
+   "format": "Card",
+   "label": "Satıcı Profili",
+   "link_to": "Seller Profile",
+   "name": "Seller Profile",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "",
+   "format": "Card",
+   "label": "Ürünler",
+   "link_to": "Seller Product",
+   "name": "Seller Product",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "",
+   "format": "Card",
+   "label": "Kategoriler",
+   "link_to": "Seller Category",
+   "name": "Seller Category",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "",
+   "format": "Card",
+   "label": "Satıcı Bakiye",
+   "link_to": "Seller Balance",
+   "name": "Seller Balance",
+   "type": "DocType"
+  }
+ ],
+ "title": "Satıcı Paneli"
+}
