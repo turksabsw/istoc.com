@@ -140,7 +140,7 @@ function initSwiper(): void {
 
 export function initRecommendationSlider(): void {
   // Load products from API
-  initCurrency().then(() => searchListings({ page_size: 9, is_new_arrival: true })).then(result => {
+  initCurrency().then(() => searchListings({ page_size: 9 })).then(result => {
     const container = document.getElementById('recommendation-slides');
     if (!container) return;
 
