@@ -36,7 +36,7 @@ export function SellPageLayout(): string {
       <div class="max-w-[1200px] mx-auto px-4 sm:px-6 text-center relative z-10">
         <h1 class="text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-4">${t('sellPage.heroTitle')}</h1>
         <p class="text-white/80 text-base sm:text-lg max-w-[600px] mx-auto mb-8">${t('sellPage.heroDesc')}</p>
-        <a href="/pages/auth/register.html?type=supplier" class="inline-block px-8 py-3.5 bg-white text-primary-600 font-semibold rounded-lg hover:bg-gray-50 transition-colors text-base shadow-lg">${t('sellPage.heroCta')}</a>
+        <a href="/pages/auth/register.html?type=supplier" data-seller-cta class="inline-block px-8 py-3.5 bg-white text-primary-600 font-semibold rounded-lg hover:bg-gray-50 transition-colors text-base shadow-lg">${t('sellPage.heroCta')}</a>
       </div>
     </section>
 
@@ -80,7 +80,7 @@ export function SellPageLayout(): string {
       <div class="max-w-[600px] mx-auto px-4 sm:px-6 text-center">
         <h2 class="text-2xl font-bold text-gray-900 mb-3">${t('sellPage.formTitle')}</h2>
         <p class="text-gray-500 mb-6">${t('sellPage.heroDesc')}</p>
-        <a href="/pages/auth/register.html?type=supplier" class="th-btn inline-block text-base px-8 py-3">${t('sellPage.heroCta')}</a>
+        <a href="/pages/auth/register.html?type=supplier" data-seller-cta class="th-btn inline-block text-base px-8 py-3">${t('sellPage.heroCta')}</a>
       </div>
     </section>
 

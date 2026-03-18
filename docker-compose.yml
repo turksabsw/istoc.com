@@ -30,6 +30,15 @@ services:
       - FRAPPE_SITE_NAME=${FRAPPE_SITE_NAME:-tradehub.localhost}
       - SITES_PATH=sites
       - FRAPPE_STREAM_LOGGING=1
+      - HOST_NAME=${HOST_NAME:-http://localhost:5500}
+      - MAIL_SERVER=${MAIL_SERVER:-mailpit}
+      - MAIL_PORT=${MAIL_PORT:-1025}
+      - MAIL_USE_SSL=${MAIL_USE_SSL:-0}
+      - MAIL_USE_TLS=${MAIL_USE_TLS:-0}
+      - MAIL_LOGIN=${MAIL_LOGIN:-}
+      - MAIL_PASSWORD=${MAIL_PASSWORD:-}
+      - MAIL_DEFAULT_SENDER=${MAIL_DEFAULT_SENDER:-noreply@tradehub.localhost}
+      - MAIL_DISABLE_AUTH=${MAIL_DISABLE_AUTH:-1}
     volumes:
       - ./tradehubback/sites:/home/frappe/frappe-bench/sites
       - ./tradehubback/sites/common_site_config.docker.json:/home/frappe/frappe-bench/sites/common_site_config.json
@@ -72,6 +81,17 @@ services:
       context: ./tradehubback
       dockerfile: Dockerfile
     command: bench worker
+    environment:
+      - FRAPPE_SITE_NAME=${FRAPPE_SITE_NAME:-tradehub.localhost}
+      - HOST_NAME=${HOST_NAME:-http://localhost:5500}
+      - MAIL_SERVER=${MAIL_SERVER:-mailpit}
+      - MAIL_PORT=${MAIL_PORT:-1025}
+      - MAIL_USE_SSL=${MAIL_USE_SSL:-0}
+      - MAIL_USE_TLS=${MAIL_USE_TLS:-0}
+      - MAIL_LOGIN=${MAIL_LOGIN:-}
+      - MAIL_PASSWORD=${MAIL_PASSWORD:-}
+      - MAIL_DEFAULT_SENDER=${MAIL_DEFAULT_SENDER:-noreply@tradehub.localhost}
+      - MAIL_DISABLE_AUTH=${MAIL_DISABLE_AUTH:-1}
     volumes:
       - ./tradehubback/sites:/home/frappe/frappe-bench/sites
       - ./tradehubback/sites/common_site_config.docker.json:/home/frappe/frappe-bench/sites/common_site_config.json
@@ -90,6 +110,17 @@ services:
       context: ./tradehubback
       dockerfile: Dockerfile
     command: bench schedule
+    environment:
+      - FRAPPE_SITE_NAME=${FRAPPE_SITE_NAME:-tradehub.localhost}
+      - HOST_NAME=${HOST_NAME:-http://localhost:5500}
+      - MAIL_SERVER=${MAIL_SERVER:-mailpit}
+      - MAIL_PORT=${MAIL_PORT:-1025}
+      - MAIL_USE_SSL=${MAIL_USE_SSL:-0}
+      - MAIL_USE_TLS=${MAIL_USE_TLS:-0}
+      - MAIL_LOGIN=${MAIL_LOGIN:-}
+      - MAIL_PASSWORD=${MAIL_PASSWORD:-}
+      - MAIL_DEFAULT_SENDER=${MAIL_DEFAULT_SENDER:-noreply@tradehub.localhost}
+      - MAIL_DISABLE_AUTH=${MAIL_DISABLE_AUTH:-1}
     volumes:
       - ./tradehubback/sites:/home/frappe/frappe-bench/sites
       - ./tradehubback/sites/common_site_config.docker.json:/home/frappe/frappe-bench/sites/common_site_config.json

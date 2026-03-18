@@ -11,6 +11,10 @@
  */
 
 import { t } from '../../i18n';
+import {
+  TR_CITIES, TR_TAX_OFFICES,
+  validatePhone, validateIBAN, validateTCKN, getCityForTaxOffice,
+} from '../../utils/tr-validation';
 
 /* ── Types ──────────────────────────────────────────── */
 
@@ -62,16 +66,8 @@ export function SupplierSetupForm(): string {
           <p class="text-sm text-gray-500 dark:text-gray-400">${t('auth.supplierSetup.step1Desc')}</p>
         </div>
         <div class="space-y-4">
-          <!-- Seller Type -->
-          <div>
-            <label for="ss-seller-type" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">${t('auth.supplierSetup.sellerType')}</label>
-            <select id="ss-seller-type" class="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-md text-gray-900 dark:text-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all" required>
-              <option value="">${t('auth.supplierSetup.selectOption')}</option>
-              <option value="Individual">${t('auth.supplierSetup.individual')}</option>
-              <option value="Business">${t('auth.supplierSetup.business')}</option>
-              <option value="Enterprise">${t('auth.supplierSetup.enterprise')}</option>
-            </select>
-          </div>
+          <!-- Seller Type (hidden — default Business) -->
+          <input type="hidden" id="ss-seller-type" value="Business" />
           <!-- Business Name -->
           <div>
             <label for="ss-business-name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">${t('auth.supplierSetup.businessName')}</label>
@@ -80,7 +76,8 @@ export function SupplierSetupForm(): string {
           <!-- Contact Phone -->
           <div>
             <label for="ss-contact-phone" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">${t('auth.supplierSetup.contactPhone')}</label>
-            <input type="tel" id="ss-contact-phone" class="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-md text-gray-900 dark:text-white placeholder:text-gray-400 focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all" placeholder="${t('auth.supplierSetup.contactPhonePh')}" required />
+            <input type="tel" id="ss-contact-phone" class="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-md text-gray-900 dark:text-white placeholder:text-gray-400 focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all" placeholder="05XX XXX XX XX" required />
+            <p id="ss-phone-error" class="text-xs text-red-500 mt-1 hidden"></p>
           </div>
         </div>
       </div>
@@ -92,26 +89,23 @@ export function SupplierSetupForm(): string {
           <p class="text-sm text-gray-500 dark:text-gray-400">${t('auth.supplierSetup.step2Desc')}</p>
         </div>
         <div class="space-y-4">
+          <!-- Tax ID Type (hidden — default TCKN) -->
+          <input type="hidden" id="ss-tax-id-type" value="TCKN" />
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <!-- Tax ID Type -->
-            <div>
-              <label for="ss-tax-id-type" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">${t('auth.supplierSetup.taxIdType')}</label>
-              <select id="ss-tax-id-type" class="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-md text-gray-900 dark:text-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all" required>
-                <option value="">${t('auth.supplierSetup.selectOption')}</option>
-                <option value="TCKN">TCKN</option>
-                <option value="VKN">VKN</option>
-              </select>
-            </div>
-            <!-- Tax ID -->
+            <!-- Tax ID (VKN) -->
             <div>
               <label for="ss-tax-id" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">${t('auth.supplierSetup.taxId')}</label>
-              <input type="text" id="ss-tax-id" class="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-md text-gray-900 dark:text-white placeholder:text-gray-400 focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all" placeholder="${t('auth.supplierSetup.taxIdPh')}" required />
+              <input type="text" id="ss-tax-id" maxlength="11" inputmode="numeric" class="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-md text-gray-900 dark:text-white placeholder:text-gray-400 focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all" placeholder="${t('auth.supplierSetup.taxIdPh')}" required />
+              <p id="ss-taxid-error" class="text-xs text-red-500 mt-1 hidden"></p>
             </div>
-          </div>
-          <!-- Tax Office -->
-          <div>
-            <label for="ss-tax-office" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">${t('auth.supplierSetup.taxOffice')}</label>
-            <input type="text" id="ss-tax-office" class="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-md text-gray-900 dark:text-white placeholder:text-gray-400 focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all" placeholder="${t('auth.supplierSetup.taxOfficePh')}" required />
+            <!-- Tax Office -->
+            <div>
+              <label for="ss-tax-office" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">${t('auth.supplierSetup.taxOffice')}</label>
+              <select id="ss-tax-office" class="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-md text-gray-900 dark:text-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all" required>
+                <option value="">${t('auth.supplierSetup.selectOption')}</option>
+                ${TR_TAX_OFFICES.map(o => `<option value="${o}">${o}</option>`).join('')}
+              </select>
+            </div>
           </div>
           <!-- Address -->
           <div>
@@ -119,15 +113,18 @@ export function SupplierSetupForm(): string {
             <input type="text" id="ss-address" class="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-md text-gray-900 dark:text-white placeholder:text-gray-400 focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all" placeholder="${t('auth.supplierSetup.addressPh')}" required />
           </div>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <!-- City -->
+            <!-- City (81 il dropdown) -->
             <div>
               <label for="ss-city" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">${t('auth.supplierSetup.city')}</label>
-              <input type="text" id="ss-city" class="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-md text-gray-900 dark:text-white placeholder:text-gray-400 focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all" placeholder="${t('auth.supplierSetup.cityPh')}" required />
+              <select id="ss-city" class="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-md text-gray-900 dark:text-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all" required>
+                <option value="">${t('auth.supplierSetup.selectOption')}</option>
+                ${TR_CITIES.map(c => `<option value="${c}">${c}</option>`).join('')}
+              </select>
             </div>
-            <!-- Country -->
+            <!-- Country (read-only) -->
             <div>
               <label for="ss-country" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">${t('auth.supplierSetup.country')}</label>
-              <input type="text" id="ss-country" value="Turkey" class="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-md text-gray-900 dark:text-white placeholder:text-gray-400 focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all" required />
+              <input type="text" id="ss-country" value="Turkey" readonly class="w-full px-4 py-3 bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-md text-gray-900 dark:text-white cursor-not-allowed" />
             </div>
           </div>
         </div>
@@ -148,7 +145,9 @@ export function SupplierSetupForm(): string {
           <!-- IBAN -->
           <div>
             <label for="ss-iban" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">${t('auth.supplierSetup.iban')}</label>
-            <input type="text" id="ss-iban" class="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-md text-gray-900 dark:text-white placeholder:text-gray-400 focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all" placeholder="${t('auth.supplierSetup.ibanPh')}" required />
+            <input type="text" id="ss-iban" maxlength="26" class="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-md text-gray-900 dark:text-white placeholder:text-gray-400 focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all" placeholder="TR..." required />
+            <p id="ss-iban-error" class="text-xs text-red-500 mt-1 hidden"></p>
+            <p id="ss-iban-bank" class="text-xs text-green-600 mt-1 hidden"></p>
           </div>
           <!-- Account Holder Name -->
           <div>
@@ -171,22 +170,16 @@ export function SupplierSetupForm(): string {
             <select id="ss-id-type" class="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-md text-gray-900 dark:text-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all" required>
               <option value="">${t('auth.supplierSetup.selectOption')}</option>
               <option value="National ID Card">${t('auth.supplierSetup.nationalId')}</option>
-              <option value="Passport">${t('auth.supplierSetup.passport')}</option>
-              <option value="Driver License">${t('auth.supplierSetup.driverLicense')}</option>
             </select>
           </div>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <!-- Identity Document Number -->
-            <div>
-              <label for="ss-id-number" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">${t('auth.supplierSetup.idNumber')}</label>
-              <input type="text" id="ss-id-number" class="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-md text-gray-900 dark:text-white placeholder:text-gray-400 focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all" placeholder="${t('auth.supplierSetup.idNumberPh')}" required />
-            </div>
-            <!-- Identity Document Expiry -->
-            <div>
-              <label for="ss-id-expiry" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">${t('auth.supplierSetup.idExpiry')}</label>
-              <input type="date" id="ss-id-expiry" class="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-md text-gray-900 dark:text-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all" required />
-            </div>
+          <!-- Identity Document Number (TCKN) -->
+          <div>
+            <label for="ss-id-number" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">${t('auth.supplierSetup.idNumber')}</label>
+            <input type="text" id="ss-id-number" maxlength="11" inputmode="numeric" class="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-md text-gray-900 dark:text-white placeholder:text-gray-400 focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all" placeholder="${t('auth.supplierSetup.idNumberPh')}" required />
+            <p id="ss-tckn-error" class="text-xs text-red-500 mt-1 hidden"></p>
           </div>
+          <!-- Hidden expiry field (MVP sonrası kullanılacak) -->
+          <input type="hidden" id="ss-id-expiry" value="" />
           <!-- Identity Document Upload -->
           <div>
             <label for="ss-id-file" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">${t('auth.supplierSetup.idDocument')}</label>
@@ -261,12 +254,19 @@ export function initSupplierSetupForm(options: SupplierSetupFormOptions = {}): v
   const contactPhone = document.getElementById('ss-contact-phone') as HTMLInputElement;
 
   // Step 2 fields
-  const taxIdType = document.getElementById('ss-tax-id-type') as HTMLSelectElement;
+  const taxIdType = document.getElementById('ss-tax-id-type') as HTMLInputElement;
   const taxId = document.getElementById('ss-tax-id') as HTMLInputElement;
-  const taxOffice = document.getElementById('ss-tax-office') as HTMLInputElement;
+  const taxOffice = document.getElementById('ss-tax-office') as HTMLSelectElement;
   const address = document.getElementById('ss-address') as HTMLInputElement;
-  const city = document.getElementById('ss-city') as HTMLInputElement;
+  const city = document.getElementById('ss-city') as HTMLSelectElement;
   const country = document.getElementById('ss-country') as HTMLInputElement;
+
+  // Validation error elements
+  const phoneError = document.getElementById('ss-phone-error');
+  const taxIdError = document.getElementById('ss-taxid-error');
+  const ibanError = document.getElementById('ss-iban-error');
+  const ibanBank = document.getElementById('ss-iban-bank');
+  const tcknError = document.getElementById('ss-tckn-error');
 
   // Step 3 fields
   const bankName = document.getElementById('ss-bank-name') as HTMLInputElement;
@@ -306,24 +306,52 @@ export function initSupplierSetupForm(options: SupplierSetupFormOptions = {}): v
     validateCurrentStep();
   }
 
+  function showFieldError(el: HTMLElement | null, msg: string) {
+    if (!el) return;
+    el.textContent = msg;
+    el.classList.toggle('hidden', !msg);
+  }
+
   function validateCurrentStep(): boolean {
     let valid = false;
     switch (currentStep) {
-      case 1:
-        valid = !!sellerType.value && !!businessName.value.trim() && !!contactPhone.value.trim();
+      case 1: {
+        const phoneVal = contactPhone.value.replace(/[\s\-\(\)]/g, '');
+        const phoneOk = !phoneVal || validatePhone(phoneVal);
+        showFieldError(phoneError, phoneVal && !phoneOk ? t('auth.supplierSetup.invalidPhone') : '');
+        valid = !!sellerType.value && !!businessName.value.trim() && !!phoneVal && phoneOk;
         break;
-      case 2:
-        valid = !!taxIdType.value && !!taxId.value.trim() && !!taxOffice.value.trim()
-          && !!address.value.trim() && !!city.value.trim() && !!country.value.trim();
+      }
+      case 2: {
+        const tcknVal = taxId.value.replace(/\s/g, '');
+        const tcknOk = !tcknVal || validateTCKN(tcknVal);
+        showFieldError(taxIdError, tcknVal && !tcknOk ? t('auth.supplierSetup.invalidTCKN') : '');
+        valid = !!taxIdType.value && !!tcknVal && tcknOk && !!taxOffice.value
+          && !!address.value.trim() && !!city.value && !!country.value.trim();
         break;
-      case 3:
-        valid = !!bankName.value.trim() && !!iban.value.trim() && !!accountHolder.value.trim();
+      }
+      case 3: {
+        const ibanVal = iban.value.replace(/\s/g, '');
+        const ibanResult = ibanVal.length >= 26 ? validateIBAN(ibanVal) : { valid: false };
+        showFieldError(ibanError, ibanVal.length >= 5 && !ibanResult.valid ? t('auth.supplierSetup.invalidIBAN') : '');
+        showFieldError(ibanBank, ibanResult.valid && ibanResult.bankName ? ibanResult.bankName : '');
+        if (ibanBank) ibanBank.classList.toggle('hidden', !ibanResult.bankName);
+        // Auto-fill bank name from IBAN
+        if (ibanResult.valid && ibanResult.bankName && bankName) {
+          bankName.value = ibanResult.bankName;
+        }
+        valid = !!bankName.value.trim() && !!ibanVal && ibanResult.valid && !!accountHolder.value.trim();
         break;
-      case 4:
-        valid = !!idType.value && !!idNumber.value.trim() && !!idExpiry.value
+      }
+      case 4: {
+        const tcknVal = idNumber.value.replace(/\s/g, '');
+        const tcknOk = !tcknVal || validateTCKN(tcknVal);
+        showFieldError(tcknError, tcknVal && !tcknOk ? t('auth.supplierSetup.invalidTCKN') : '');
+        valid = !!idType.value && !!tcknVal && tcknOk
           && termsCheck.checked && privacyCheck.checked && kvkkCheck.checked
           && commissionCheck.checked && returnCheck.checked;
         break;
+      }
     }
     nextBtn.disabled = !valid;
     return valid;
@@ -362,32 +390,58 @@ export function initSupplierSetupForm(options: SupplierSetupFormOptions = {}): v
       const file = fileInput.files?.[0];
       if (!file) return;
 
-      if (fileNameEl) fileNameEl.textContent = file.name;
+      if (fileNameEl) fileNameEl.textContent = `${t('common.loading')}...`;
+
+      // Read CSRF token from cookie
+      const csrfToken = document.cookie
+        .split('; ')
+        .find(row => row.startsWith('csrf_token='))
+        ?.split('=')[1] || 'Guest';
 
       // Upload to Frappe
       const formData = new FormData();
       formData.append('file', file);
       formData.append('is_private', '1');
-      formData.append('doctype', 'Seller Application');
 
       try {
         const BASE_URL = import.meta.env.VITE_API_URL || '';
         const res = await fetch(`${BASE_URL}/method/upload_file`, {
           method: 'POST',
           credentials: 'include',
+          headers: {
+            'X-Frappe-CSRF-Token': csrfToken,
+          },
           body: formData,
         });
         if (res.ok) {
           const json = await res.json();
           uploadedFileUrl = json.message?.file_url || '';
+          if (fileNameEl) fileNameEl.textContent = file.name;
+        } else {
+          uploadedFileUrl = '';
+          if (fileNameEl) fileNameEl.textContent = t('auth.supplierSetup.uploadFailed') || 'Yükleme başarısız. Tekrar deneyin.';
         }
       } catch {
-        // Upload failed silently — user can retry
+        uploadedFileUrl = '';
+        if (fileNameEl) fileNameEl.textContent = t('auth.supplierSetup.uploadFailed') || 'Yükleme başarısız. Tekrar deneyin.';
       }
 
       validateCurrentStep();
     });
   }
+
+  // ── Tax office → auto-fill city ──
+
+  taxOffice.addEventListener('change', () => {
+    const selectedOffice = taxOffice.value;
+    if (selectedOffice) {
+      const cityName = getCityForTaxOffice(selectedOffice);
+      if (cityName) {
+        city.value = cityName;
+      }
+    }
+    validateCurrentStep();
+  });
 
   // ── Event listeners ──
 

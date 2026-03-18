@@ -51,6 +51,20 @@ Alpine.data('settingsChangePassword', () => ({
   error: '',
   loading: false,
 
+  init() {
+    // Reset form when navigating back to this section
+    window.addEventListener('hashchange', () => {
+      if (window.location.hash === '#sifre') {
+        this.step = 1;
+        this.error = '';
+        const refs = this.$refs as Record<string, HTMLInputElement>;
+        if (refs.pwCurrent) refs.pwCurrent.value = '';
+        if (refs.pwNew) refs.pwNew.value = '';
+        if (refs.pwConfirm) refs.pwConfirm.value = '';
+      }
+    });
+  },
+
   async savePassword() {
     const currentPw = (this.$refs as Record<string, HTMLInputElement>).pwCurrent.value;
     const newPw = (this.$refs as Record<string, HTMLInputElement>).pwNew.value;
@@ -103,6 +117,17 @@ Alpine.data('settingsChangePhone', () => ({
       const res = await api<{ message: { phone: string } }>('/method/tradehub_core.api.v1.auth.get_user_profile');
       this.currentPhone = res.message?.phone || '';
     } catch { /* ignore */ }
+
+    // Reset form when navigating back to this section
+    window.addEventListener('hashchange', () => {
+      if (window.location.hash === '#telefon') {
+        this.step = 1;
+        this.error = '';
+        const refs = this.$refs as Record<string, HTMLInputElement>;
+        if (refs.newPhone) refs.newPhone.value = '';
+        if (refs.phonePassword) refs.phonePassword.value = '';
+      }
+    });
   },
 
   async savePhone() {

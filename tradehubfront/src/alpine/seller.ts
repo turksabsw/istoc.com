@@ -1,6 +1,7 @@
 import Alpine from 'alpinejs'
 import { t } from '../i18n'
 import { getBaseUrl } from '../components/auth/AuthLayout'
+import { getSessionUser, logout } from '../utils/auth'
 
 // ─── Sell Page (registration form) ────────────────────────────────────
 Alpine.data('sellPage', () => ({
@@ -97,5 +98,36 @@ Alpine.data('sellerStorefront', () => ({
 
   toggleMobileMenu() {
     this.mobileMenuOpen = !this.mobileMenuOpen;
+  },
+}));
+
+// ─── Application Pending Page ─────────────────────────────────────────
+Alpine.data('applicationPendingPage', () => ({
+  status: 'loading' as string,
+
+  async init() {
+    const user = await getSessionUser();
+    if (!user) {
+      window.location.replace('/pages/auth/login.html');
+      return;
+    }
+
+    // No seller application at all — not a seller
+    if (!user.seller_application_status && !user.has_seller_profile) {
+      window.location.href = '/';
+      return;
+    }
+
+    // Show the application status dynamically
+    if (user.has_seller_profile) {
+      this.status = 'Approved';
+    } else {
+      this.status = user.seller_application_status || 'Draft';
+    }
+  },
+
+  async doLogout() {
+    await logout();
+    window.location.href = '/';
   },
 }));
