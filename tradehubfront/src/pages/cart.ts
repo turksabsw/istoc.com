@@ -86,16 +86,17 @@ function renderPage(suppliers: ReturnType<typeof cartStore.getSuppliers>, summar
 async function initCartPage_async() {
   // 1) localStorage'dan yükle (hızlı, fallback)
   cartStore.load();
+  const localSkuCount = cartStore.getTotalSkuCount();
 
-  // 2) Önce para birimini yükle — cartStore.init() currency sembolüne ihtiyaç duyar
+  // 2) Para birimini yükle
   await initCurrency();
   const currencySymbol = getSelectedCurrencyInfo().symbol;
 
   try {
     // 3) Oturum kontrolü
     const sessionUser = await getSessionUser();
+
     if (sessionUser) {
-      // 4a) API'dan sepeti getir
       const apiCart = await fetchCart();
 
       if (apiCart.suppliers.length > 0) {
@@ -118,18 +119,19 @@ async function initCartPage_async() {
         );
 
         if (localOnlyItems.length > 0) {
-          // Fazladan local ürünleri backend'e merge et, sonucu kullan
           const merged = await apiMergeGuestCart(localOnlyItems);
-          cartStore.init(
-            merged.suppliers.length > 0 ? merged.suppliers : apiCart.suppliers,
-            0, currencySymbol, 0
+          const mergedSkuCount = merged.suppliers.reduce(
+            (acc, s) => acc + s.products.reduce((sum, p) => sum + p.skus.length, 0), 0
           );
+          // Merge sonucu daha az SKU dönerse localStorage verisini koru
+          if (mergedSkuCount >= localSkuCount) {
+            cartStore.init(merged.suppliers, 0, currencySymbol, 0);
+          }
         } else {
-          // Sadece backend verisini kullan
           cartStore.init(apiCart.suppliers, 0, currencySymbol, 0);
         }
-      } else if (cartStore.getTotalSkuCount() > 0) {
-        // Backend boş, localStorage'da ürün var → tümünü merge et
+      } else if (localSkuCount > 0) {
+        // Backend boş, localStorage'da ürün var → merge et
         const localItems = cartStore.getSuppliers().flatMap(s =>
           s.products.flatMap(p =>
             p.skus.map(sku => ({
@@ -140,7 +142,11 @@ async function initCartPage_async() {
           )
         );
         const merged = await apiMergeGuestCart(localItems);
-        if (merged.suppliers.length > 0) {
+        const mergedSkuCount = merged.suppliers.reduce(
+          (acc, s) => acc + s.products.reduce((sum, p) => sum + p.skus.length, 0), 0
+        );
+        // Merge sonucu daha az SKU dönerse localStorage verisini koru
+        if (mergedSkuCount >= localSkuCount) {
           cartStore.init(merged.suppliers, 0, currencySymbol, 0);
         }
       }

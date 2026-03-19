@@ -8,7 +8,7 @@
 
 import { getCurrentProduct } from '../../alpine/product';
 import { t } from '../../i18n';
-import { formatPrice } from '../../utils/currency';
+import { formatCurrency, getSelectedCurrency } from '../../services/currencyService';
 import type { ProductVariant } from '../../types/product';
 import { openShippingModal, openCartDrawer } from './CartDrawer';
 import { openLoginModal } from './LoginModal';
@@ -158,7 +158,7 @@ export function MobileProductLayout(): string {
     <div id="pdm-price-tiers" class="grid grid-cols-3 bg-surface-raised rounded-lg mx-4 mt-3 py-3.5 max-[374px]:mx-3 max-[374px]:mt-2.5">
       ${p.priceTiers.map(tier => `
         <div class="pdm-tier-col flex flex-col items-center px-3 border-r border-border-default last:border-r-0">
-          <span class="pdm-tier-price text-lg max-[374px]:text-[15px] font-bold text-[#111] leading-[1.3]">${formatPrice('$' + tier.price.toFixed(2))}</span>
+          <span class="pdm-tier-price text-lg max-[374px]:text-[15px] font-bold text-[#111] leading-[1.3]">${formatCurrency(tier.price, getSelectedCurrency())}</span>
           <span class="pdm-tier-qty text-[11px] max-[374px]:text-[10px] text-text-placeholder mt-[3px] text-center">${tier.maxQty !== null
       ? `${tier.minQty} - ${tier.maxQty} ${p.unit}`
       : `>= ${tier.minQty} ${p.unit}`}</span>
@@ -169,7 +169,7 @@ export function MobileProductLayout(): string {
 
   const sampleSection = p.samplePrice ? `
     <div id="pdm-sample-row" class="flex items-center justify-between px-4 py-2.5 max-[374px]:px-3 max-[374px]:py-2 bg-surface text-[13px] max-[374px]:text-xs text-text-body">
-      <span>${t('product.samplePrice')}: <strong>${formatPrice('$' + p.samplePrice.toFixed(2))}</strong></span>
+      <span>${t('product.samplePrice')}: <strong>${formatCurrency(p.samplePrice, getSelectedCurrency())}</strong></span>
       <button type="button" data-order-sample="${p.id}" class="pdm-sample-btn px-[18px] py-1.5 max-[374px]:px-3.5 max-[374px]:py-[5px] border border-[#333] rounded-[20px] text-[13px] max-[374px]:text-xs font-medium bg-surface cursor-pointer text-text-body">${t('cart.orderSample')}</button>
     </div>
   ` : '';
@@ -630,7 +630,7 @@ function updateMobileVariantPrice(btn: HTMLButtonElement): void {
     // Update the first tier price as the "active" price indicator
     const firstTierPrice = document.querySelector<HTMLElement>('#pdm-price-tiers .pdm-tier-col:first-child .pdm-tier-price');
     if (firstTierPrice) {
-      firstTierPrice.textContent = formatPrice('$' + parseFloat(variantPrice).toFixed(2));
+      firstTierPrice.textContent = getCurrencySymbol() + parseFloat(variantPrice).toFixed(2);
     }
     document.dispatchEvent(new CustomEvent('variant-price-change', { detail: { price: parseFloat(variantPrice) } }));
   }

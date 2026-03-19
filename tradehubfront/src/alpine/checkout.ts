@@ -5,7 +5,7 @@ import {
 } from '../data/mockCheckout'
 import type { SavedAddress } from '../types/checkout'
 import { getUser, isLoggedIn } from '../utils/auth'
-// formatCurrency available via currencyService if needed
+import { formatCurrency } from '../services/currencyService'
 import { t } from '../i18n'
 
 interface CheckoutDeliveryMethod {
@@ -258,7 +258,7 @@ Alpine.data('checkoutOrderSummary', (props?: { itemSubtotal?: number; discount?:
   },
 
   formatMoney(value: number): string {
-    return `${this.currency} ${value.toFixed(2)}`;
+    return formatCurrency(value, this.currency);
   },
 }));
 

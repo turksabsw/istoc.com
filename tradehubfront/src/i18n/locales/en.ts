@@ -4417,6 +4417,8 @@ const en = {
     campaignName: 'Spring Collection',
     campaignMessage: 'Up to 50% off on selected categories — limited time offer!',
     exploreNow: 'Explore now',
+  },
+
   /* ── Seller Application Status Page ────────────────── */
   sellerApplication: {
     pageTitle: 'Seller Application',

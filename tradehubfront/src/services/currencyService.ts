@@ -294,3 +294,17 @@ function _formatNumber(num: number): string {
   }
   return num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
+
+// ── Global Access for Alpine templates ──
+
+declare global {
+  interface Window {
+    csFormatPrice: typeof formatPrice
+    csFormatPriceRange: typeof formatPriceRange
+    csFormatCurrency: typeof formatCurrency
+  }
+}
+
+window.csFormatPrice = formatPrice
+window.csFormatPriceRange = formatPriceRange
+window.csFormatCurrency = formatCurrency

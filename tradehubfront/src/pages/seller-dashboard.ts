@@ -3,6 +3,7 @@
  * Satıcının mağazasını yönettiği sayfa
  */
 import '../style.css';
+// Currency formatting via window.csFormatPrice (set by currencyService)
 import { initFlowbite } from 'flowbite';
 import { startAlpine } from '../alpine';
 import { TopBar } from '../components/header';
@@ -274,7 +275,7 @@ appEl.innerHTML = `
                     </td>
                     <td class="px-4 py-3 text-gray-600" x-text="getCategoryName(product.category) || '—'"></td>
                     <td class="px-4 py-3 text-gray-900">
-                      <span x-text="product.price_min > 0 ? '$' + product.price_min.toFixed(2) + (product.price_max > product.price_min ? '–' + product.price_max.toFixed(2) : '') : '—'"></span>
+                      <span x-text="product.price_min > 0 ? (product.price_max > product.price_min ? window.csFormatPriceRange(product.price_min, product.price_max, 'USD') : window.csFormatPrice(product.price_min, 'USD')) : '—'"></span>
                     </td>
                     <td class="px-4 py-3 text-gray-600" x-text="product.moq + ' ' + (product.moq_unit || 'Adet')"></td>
                     <td class="px-4 py-3">

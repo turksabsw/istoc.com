@@ -1,3 +1,5 @@
+import { getCurrencySymbol } from '../../utils/currency';
+
 /**
  * FilterSidebar Component (Alibaba-style Filter Panel)
  * Left sidebar filter panel with:
@@ -149,7 +151,7 @@ const defaultFilterSections: FilterSection[] = [
     filter: {
       min: undefined,
       max: undefined,
-      currency: '$',
+      currency: getCurrencySymbol(),
     },
   } as PriceRangeFilterSection,
   {

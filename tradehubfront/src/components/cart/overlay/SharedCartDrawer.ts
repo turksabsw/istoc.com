@@ -2,7 +2,8 @@ import type { ProductImageKind } from '../../../types/productListing';
 import { cartStore } from '../state/CartStore';
 import type { CartSupplier, CartProduct, CartSku } from '../../../types/cart';
 import { t } from '../../../i18n';
-import { formatPrice } from '../../../utils/currency';
+import { getCurrencySymbol, getCurrencyCode } from '../../../utils/currency';
+import { formatCurrency, getSelectedCurrency } from '../../../services/currencyService';
 import { isLoggedIn } from '../../../utils/auth';
 import { apiCheckStock } from '../../../services/cartService';
 import { showCartError } from '../page/CartPage';
@@ -88,6 +89,7 @@ const cartMemory = new Map<string, CartMemoryItem>();
 let initialized = false;
 let shippingInitialized = false;
 let productsById = new Map<string, CartDrawerItemModel>();
+let onItemMissing: ((id: string, mode: 'cart' | 'sample') => Promise<void>) | null = null;
 
 function escapeHtml(value: string): string {
   return value
@@ -235,7 +237,7 @@ function renderPriceSectionHtml(totals: ReturnType<typeof getTotals>): string {
     return `
       <div class="mb-5 pb-5 border-b border-border-default">
         <p class="text-sm text-text-secondary mb-1">${t('cart.sampleMaxNote')}</p>
-        <p class="text-[22px] font-bold text-text-heading">${formatPrice('$' + (state.item.samplePrice ?? 30).toFixed(2))} <span class="text-base font-normal text-text-tertiary">${t('cart.perUnit')}</span></p>
+        <p class="text-[22px] font-bold text-text-heading">${formatCurrency(state.item.samplePrice ?? 30, getSelectedCurrency())} <span class="text-base font-normal text-text-tertiary">${t('cart.perUnit')}</span></p>
       </div>
     `;
   }
@@ -245,7 +247,7 @@ function renderPriceSectionHtml(totals: ReturnType<typeof getTotals>): string {
     const activeClass = index === totals.tierIndex ? 'text-error-500' : 'text-text-heading';
     return `<div class="cart-tier-item" data-tier-index="${index}">
           <p class="text-sm text-text-tertiary">${formatTierLabel(tier, state.item!.unit)}</p>
-          <p class="mt-1 text-[22px] font-bold ${activeClass}">${formatPrice('$' + tier.price.toFixed(2))}</p>
+          <p class="mt-1 text-[22px] font-bold ${activeClass}">${formatCurrency(tier.price, getSelectedCurrency())}</p>
         </div>`;
   }).join('')}
     </div>
@@ -278,7 +280,7 @@ function renderDrawerBody(): void {
               <div class="flex-1 min-w-0">
                 <p class="text-base font-semibold text-text-heading truncate">${escapeHtml(color.label)}</p>
               </div>
-              <span class="text-[15px] font-semibold text-text-heading whitespace-nowrap">${formatPrice('$' + totals.activePrice.toFixed(2))}</span>
+              <span class="text-[15px] font-semibold text-text-heading whitespace-nowrap">${formatCurrency(totals.activePrice, getSelectedCurrency())}</span>
               <div class="inline-flex items-center border border-border-default rounded-full overflow-hidden shrink-0">
                 <button type="button" data-qty-action="minus" data-qty-color="${escapeHtml(color.id)}" class="w-9 h-9 bg-surface text-text-secondary hover:bg-surface-raised transition-colors">−</button>
                 <input type="number" data-qty-input="${escapeHtml(color.id)}" value="${qty}" min="0" class="w-11 h-9 text-center border-x border-border-default bg-surface text-sm font-semibold text-text-heading [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" />
@@ -320,17 +322,17 @@ function renderDrawerFooter(): void {
         <div class="space-y-2 text-sm text-text-secondary">
           <div class="flex items-center justify-between">
             <span>${t('cart.productTotal')} (${t('cart.variationItems', { variation: String(totals.variationCount), items: String(totals.totalQty) })})</span>
-            <strong class="text-text-heading">${formatPrice('$' + totals.itemSubtotal.toFixed(2))}</strong>
+            <strong class="text-text-heading">${formatCurrency(totals.itemSubtotal, getSelectedCurrency())}</strong>
           </div>
           <div class="flex items-center justify-between">
             <span>${t('cart.shippingTotal')}</span>
-            <span>${escapeHtml(state.item.shippingOptions[state.selectedShippingIndex]?.costText ?? '$0.00')}</span>
+            <span>${escapeHtml(state.item.shippingOptions[state.selectedShippingIndex]?.costText ?? formatCurrency(0, getSelectedCurrency()))}</span>
           </div>
           <div class="flex items-center justify-between border-t border-border-default pt-3 mt-3">
             <strong class="text-text-heading">${t('cart.subtotal')}</strong>
             <div class="text-right">
-              <strong class="text-base text-cta-primary">${formatPrice('$' + totals.grandTotal.toFixed(2))}</strong>
-              <p class="text-xs text-text-tertiary">(${formatPrice('$' + perPiece.toFixed(2))}${t('cart.perUnit')})</p>
+              <strong class="text-base text-cta-primary">${formatCurrency(totals.grandTotal, getSelectedCurrency())}</strong>
+              <p class="text-xs text-text-tertiary">(${formatCurrency(perPiece, getSelectedCurrency())}${t('cart.perUnit')})</p>
             </div>
           </div>
         </div>
@@ -340,8 +342,8 @@ function renderDrawerFooter(): void {
       <button type="button" id="shared-cart-footer-toggle" class="w-full flex items-center justify-between mb-4">
         <strong class="text-base text-text-heading">${t('cart.subtotal')}</strong>
         <span class="flex items-center gap-1.5">
-          <strong class="text-[17px] text-cta-primary">${formatPrice('$' + totals.grandTotal.toFixed(2))}</strong>
-          <span class="text-xs text-text-tertiary">(${formatPrice('$' + perPiece.toFixed(2))}${t('cart.perUnit')})</span>
+          <strong class="text-[17px] text-cta-primary">${formatCurrency(totals.grandTotal, getSelectedCurrency())}</strong>
+          <span class="text-xs text-text-tertiary">(${formatCurrency(perPiece, getSelectedCurrency())}${t('cart.perUnit')})</span>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-text-tertiary"><path d="m6 9 6 6 6-6"/></svg>
         </span>
       </button>
@@ -480,12 +482,13 @@ function syncToCartStore(item: CartDrawerItemModel, colorQuantities: Map<string,
     if (existing) {
       cartStore.updateSkuQuantity(skuId, existing.sku.quantity + qty);
     } else {
+      const isFallbackColor = colorId.startsWith('fallback-');
       const sku: CartSku = {
         id: skuId,
         skuImage: color.imageUrl || 'https://placehold.co/120x120/f5f5f5/999?text=SKU',
         variantText: `${t('cart.colorLabel')}: ${color.label}`,
         unitPrice,
-        currency: '$',
+        currency: getCurrencySymbol(),
         unit: item.unit,
         quantity: qty,
         minQty: item.moq,
@@ -493,7 +496,8 @@ function syncToCartStore(item: CartDrawerItemModel, colorQuantities: Map<string,
         selected: true,
         baseUnitPrice: unitPrice,
         basePriceAddon: 0,
-        baseCurrency: 'USD',
+        baseCurrency: getSelectedCurrency(),
+        ...(isFallbackColor ? {} : { listingVariant: colorId }),
       };
       cartStore.addSku(productId, sku);
     }
@@ -708,6 +712,9 @@ export function initSharedCartDrawer(items: CartDrawerItemModel[]): void {
       if (id && productsById.has(id)) {
         event.preventDefault();
         openDrawer(id, 'cart');
+      } else if (id && onItemMissing) {
+        event.preventDefault();
+        onItemMissing(id, 'cart');
       }
       return;
     }
@@ -718,6 +725,9 @@ export function initSharedCartDrawer(items: CartDrawerItemModel[]): void {
       if (id && productsById.has(id)) {
         event.preventDefault();
         openDrawer(id, 'sample');
+      } else if (id && onItemMissing) {
+        event.preventDefault();
+        onItemMissing(id, 'sample');
       }
       return;
     }
@@ -857,6 +867,10 @@ export function initSharedCartDrawer(items: CartDrawerItemModel[]): void {
 
 export function openSharedCartDrawer(itemId?: string, mode: 'cart' | 'sample' = 'cart'): void {
   openDrawer(itemId, mode);
+}
+
+export function setOnItemMissing(cb: ((id: string, mode: 'cart' | 'sample') => Promise<void>) | null): void {
+  onItemMissing = cb;
 }
 
 export function setSharedCartItems(items: CartDrawerItemModel[]): void {

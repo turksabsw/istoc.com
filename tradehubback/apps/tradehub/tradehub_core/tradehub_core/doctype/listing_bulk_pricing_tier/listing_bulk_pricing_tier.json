@@ -46,11 +46,7 @@
  "links": [],
  "modified": "2024-01-01 00:00:00.000000",
  "modified_by": "Administrator",
-<<<<<<<< HEAD:tradehubback/apps/tradehub/tradehub_core/tradehub_core/doctype/listing_bulk_pricing_tier/listing_bulk_pricing_tier.json
  "module": "TradeHub Core",
-========
- "module": "Tradehub Core",
->>>>>>>> origin/Development-Env:tradehubback/apps/tradehub_core/tradehub_core/tradehub_core/doctype/listing_bulk_pricing_tier/listing_bulk_pricing_tier.json
  "name": "Listing Bulk Pricing Tier",
  "owner": "Administrator",
  "permissions": [],

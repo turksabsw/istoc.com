@@ -5,7 +5,8 @@
  */
 
 import type { CartSupplier, CartProduct, CartSku, CartSummaryData } from '../../../types/cart';
-import { getSelectedCurrencyInfo } from '../../../services/currencyService';
+import { getSelectedCurrencyInfo, convertPrice } from '../../../services/currencyService';
+import { getCurrencySymbol } from '../../../utils/currency';
 
 export class CartStore {
   private static STORAGE_KEY = 'tradehub_cart';
@@ -15,12 +16,12 @@ export class CartStore {
   private discount = 0;
   private couponDiscount = 0;
   private couponCode = '';
-  private currency = '$';
+  private currency = getCurrencySymbol();
   private listeners = new Set<() => void>();
 
   // ──────────────── INIT ────────────────
 
-  init(suppliers: CartSupplier[], shippingFee = 0, currency = '$', discount = 0): void {
+  init(suppliers: CartSupplier[], shippingFee = 0, currency = getCurrencySymbol(), discount = 0): void {
     this.suppliers = structuredClone(suppliers);
     this.shippingFee = shippingFee;
     this.discount = discount;
@@ -40,10 +41,19 @@ export class CartStore {
         currency: string;
       };
       if (!Array.isArray(data.suppliers) || data.suppliers.length === 0) return false;
+      // Tüm SKU'ların currency alanını güncel sembolle güncelle
+      const sym = getCurrencySymbol();
+      for (const supplier of data.suppliers) {
+        for (const product of supplier.products) {
+          for (const sku of product.skus) {
+            sku.currency = sym;
+          }
+        }
+      }
       this.suppliers = data.suppliers;
       this.shippingFee = data.shippingFee ?? 0;
       this.discount = data.discount ?? 0;
-      this.currency = data.currency ?? '$';
+      this.currency = sym;
       this.notify();
       return true;
     } catch {
@@ -164,22 +174,27 @@ export class CartStore {
         for (const sku of product.skus) {
           if (sku.selected && sku.isAvailable !== false) {
             selectedCount++;
-            productSubtotal += sku.unitPrice * sku.quantity;
+            // Fiyatı baz para biriminden seçili para birimine çevir
+            const converted = convertPrice(sku.unitPrice, sku.baseCurrency || 'USD');
+            productSubtotal += converted * sku.quantity;
             items.push({ image: sku.skuImage, quantity: sku.quantity });
           }
         }
       }
     }
 
+    const convertedShipping = convertPrice(this.shippingFee, 'USD');
+    const convertedDiscount = convertPrice(this.discount, 'USD');
+
     return {
       selectedCount,
       items,
       productSubtotal,
-      discount: this.discount,
+      discount: convertedDiscount,
       couponDiscount: this.couponDiscount,
       couponCode: this.couponCode,
-      shippingFee: this.shippingFee,
-      subtotal: productSubtotal - this.discount - this.couponDiscount + this.shippingFee,
+      shippingFee: convertedShipping,
+      subtotal: productSubtotal - convertedDiscount - this.couponDiscount + convertedShipping,
       currency: getSelectedCurrencyInfo().symbol,
     };
   }

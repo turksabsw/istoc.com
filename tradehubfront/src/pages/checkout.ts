@@ -439,7 +439,6 @@ window.addEventListener('checkout:confirm-order', () => {
     // Misafir: frontend üretilen numaralarla devam et
     const newOrders = buildOrdersFromCheckout(paymentMethod, shippingAddress);
     orderStore.load();
-    orderStore.addOrders(newOrders);
     redirectToSuccess(newOrders.map((o) => o.orderNumber).join(','));
     return;
   }
@@ -454,13 +453,9 @@ window.addEventListener('checkout:confirm-order', () => {
         .map((o) => o.order_number ?? o.order_name ?? '')
         .filter(Boolean);
 
-      const newOrders = buildOrdersFromCheckout(paymentMethod, shippingAddress, backendNums);
       orderStore.load();
-      orderStore.addOrders(newOrders);
 
-      const orderNumbers = backendNums.length > 0
-        ? backendNums.join(',')
-        : newOrders.map((o) => o.orderNumber).join(',');
+      const orderNumbers = backendNums.join(',');
 
       redirectToSuccess(orderNumbers);
     })

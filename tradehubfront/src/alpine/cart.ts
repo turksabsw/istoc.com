@@ -4,6 +4,8 @@ import { addToFavorites } from '../stores/favorites'
 import { cartStore } from '../components/cart/state/CartStore'
 import { showFavoriteToast, showCartError } from '../components/cart/page/CartPage'
 import { sanitizeHtml } from '../utils/sanitize'
+import { getCurrencySymbol } from '../utils/currency'
+import { formatCurrency, formatPrice, getSelectedCurrency, convertPrice } from '../services/currencyService'
 import { getBaseUrl } from '../components/auth/AuthLayout'
 import { apiUpdateCartItem, apiRemoveCartItem } from '../services/cartService'
 import { isLoggedIn } from '../utils/auth'
@@ -158,7 +160,8 @@ Alpine.data('cartPage', () => ({
 
     if (isLoggedIn()) {
       apiUpdateCartItem(skuId, value).catch((err: Error) => {
-        // Hata: miktarı geri al ve kullanıcıya göster
+        // Backend'de yoksa (local-only item) sessizce geç
+        if (err.message?.includes('bulunamadı')) return;
         cartStore.updateSkuQuantity(skuId, prevQty);
         this.syncSkuQuantityInput(skuId, prevQty);
         showCartError(err.message || t('cart.stockError'));
@@ -181,6 +184,7 @@ Alpine.data('cartPage', () => ({
       this.syncSkuQuantityInput(skuId, updatedSku.quantity);
       if (isLoggedIn()) {
         apiUpdateCartItem(skuId, updatedSku.quantity).catch((err: Error) => {
+          if (err.message?.includes('bulunamadı')) return;
           cartStore.updateSkuQuantity(skuId, prevQty);
           this.syncSkuQuantityInput(skuId, prevQty);
           showCartError(err.message || t('cart.stockError'));
@@ -275,7 +279,7 @@ Alpine.data('cartPage', () => ({
       id: productId,
       image: snapshot.product.skus[0]?.skuImage || 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=300&h=300&fit=crop',
       title: snapshot.product.title,
-      priceRange: `$${snapshot.product.skus[0]?.unitPrice || 0}`,
+      priceRange: formatPrice(snapshot.product.skus[0]?.unitPrice || 0, snapshot.product.skus[0]?.baseCurrency || 'USD'),
       minOrder: snapshot.product.moqLabel || 'Min. order: 1 piece'
     });
 
@@ -420,19 +424,20 @@ Alpine.data('cartPage', () => ({
     if (countEl) countEl.textContent = String(summary.selectedCount);
 
     const subtotalEl = el.querySelector<HTMLElement>('.sc-summary-product-subtotal');
-    if (subtotalEl) subtotalEl.textContent = `$${summary.productSubtotal.toFixed(2).replace('.', ',')}`;
+    const cur = getSelectedCurrency();
+    if (subtotalEl) subtotalEl.textContent = formatCurrency(summary.productSubtotal, cur);
 
     const discountRow = el.querySelector<HTMLElement>('.sc-summary-discount-row');
     const discountEl = el.querySelector<HTMLElement>('.sc-summary-discount');
     const banner = el.querySelector<HTMLElement>('.sc-summary-savings-banner');
 
     if (summary.discount > 0) {
-      const formatted = `- $${summary.discount.toFixed(2).replace('.', ',')}`;
+      const formatted = `- ${formatCurrency(summary.discount, cur)}`;
       discountRow?.classList.remove('hidden');
       if (discountEl) discountEl.textContent = formatted;
       if (banner) {
         banner.classList.remove('hidden');
-        banner.innerHTML = sanitizeHtml(t('cart.youSaved', { amount: `<strong>$${summary.discount.toFixed(2).replace('.', ',')}</strong>` }));
+        banner.innerHTML = sanitizeHtml(t('cart.youSaved', { amount: `<strong>${formatCurrency(summary.discount, cur)}</strong>` }));
       }
     } else {
       discountRow?.classList.add('hidden');
@@ -440,7 +445,7 @@ Alpine.data('cartPage', () => ({
     }
 
     const totalEl = el.querySelector<HTMLElement>('.sc-summary-subtotal');
-    if (totalEl) totalEl.textContent = `$${summary.subtotal.toFixed(2).replace('.', ',')}`;
+    if (totalEl) totalEl.textContent = formatCurrency(summary.subtotal, cur);
 
     this.updateThumbnailGrid(summary.items);
   },
@@ -459,7 +464,8 @@ Alpine.data('cartPage', () => ({
       supplier.products.forEach(product => {
         product.skus.forEach(sku => {
           if (sku.selected) {
-            subtotal += sku.unitPrice * sku.quantity;
+            const converted = convertPrice(sku.unitPrice, sku.baseCurrency || 'USD');
+            subtotal += converted * sku.quantity;
           }
         });
       });
@@ -467,7 +473,7 @@ Alpine.data('cartPage', () => ({
       const totalEl = container.querySelector<HTMLElement>('.sc-c-supplier-total-text');
       if (totalEl) {
         if (subtotal > 0) {
-          totalEl.textContent = `Toplam: ${supplier.products[0]?.skus[0]?.currency || '$'}${subtotal.toFixed(2).replace('.', ',')}`;
+          totalEl.textContent = `Toplam: ${formatCurrency(subtotal, getSelectedCurrency())}`;
         } else {
           totalEl.textContent = '';
         }

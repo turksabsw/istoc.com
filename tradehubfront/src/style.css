@@ -4831,6 +4831,35 @@ input:checked+.email-pref__toggle-slider::before {
 }
 
 /* ============================================================
+   CART DRAWER — Loading state for lazy-loaded product buttons
+   ============================================================ */
+
+[data-add-to-cart].loading,
+[data-order-sample].loading {
+  pointer-events: none;
+  opacity: 0.6;
+  position: relative;
+}
+
+[data-add-to-cart].loading::after,
+[data-order-sample].loading::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 18px;
+  height: 18px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: cart-btn-spin 0.6s linear infinite;
+}
+
+@keyframes cart-btn-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ============================================================
    CHECKOUT PAGE — Float-label, Dropdown, Accordion, Modal
    ============================================================ */
 

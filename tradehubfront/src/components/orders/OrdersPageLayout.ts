@@ -4,7 +4,7 @@
  * Supports hash-based sub-pages: #all-orders, #refunds, #reviews, #coupons, #tax-info
  */
 import { getBaseUrl } from '../../utils/url';
-import { getCurrencyCode } from '../../utils/currency';
+import { getCurrencyCode, getCurrencySymbol } from '../../utils/currency';
 import { t } from '../../i18n';
 
 interface OrdersNavItem {
@@ -1740,7 +1740,7 @@ function renderCoupons(): string {
                 <!-- Value display -->
                 <div class="flex-shrink-0 text-right">
                   <span class="text-lg font-bold" :class="coupon.status === 'available' ? 'text-(--color-text-heading,#111827)' : 'text-(--color-text-muted,#666)'"
-                    x-text="coupon.type === 'shipping' ? '${t('orders.free')}' : (coupon.type === 'percent' ? '%' + coupon.value : '$' + coupon.value)"></span>
+                    x-text="coupon.type === 'shipping' ? '${t('orders.free')}' : (coupon.type === 'percent' ? '%' + coupon.value : '${getCurrencySymbol()}' + coupon.value)"></span>
                 </div>
               </div>
             </div>
@@ -1752,7 +1752,7 @@ function renderCoupons(): string {
       <div x-show="activeTab === 'coupons-credit'">
         <div class="mx-7 my-5 p-5 border border-(--color-border-default,#e5e5e5) rounded-lg">
           <p class="text-sm text-(--color-text-body,#333) mb-2">${t('orders.totalCreditBalance')}</p>
-          <p class="text-[28px] font-bold text-(--color-text-heading,#111827) mb-2" x-text="'$' + creditBalance.toFixed(2)"></p>
+          <p class="text-[28px] font-bold text-(--color-text-heading,#111827) mb-2" x-text="'${getCurrencySymbol()}' + creditBalance.toFixed(2)"></p>
           <p class="text-[13px] text-(--color-text-muted,#666)">${t('orders.creditEqualsUsd')} <a href="#terms" class="text-(--color-text-link,#cc9900) hover:text-(--color-text-link-hover,#b38600) underline">${t('orders.termsAndConditions')}</a></p>
         </div>
 
@@ -1785,7 +1785,7 @@ function renderCoupons(): string {
                   <td class="px-4 py-3 text-[13px] text-(--color-text-body,#333)" x-text="entry.description"></td>
                   <td class="px-4 py-3 text-[13px] text-(--color-text-muted,#666) whitespace-nowrap" x-text="formatDate(entry.date)"></td>
                   <td class="px-4 py-3 text-[13px] font-semibold whitespace-nowrap" :class="creditAmountClass(entry.type)"
-                    x-text="(entry.amount >= 0 ? '+' : '') + '$' + Math.abs(entry.amount).toFixed(2)"></td>
+                    x-text="(entry.amount >= 0 ? '+' : '') + '${getCurrencySymbol()}' + Math.abs(entry.amount).toFixed(2)"></td>
                 </tr>
               </template>
             </tbody>

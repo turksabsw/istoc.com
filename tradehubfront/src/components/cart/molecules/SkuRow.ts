@@ -57,7 +57,7 @@ export function SkuRow({ sku }: SkuRowProps): string {
         </div>
 
         <div class="mt-3 flex items-end justify-between gap-3 flex-wrap">
-          ${PriceDisplay({ amount: sku.unitPrice, currency: sku.currency, unit: `/${sku.unit}` })}
+          ${PriceDisplay({ amount: sku.unitPrice, fromCurrency: sku.baseCurrency || 'USD', unit: `/${sku.unit}` })}
           <div class="flex flex-col items-end ${unavailable ? 'pointer-events-none opacity-50' : ''}">
             ${QuantityInput({ id: `sku-qty-${sku.id}`, value: sku.quantity, min: 1, max: sku.maxQty })}
             ${!unavailable ? `<div class="sc-c-sku-moq-warning mt-2 text-right text-[14px] leading-[20px] text-[#dc2626] hidden">

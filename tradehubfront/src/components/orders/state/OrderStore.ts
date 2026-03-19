@@ -106,11 +106,6 @@ export class OrderStore {
   private loading = false;
   private loaded = false;
 
-  /** Backward compat — checkout.ts calls this before addOrders */
-  loadSync(): void {
-    // no-op: veri sadece API'den gelir
-  }
-
   async load(): Promise<void> {
     await this.fetchFromApi();
   }
@@ -158,28 +153,6 @@ export class OrderStore {
 
   isLoaded(): boolean {
     return this.loaded;
-  }
-
-  /** Sipariş oluştur — API'ye gönder, sonra listeyi güncelle */
-  async createOrder(orderData: Order): Promise<boolean> {
-    try {
-      await callMethod<{ success: boolean; order_number: string }>(
-        'tradehub_core.api.order.create_order',
-        { data: JSON.stringify(orderData) },
-        true,
-      );
-      return true;
-    } catch (err) {
-      console.error('[OrderStore] create_order failed:', err);
-      return false;
-    }
-  }
-
-  /** Toplu sipariş ekleme (checkout'tan) */
-  async addOrders(newOrders: Order[]): Promise<void> {
-    for (const order of newOrders) {
-      await this.createOrder(order);
-    }
   }
 
   /** Sipariş iptal — API'ye gönder */

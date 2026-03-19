@@ -1,4 +1,5 @@
 import { t } from '../../i18n';
+// Currency formatting via window.csFormatPrice / window.csFormatPriceRange (set by currencyService)
 
 
 // Mock Review Data Type (to be added to types/seller/types.ts)
@@ -126,10 +127,10 @@ function OverviewTab(): string {
           },
           formatPrice(p) {
             if (!p.price_min) return '';
-            const min = parseFloat(p.price_min).toFixed(2);
-            const max = p.price_max && parseFloat(p.price_max) > parseFloat(p.price_min)
-              ? ' - $' + parseFloat(p.price_max).toFixed(2) : '';
-            return '$' + min + max;
+            const min = parseFloat(p.price_min);
+            const max = p.price_max ? parseFloat(p.price_max) : 0;
+            if (max > min) return window.csFormatPriceRange(min, max, 'USD');
+            return window.csFormatPrice(min, 'USD');
           }
         }"
       >
@@ -332,9 +333,10 @@ function ProductsTab(): string {
         },
         formatPrice(p) {
           if (!p.price_min) return '';
-          const min = parseFloat(p.price_min).toFixed(2);
-          const max = p.price_max && parseFloat(p.price_max) > parseFloat(p.price_min) ? ' - $' + parseFloat(p.price_max).toFixed(2) : '';
-          return '$' + min + max;
+          const min = parseFloat(p.price_min);
+          const max = p.price_max ? parseFloat(p.price_max) : 0;
+          if (max > min) return window.csFormatPriceRange(min, max, 'USD');
+          return window.csFormatPrice(min, 'USD');
         }
       }"
     >

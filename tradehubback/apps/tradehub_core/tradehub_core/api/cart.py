@@ -1,6 +1,7 @@
 import json
 import frappe
 from frappe import _
+from frappe.utils import now_datetime
 
 def _invalidate_cart_cache(_cart_name):
 	"""No-op: cache kaldırıldı. Listing status değiştiğinde stale data önlemek için."""
@@ -656,7 +657,6 @@ def create_order(orders_json, shipping_address=None, payment_method=None, coupon
 
 		for p in products:
 			lv = p.get("listing_variant") or None
-			# listing_variant geçerliliğini kontrol et
 			if lv and not frappe.db.exists("Listing Variant", lv):
 				lv = None
 			order_doc.append("items", {
@@ -700,60 +700,9 @@ def create_order(orders_json, shipping_address=None, payment_method=None, coupon
 
 @frappe.whitelist()
 def get_orders(page=1, page_size=20):
-	"""Oturumdaki kullanıcının siparişlerini döndürür."""
-	user = frappe.session.user
-	if not user or user == "Guest":
-		frappe.throw(_("Giriş yapmanız gerekiyor"), frappe.AuthenticationError)
-
-	filters = {"buyer": user}
-	orders = frappe.get_all(
-		"Order",
-		filters=filters,
-		fields=["name", "status", "payment_method", "order_date",
-		        "currency", "subtotal", "shipping_fee", "total", "seller"],
-		limit_start=(int(page) - 1) * int(page_size),
-		limit_page_length=int(page_size),
-		order_by="order_date desc",
-	)
-
-	result = []
-	for o in orders:
-		items = frappe.get_all(
-			"Order Item",
-			filters={"parent": o.name},
-			fields=["listing", "listing_title", "variation", "unit_price", "quantity", "total_price", "image"],
-		)
-		seller_name = ""
-		if o.seller:
-			seller_name = frappe.db.get_value("Admin Seller Profile", o.seller, "seller_name") or o.seller
-
-		result.append({
-			"id": o.name,
-			"order_number": o.name,
-			"order_date": str(o.order_date) if o.order_date else "",
-			"status": o.status,
-			"payment_method": o.payment_method,
-			"currency": o.currency or "USD",
-			"subtotal": float(o.subtotal or 0),
-			"shipping_fee": float(o.shipping_fee or 0),
-			"total": float(o.total or 0),
-			"seller": o.seller or "",
-			"seller_name": seller_name,
-			"products": [
-				{
-					"name": i.listing_title or "",
-					"variation": i.variation or "",
-					"unit_price": str(float(i.unit_price or 0)),
-					"quantity": i.quantity or 1,
-					"total_price": str(float(i.total_price or 0)),
-					"image": i.image or "",
-				}
-				for i in items
-			],
-		})
-
-	total_count = frappe.db.count("Order", filters=filters)
-	return {"orders": result, "total": total_count}
+	"""Oturumdaki kullanıcının siparişlerini döndürür. order.py'ye proxy."""
+	from tradehub_core.api.order import get_my_orders
+	return get_my_orders(page=page, page_size=page_size)
 
 
 @frappe.whitelist(allow_guest=True)
