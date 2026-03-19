@@ -38,7 +38,7 @@ export async function requireSeller(): Promise<void> {
     window.location.replace(LOGIN_URL)
     await new Promise(() => {})
   }
-  if (user!.pending_seller_application) {
+  if (user!.pending_seller_application || user!.rejected_seller_application) {
     window.location.href = '/pages/seller/application-pending.html'
     return
   }

@@ -1,7 +1,7 @@
 app_name = "tradehub_core"
 app_title = "TradeHub Core"
-app_publisher = "TradeHub Team"
-app_description = "TradeHub B2B Marketplace Backend"
+app_publisher = "TradeHub"
+app_description = "TradeHub B2B E-Commerce Backend"
 app_email = "dev@tradehub.com"
 app_license = "MIT"
 
@@ -17,7 +17,7 @@ app_include_js = "seller_redirect.js"
 fixtures = [
 	{
 		"dt": "Role",
-		"filters": [["name", "in", ["Marketplace Seller","Buyer", "Seller", "Marketplace Admin", "Marketplace Buyer"]]],
+		"filters": [["name", "in", ["Marketplace Seller", "Buyer", "Seller", "Marketplace Admin", "Marketplace Buyer"]]],
 	},
 	{
 		"dt": "Workspace",

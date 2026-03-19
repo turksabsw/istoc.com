@@ -28,12 +28,12 @@ export function SettingsChangePhone(): string {
 
           <div class="mb-4 max-sm:mb-3">
             <label class="block text-[13px] max-sm:text-xs font-medium mb-1.5" style="color:var(--color-text-muted, #666666)">${t('settings.newPhoneLabel') || 'Yeni Telefon Numarası'}</label>
-            <input type="tel" class="w-full max-w-[360px] max-sm:max-w-full py-2.5 px-3.5 border border-gray-300 rounded-lg text-sm outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10" x-ref="newPhone" placeholder="+90 5XX XXX XX XX" />
+            <input type="tel" class="w-full max-w-[360px] max-sm:max-w-full py-2.5 px-3.5 border border-gray-300 rounded-lg text-sm outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10" x-ref="newPhone" autocomplete="off" placeholder="+90 5XX XXX XX XX" />
           </div>
 
           <div class="mb-4 max-sm:mb-3">
             <label class="block text-[13px] max-sm:text-xs font-medium mb-1.5" style="color:var(--color-text-muted, #666666)">${t('settings.currentPassword')}</label>
-            <input type="password" class="w-full max-w-[360px] max-sm:max-w-full py-2.5 px-3.5 border border-gray-300 rounded-lg text-sm outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10" x-ref="phonePassword" placeholder="${t('settings.currentPassword')}" />
+            <input type="password" class="w-full max-w-[360px] max-sm:max-w-full py-2.5 px-3.5 border border-gray-300 rounded-lg text-sm outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10" x-ref="phonePassword" autocomplete="off" placeholder="${t('settings.currentPassword')}" />
             <p class="text-xs mt-1.5 m-0" style="color:var(--color-text-placeholder, #999999)">${t('settings.passwordRequiredForSecurity') || 'Güvenlik için mevcut şifrenizi girin.'}</p>
           </div>
 

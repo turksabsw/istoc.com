@@ -9,10 +9,12 @@ import type { LocaleOption, CurrencyOption } from '../../types/navigation';
 import { megaCategories } from './MegaMenu';
 import { cartStore } from '../cart/state/CartStore';
 import { isLoggedIn, getUser, getSessionUser, logout } from '../../utils/auth';
+import { getSellerStoreUrl } from '../../utils/seller';
 import { mockConversations } from '../../data/mockMessages';
 import { t, getCurrentLang, updatePageTranslations } from '../../i18n';
 import type { SupportedLang } from '../../i18n';
-import { getSelectedCurrency, setSelectedCurrency } from '../../utils/currency';
+import { getSelectedCurrency, setSelectedCurrency, getCurrencySymbol } from '../../utils/currency';
+import { formatCurrency, formatPrice, getSelectedCurrency as csGetSelectedCurrency } from '../../services/currencyService';
 import { getSearchSuggestions } from '../../services/listingService';
 
 /** Default country options for the delivery selector */
@@ -112,6 +114,7 @@ function renderUserButton(): string {
         </div>
         <ul class="py-1">
           <li><a href="/pages/dashboard/buyer-dashboard.html" class="block px-4 py-2 text-[13px] text-[#222] hover:bg-gray-50 transition-colors"><span data-i18n="header.myDashboard">${t('header.myDashboard')}</span></a></li>
+          ${(user?.seller_application_status || user?.has_seller_profile) ? `<li><a href="${getSellerStoreUrl(user!)}" class="block px-4 py-2 text-[13px] text-[#222] hover:bg-gray-50 transition-colors"><span data-i18n="header.myStore">${t('header.myStore')}</span></a></li>` : ''}
           <li><a href="/pages/dashboard/orders.html" class="block px-4 py-2 text-[13px] text-[#222] hover:bg-gray-50 transition-colors"><span data-i18n="header.myOrders">${t('header.myOrders')}</span></a></li>
           <li><a href="/pages/dashboard/messages.html" class="block px-4 py-2 text-[13px] text-[#222] hover:bg-gray-50 transition-colors"><span data-i18n="header.myMessages">${t('header.myMessages')}</span></a></li>
           <li><a href="/pages/dashboard/rfq.html" class="block px-4 py-2 text-[13px] text-[#222] hover:bg-gray-50 transition-colors"><span data-i18n="header.myRfq">${t('header.myRfq')}</span></a></li>
@@ -1295,7 +1298,7 @@ export function initHeaderCart(): void {
     if (subtotalContainer) subtotalContainer.style.display = 'flex';
     if (subtotalPrice) {
       const gTotal = summary.subtotal || 0;
-      subtotalPrice.textContent = `$${gTotal.toFixed(2)}`;
+      subtotalPrice.textContent = formatCurrency(gTotal, csGetSelectedCurrency());
     }
 
     if (itemsContainer) {
@@ -1324,7 +1327,7 @@ export function initHeaderCart(): void {
                   <p class="text-[11px] text-gray-400">${sku.variantText || ''}</p>
                 </div>
                 <div class="flex flex-col items-end gap-1 flex-shrink-0">
-                  <span class="text-[13px] font-bold text-gray-900">$${sku.unitPrice.toFixed(2)}</span>
+                  <span class="text-[13px] font-bold text-gray-900">${formatPrice(sku.unitPrice, sku.baseCurrency || 'USD')}</span>
                   <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">x${sku.quantity}</span>
                 </div>
               </div>`;
@@ -1378,7 +1381,7 @@ export function initHeaderCart(): void {
                   <div class="flex-1 min-w-0">
                     <p class="text-[11px] text-text-tertiary truncate">${item.label}</p>
                     <div class="flex items-center justify-between mt-0.5">
-                      <span class="text-[13px] font-semibold text-text-heading">$${item.unitPrice.toFixed(2)}</span>
+                      <span class="text-[13px] font-semibold text-text-heading">${getCurrencySymbol()}${item.unitPrice.toFixed(2)}</span>
                       <span class="text-xs text-text-tertiary">x ${item.qty}</span>
                     </div>
                   </div>
@@ -1405,7 +1408,7 @@ export function initHeaderCart(): void {
                     <div class="flex-1 min-w-0">
                       <p class="text-xs text-text-tertiary">${desc}</p>
                       <div class="flex items-center justify-between mt-0.5">
-                        <span class="text-sm font-semibold text-text-heading">$${unitPrice.toFixed(2)}</span>
+                        <span class="text-sm font-semibold text-text-heading">${getCurrencySymbol()}${unitPrice.toFixed(2)}</span>
                         <span class="text-xs text-text-tertiary">x ${vi.qty}</span>
                       </div>
                     </div>
@@ -1418,7 +1421,7 @@ export function initHeaderCart(): void {
                 <div class="w-12 h-12 rounded-md flex-shrink-0 bg-surface-muted border border-border-default"></div>
                 <div class="flex-1 min-w-0">
                   <div class="flex items-center justify-between mt-0.5">
-                    <span class="text-sm font-semibold text-text-heading">$${unitPrice.toFixed(2)}</span>
+                    <span class="text-sm font-semibold text-text-heading">${getCurrencySymbol()}${unitPrice.toFixed(2)}</span>
                     <span class="text-xs text-text-tertiary">x ${quantity}</span>
                   </div>
                 </div>
@@ -1433,7 +1436,7 @@ export function initHeaderCart(): void {
       const subtotalContainer = document.getElementById('header-cart-subtotal');
       const subtotalPrice = document.getElementById('header-cart-subtotal-price');
       if (subtotalContainer) subtotalContainer.style.display = 'flex';
-      if (subtotalPrice) subtotalPrice.textContent = `$${grandTotal.toFixed(2)}`;
+      if (subtotalPrice) subtotalPrice.textContent = `${getCurrencySymbol()}${grandTotal.toFixed(2)}`;
     } else {
       renderFromStore();
     }

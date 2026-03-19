@@ -34,12 +34,22 @@ services:
       - FRAPPE_SITE_NAME=${FRAPPE_SITE_NAME:-tradehub.localhost}
       - SITES_PATH=sites
       - FRAPPE_STREAM_LOGGING=1
+      - HOST_NAME=${HOST_NAME:-http://localhost:5500}
+      - MAIL_SERVER=${MAIL_SERVER:-mailpit}
+      - MAIL_PORT=${MAIL_PORT:-1025}
+      - MAIL_USE_SSL=${MAIL_USE_SSL:-0}
+      - MAIL_USE_TLS=${MAIL_USE_TLS:-0}
+      - MAIL_LOGIN=${MAIL_LOGIN:-}
+      - MAIL_PASSWORD=${MAIL_PASSWORD:-}
+      - MAIL_DEFAULT_SENDER=${MAIL_DEFAULT_SENDER:-noreply@tradehub.localhost}
+      - MAIL_DISABLE_AUTH=${MAIL_DISABLE_AUTH:-1}
     volumes:
       - ./tradehubback/sites:/home/frappe/frappe-bench/sites
       - ./tradehubback/sites/common_site_config.docker.json:/home/frappe/frappe-bench/sites/common_site_config.json
       - ./tradehubback/frappe_wsgi.py:/home/frappe/frappe-bench/frappe_wsgi.py
       - ./tradehubback/apps/tradehub_core:/home/frappe/frappe-bench/apps/tradehub_core
       - backend-logs:/home/frappe/frappe-bench/logs
+      - ./tradehubback/apps/tradehub_core:/home/frappe/frappe-bench/apps/tradehub_core
     depends_on:
       db:
         condition: service_healthy
@@ -80,11 +90,23 @@ services:
         /home/frappe/frappe-bench/env/bin/pip install --quiet -e /home/frappe/frappe-bench/apps/tradehub_core &&
         exec bench worker
       "
+    environment:
+      - FRAPPE_SITE_NAME=${FRAPPE_SITE_NAME:-tradehub.localhost}
+      - HOST_NAME=${HOST_NAME:-http://localhost:5500}
+      - MAIL_SERVER=${MAIL_SERVER:-mailpit}
+      - MAIL_PORT=${MAIL_PORT:-1025}
+      - MAIL_USE_SSL=${MAIL_USE_SSL:-0}
+      - MAIL_USE_TLS=${MAIL_USE_TLS:-0}
+      - MAIL_LOGIN=${MAIL_LOGIN:-}
+      - MAIL_PASSWORD=${MAIL_PASSWORD:-}
+      - MAIL_DEFAULT_SENDER=${MAIL_DEFAULT_SENDER:-noreply@tradehub.localhost}
+      - MAIL_DISABLE_AUTH=${MAIL_DISABLE_AUTH:-1}
     volumes:
       - ./tradehubback/sites:/home/frappe/frappe-bench/sites
       - ./tradehubback/sites/common_site_config.docker.json:/home/frappe/frappe-bench/sites/common_site_config.json
       - ./tradehubback/apps/tradehub_core:/home/frappe/frappe-bench/apps/tradehub_core
       - backend-logs:/home/frappe/frappe-bench/logs
+      - ./tradehubback/apps/tradehub_core:/home/frappe/frappe-bench/apps/tradehub_core
     depends_on:
       - redis-queue
       - backend
@@ -102,11 +124,23 @@ services:
         /home/frappe/frappe-bench/env/bin/pip install --quiet -e /home/frappe/frappe-bench/apps/tradehub_core &&
         exec bench schedule
       "
+    environment:
+      - FRAPPE_SITE_NAME=${FRAPPE_SITE_NAME:-tradehub.localhost}
+      - HOST_NAME=${HOST_NAME:-http://localhost:5500}
+      - MAIL_SERVER=${MAIL_SERVER:-mailpit}
+      - MAIL_PORT=${MAIL_PORT:-1025}
+      - MAIL_USE_SSL=${MAIL_USE_SSL:-0}
+      - MAIL_USE_TLS=${MAIL_USE_TLS:-0}
+      - MAIL_LOGIN=${MAIL_LOGIN:-}
+      - MAIL_PASSWORD=${MAIL_PASSWORD:-}
+      - MAIL_DEFAULT_SENDER=${MAIL_DEFAULT_SENDER:-noreply@tradehub.localhost}
+      - MAIL_DISABLE_AUTH=${MAIL_DISABLE_AUTH:-1}
     volumes:
       - ./tradehubback/sites:/home/frappe/frappe-bench/sites
       - ./tradehubback/sites/common_site_config.docker.json:/home/frappe/frappe-bench/sites/common_site_config.json
       - ./tradehubback/apps/tradehub_core:/home/frappe/frappe-bench/apps/tradehub_core
       - backend-logs:/home/frappe/frappe-bench/logs
+      - ./tradehubback/apps/tradehub_core:/home/frappe/frappe-bench/apps/tradehub_core
     depends_on:
       - redis-queue
       - backend

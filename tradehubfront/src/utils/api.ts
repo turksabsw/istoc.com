@@ -2,6 +2,11 @@ import { getBaseUrl } from './url'
 
 const BASE_URL = import.meta.env.VITE_API_URL || ''
 
+function getCsrfToken(): string {
+  const match = document.cookie.match(/csrf_token=([^;]+)/) || document.cookie.match(/csrftoken=([^;]+)/);
+  return match ? match[1] : 'Guest';
+}
+
 /** Extract a human-readable error message from a Frappe JSON error body. */
 function extractFrappeError(raw: string): string {
   try {
@@ -14,12 +19,6 @@ function extractFrappeError(raw: string): string {
     if (body.message) return body.message
   } catch { /* not JSON or unexpected structure */ }
   return ''
-}
-
-/** Cookie'den Frappe CSRF token'ını okur */
-function getCsrfToken(): string {
-  const match = document.cookie.match(/csrftoken=([^;]+)/)
-  return match ? match[1] : 'fetch'
 }
 
 export async function api<T>(

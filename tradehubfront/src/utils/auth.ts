@@ -6,7 +6,12 @@
 import { api } from './api';
 
 const FRAPPE_BASE = import.meta.env.VITE_FRAPPE_BASE || '';
+<<<<<<< HEAD
 const SELLER_PANEL_URL = import.meta.env.VITE_SELLER_PANEL_URL || 'http://localhost:8082/';
+=======
+// Seller panel URL — will be used when the seller admin panel is built
+// const SELLER_PANEL_URL = import.meta.env.VITE_SELLER_PANEL_URL || 'http://localhost:8082/';
+>>>>>>> origin/Ali
 
 /* ── Types ──────────────────────────────────────────── */
 
@@ -22,6 +27,7 @@ export interface AuthUser {
   is_buyer: boolean;
   has_seller_profile: boolean;
   pending_seller_application: boolean;
+<<<<<<< HEAD
   seller_profile: string | null;
 }
 
@@ -93,6 +99,64 @@ export interface FrappeCurrentUser {
   } | null;
 }
 
+=======
+  rejected_seller_application: boolean;
+  seller_application_status: string | null;
+  seller_profile: string | null;
+}
+
+interface SessionResponse {
+  logged_in: boolean;
+  user: AuthUser;
+}
+
+interface LoginResponse {
+  message: string;
+  full_name?: string;
+  requires_2fa?: boolean;
+  otp_id?: string;
+  requires_consent_renewal?: boolean;
+  consent_types?: string[];
+  session_id?: string;
+  tenant_id?: string;
+}
+
+interface RegisterResponse {
+  success: boolean;
+  message: string;
+  user: string;
+  account_type: string;
+  seller_application?: string;
+  seller_application_status?: string;
+}
+
+interface CheckEmailResponse {
+  success: boolean;
+  exists: boolean;
+  disabled: boolean;
+}
+
+interface OtpSendResponse {
+  success: boolean;
+  expires_in_minutes: number;
+}
+
+interface OtpVerifyResponse {
+  success: boolean;
+  registration_token: string;
+}
+
+interface SimpleResponse {
+  success: boolean;
+  message: string;
+}
+
+/* ── Session cache ──────────────────────────────────── */
+
+let _cachedUser: AuthUser | null = null;
+
+/** Check if user is logged in (synchronous, cache-based) */
+>>>>>>> origin/Ali
 export function isLoggedIn(): boolean {
   return _cachedUser !== null;
 }
@@ -173,12 +237,17 @@ export function getRedirectUrl(user: AuthUser): string {
   if (user.is_admin) {
     return `${FRAPPE_BASE}/app`;
   }
+<<<<<<< HEAD
   if (user.is_seller && user.has_seller_profile) {
     return SELLER_PANEL_URL;
   }
   if (user.pending_seller_application) {
     return '/pages/seller/application-pending.html';
   }
+=======
+  // All users (buyers, sellers, pending sellers) browse the marketplace.
+  // Sellers access their store page via the profile dropdown "Magaza Sayfam" link.
+>>>>>>> origin/Ali
   return '/';
 }
 
@@ -216,6 +285,7 @@ export async function verifyRegistrationOtp(
   email: string,
   code: string
 ): Promise<OtpVerifyResponse> {
+<<<<<<< HEAD
   const res = await api<{ message: OtpVerifyResponse }>(
     '/method/tradehub_core.api.v1.identity.verify_registration_otp',
     {
@@ -224,6 +294,23 @@ export async function verifyRegistrationOtp(
     }
   );
   return res.message;
+=======
+  const BASE = import.meta.env.VITE_API_URL || '';
+  const res = await fetch(`${BASE}/method/tradehub_core.api.v1.identity.verify_registration_otp`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, code }),
+  });
+
+  if (!res.ok) {
+    // Let EmailVerification component show its own i18n error message
+    throw new Error('');
+  }
+
+  const data = await res.json() as { message: OtpVerifyResponse };
+  return data.message;
+>>>>>>> origin/Ali
 }
 
 /** Register a new user */
@@ -249,6 +336,21 @@ export async function register(params: {
   return res.message;
 }
 
+<<<<<<< HEAD
+=======
+/** Register a new supplier — account + application created atomically */
+export async function registerSupplier(params: Record<string, unknown>): Promise<RegisterResponse> {
+  const res = await api<{ message: RegisterResponse }>(
+    '/method/tradehub_core.api.v1.identity.register_supplier',
+    {
+      method: 'POST',
+      body: JSON.stringify(params),
+    }
+  );
+  return res.message;
+}
+
+>>>>>>> origin/Ali
 /* ── Password Reset ─────────────────────────────────── */
 
 /** Request password reset email */
@@ -265,6 +367,25 @@ export async function forgotPassword(email: string): Promise<SimpleResponse> {
 
 /* ── Supplier Application ──────────────────────────── */
 
+<<<<<<< HEAD
+=======
+interface BecomeSellerResponse {
+  success: boolean;
+  seller_application: string;
+  seller_application_status: string;
+  already_exists: boolean;
+}
+
+/** Create a Seller Application for an existing buyer account */
+export async function becomeSeller(): Promise<BecomeSellerResponse> {
+  const res = await api<{ message: BecomeSellerResponse }>(
+    '/method/tradehub_core.api.v1.identity.become_seller',
+    { method: 'POST' }
+  );
+  return res.message;
+}
+
+>>>>>>> origin/Ali
 interface CompleteApplicationResponse {
   success: boolean;
   application: string;
@@ -299,6 +420,7 @@ export async function resetPassword(
     }
   );
   return res.message;
+<<<<<<< HEAD
 }
 
 /**
@@ -313,4 +435,6 @@ export async function resetPassword(
 export async function getCurrentUser(): Promise<FrappeCurrentUser> {
   const { callMethod } = await import('./api');
   return callMethod<FrappeCurrentUser>('tradehub_core.api.auth.get_current_user');
+=======
+>>>>>>> origin/Ali
 }
