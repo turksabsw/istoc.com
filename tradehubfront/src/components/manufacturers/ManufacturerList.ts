@@ -1,5 +1,4 @@
 import { t } from '../../i18n';
-import { formatPrice, formatPriceRange } from '../../services/currencyService';
 
 export function ManufacturerList(): string {
   return `

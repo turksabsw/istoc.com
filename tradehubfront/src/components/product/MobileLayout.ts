@@ -9,6 +9,7 @@
 import { getCurrentProduct } from '../../alpine/product';
 import { t } from '../../i18n';
 import { formatCurrency, getSelectedCurrency } from '../../services/currencyService';
+import { getCurrencySymbol } from '../../utils/currency';
 import type { ProductVariant } from '../../types/product';
 import { openShippingModal, openCartDrawer } from './CartDrawer';
 import { openLoginModal } from './LoginModal';

@@ -2,7 +2,7 @@ import type { ProductImageKind } from '../../../types/productListing';
 import { cartStore } from '../state/CartStore';
 import type { CartSupplier, CartProduct, CartSku } from '../../../types/cart';
 import { t } from '../../../i18n';
-import { getCurrencySymbol, getCurrencyCode } from '../../../utils/currency';
+import { getCurrencySymbol } from '../../../utils/currency';
 import { formatCurrency, getSelectedCurrency } from '../../../services/currencyService';
 import { isLoggedIn } from '../../../utils/auth';
 import { apiCheckStock } from '../../../services/cartService';
