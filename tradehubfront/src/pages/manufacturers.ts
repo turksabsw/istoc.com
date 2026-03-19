@@ -80,4 +80,4 @@ initAnimatedPlaceholder('#topbar-compact-search-input');
 // Initialize Manufacturers specific behaviors if any
 initHorizontalCategoryBar();
 initCategoryFlyout();
-initFactorySliders();
+initFactorySliders(); // async — satıcıları API'den çeker

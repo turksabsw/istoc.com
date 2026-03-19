@@ -3,7 +3,14 @@
  "creation": "2024-01-01 00:00:00.000000",
  "doctype": "DocType",
  "engine": "InnoDB",
- "field_order": ["attribute_type", "attribute_value", "variant_image", "variant_price", "variant_stock", "variant_sku"],
+ "field_order": [
+  "attribute_type",
+  "attribute_value",
+  "variant_image",
+  "variant_price",
+  "variant_stock",
+  "variant_sku"
+ ],
  "fields": [
   {
    "fieldname": "attribute_type",
@@ -55,7 +62,11 @@
  "links": [],
  "modified": "2024-01-01 00:00:00.000000",
  "modified_by": "Administrator",
+<<<<<<<< HEAD:tradehubback/apps/tradehub/tradehub_core/tradehub_core/doctype/listing_variant_item/listing_variant_item.json
  "module": "TradeHub Core",
+========
+ "module": "Tradehub Core",
+>>>>>>>> origin/Development-Env:tradehubback/apps/tradehub_core/tradehub_core/tradehub_core/doctype/listing_variant_item/listing_variant_item.json
  "name": "Listing Variant Item",
  "owner": "Administrator",
  "permissions": [],

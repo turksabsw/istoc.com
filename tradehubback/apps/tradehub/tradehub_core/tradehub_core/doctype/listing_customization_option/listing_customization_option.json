@@ -3,7 +3,12 @@
  "creation": "2024-01-01 00:00:00.000000",
  "doctype": "DocType",
  "engine": "InnoDB",
- "field_order": ["option_name", "description", "additional_cost", "min_qty"],
+ "field_order": [
+  "option_name",
+  "description",
+  "additional_cost",
+  "min_qty"
+ ],
  "fields": [
   {
    "fieldname": "option_name",
@@ -38,7 +43,11 @@
  "links": [],
  "modified": "2024-01-01 00:00:00.000000",
  "modified_by": "Administrator",
+<<<<<<<< HEAD:tradehubback/apps/tradehub/tradehub_core/tradehub_core/doctype/listing_customization_option/listing_customization_option.json
  "module": "TradeHub Core",
+========
+ "module": "Tradehub Core",
+>>>>>>>> origin/Development-Env:tradehubback/apps/tradehub_core/tradehub_core/tradehub_core/doctype/listing_customization_option/listing_customization_option.json
  "name": "Listing Customization Option",
  "owner": "Administrator",
  "permissions": [],

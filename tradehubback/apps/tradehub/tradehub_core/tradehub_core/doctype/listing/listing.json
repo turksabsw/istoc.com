@@ -9,7 +9,7 @@
   "basic_info_section",
   "listing_code",
   "title",
-  "supplier_profile",
+  "seller_profile",
   "supplier_display_name",
   "column_break_basic",
   "status",
@@ -145,15 +145,16 @@
    "reqd": 1
   },
   {
-   "fieldname": "supplier_profile",
+   "fieldname": "seller_profile",
    "fieldtype": "Link",
    "in_list_view": 1,
    "in_standard_filter": 1,
-   "label": "Supplier Profile",
-   "options": "Supplier Profile"
+   "label": "Satıcı Profili",
+   "options": "Admin Seller Profile",
+   "search_index": 1
   },
   {
-   "fetch_from": "supplier_profile.supplier_name",
+   "fetch_from": "seller_profile.seller_name",
    "fieldname": "supplier_display_name",
    "fieldtype": "Data",
    "label": "Supplier Name",
@@ -186,7 +187,7 @@
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Category",
-   "options": "Product Category"
+   "options": "Seller Category"
   },
   {
    "fetch_from": "category.category_name",
@@ -775,7 +776,11 @@
  "links": [],
  "modified": "2024-01-01 00:00:00.000000",
  "modified_by": "Administrator",
+<<<<<<<< HEAD:tradehubback/apps/tradehub/tradehub_core/tradehub_core/doctype/listing/listing.json
  "module": "TradeHub Core",
+========
+ "module": "Tradehub Core",
+>>>>>>>> origin/Development-Env:tradehubback/apps/tradehub_core/tradehub_core/tradehub_core/doctype/listing/listing.json
  "name": "Listing",
  "naming_rule": "By \"Naming Series\" field",
  "owner": "Administrator",
@@ -795,10 +800,24 @@
   {
    "read": 1,
    "role": "All"
+  },
+  {
+   "create": 1,
+   "read": 1,
+   "write": 1,
+   "delete": 1,
+   "role": "Seller"
+  },
+  {
+   "create": 1,
+   "read": 1,
+   "write": 1,
+   "delete": 1,
+   "role": "Marketplace Seller"
   }
  ],
  "quick_entry": 0,
- "search_fields": "title, listing_code, category, brand, supplier_profile",
+ "search_fields": "title, listing_code, category, brand, seller_profile",
  "show_name_in_global_search": 1,
  "sort_field": "modified",
  "sort_order": "DESC",

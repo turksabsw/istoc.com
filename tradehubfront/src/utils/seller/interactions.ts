@@ -267,8 +267,14 @@ export function initContactForm(): void {
   const textarea = document.querySelector('.contact-form__textarea') as HTMLTextAreaElement;
   const counter = document.querySelector('.contact-form__counter') as HTMLSpanElement;
   const sendBtn = document.querySelector('.contact-form__send') as HTMLButtonElement;
+  const checkbox = document.querySelector('#business-card') as HTMLInputElement;
 
   if (!textarea || !counter || !sendBtn) return;
+
+  // Seller code — data-seller-slug on <main>
+  const sellerCode = document.querySelector<HTMLElement>('[data-seller-slug]')?.dataset.sellerSlug || '';
+
+  const API = (import.meta.env.VITE_API_URL ?? '') as string;
 
   // Character counter
   textarea.addEventListener('input', () => {
@@ -286,19 +292,51 @@ export function initContactForm(): void {
   });
 
   // Submit
-  sendBtn.addEventListener('click', (e) => {
+  sendBtn.addEventListener('click', async (e) => {
     e.preventDefault();
     const msg = textarea.value.trim();
-    if (msg.length < 10) {
+    if (msg.length < 5) {
       textarea.classList.add('border-[#ef4444]', 'focus:ring-[#ef4444]/20');
       textarea.focus();
       return;
     }
     textarea.classList.remove('border-[#ef4444]', 'focus:ring-[#ef4444]/20');
-    showToast({ message: 'Mesajınız başarıyla gönderildi!', type: 'success' });
-    textarea.value = '';
-    counter.textContent = '0/8000';
-    counter.className = 'contact-form__counter absolute right-3 bottom-3 text-[12px] text-[#9ca3af]';
+
+    sendBtn.disabled = true;
+    sendBtn.textContent = 'Gönderiliyor...';
+
+    try {
+      // allow_guest=True endpoint için CSRF header göndermiyoruz
+      // (header gönderilirse Frappe doğrulama yapar ve başarısız olur)
+      const body = new URLSearchParams({
+        seller_code: sellerCode,
+        message: msg,
+        share_business_card: checkbox?.checked ? '1' : '0',
+      });
+
+      // credentials: 'omit' → cookie gönderilmez → Frappe guest olarak işler → CSRF gerekmez
+      const res = await fetch(`${API}/method/tradehub_core.api.seller.send_inquiry`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        credentials: 'omit',
+        body: body.toString(),
+      });
+      const data = await res.json();
+      if (data.message?.success) {
+        showToast({ message: 'Mesajınız başarıyla gönderildi!', type: 'success' });
+        textarea.value = '';
+        counter.textContent = '0/8000';
+        counter.className = 'contact-form__counter absolute right-3 bottom-3 text-[12px] text-[#9ca3af]';
+      } else {
+        const errMsg = data._server_messages ? JSON.parse(JSON.parse(data._server_messages)[0])?.message : 'Mesaj gönderilemedi.';
+        showToast({ message: errMsg || 'Mesaj gönderilemedi. Tekrar deneyin.', type: 'error' });
+      }
+    } catch {
+      showToast({ message: 'Bağlantı hatası. Tekrar deneyin.', type: 'error' });
+    } finally {
+      sendBtn.disabled = false;
+      sendBtn.textContent = 'Gönder';
+    }
   });
 }
 

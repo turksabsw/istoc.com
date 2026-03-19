@@ -3,6 +3,9 @@ import { cartStore } from '../state/CartStore';
 import type { CartSupplier, CartProduct, CartSku } from '../../../types/cart';
 import { t } from '../../../i18n';
 import { formatPrice } from '../../../utils/currency';
+import { isLoggedIn } from '../../../utils/auth';
+import { apiCheckStock } from '../../../services/cartService';
+import { showCartError } from '../page/CartPage';
 
 export interface CartDrawerTierModel {
   minQty: number;
@@ -488,17 +491,34 @@ function syncToCartStore(item: CartDrawerItemModel, colorQuantities: Map<string,
         minQty: item.moq,
         maxQty: 9999,
         selected: true,
+        baseUnitPrice: unitPrice,
+        basePriceAddon: 0,
+        baseCurrency: 'USD',
       };
       cartStore.addSku(productId, sku);
     }
   });
 }
 
-function dispatchCartAdd(): void {
-  if (!state.item) return;
+async function dispatchCartAdd(): Promise<boolean> {
+  if (!state.item) return false;
 
   const totals = getTotals();
-  if (totals.totalQty <= 0) return;
+  if (totals.totalQty <= 0) return false;
+
+  // Giriş yapmışsa backend'e stok kontrolü + ekleme yap
+  if (isLoggedIn()) {
+    try {
+      for (const [colorId, qty] of state.colorQuantities) {
+        if (qty <= 0) continue;
+        await apiCheckStock(state.item.id, qty, colorId || undefined);
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      showCartError(msg || t('cart.stockError'));
+      return false;
+    }
+  }
 
   // CartStore'a kaydet
   syncToCartStore(state.item, state.colorQuantities, totals.activePrice);
@@ -533,6 +553,7 @@ function dispatchCartAdd(): void {
       groupedItems,
     },
   }));
+  return true;
 }
 
 function openDrawer(itemId?: string, mode: 'cart' | 'sample' = 'cart'): void {
@@ -802,8 +823,9 @@ export function initSharedCartDrawer(items: CartDrawerItemModel[]): void {
         const base = (typeof import.meta !== 'undefined' ? import.meta.env?.BASE_URL : undefined) || '/';
         window.location.href = `${base}pages/order/checkout.html`;
       } else {
-        dispatchCartAdd();
-        applyDrawerTransform(false);
+        dispatchCartAdd().then(success => {
+          if (success) applyDrawerTransform(false);
+        });
       }
     }
   });

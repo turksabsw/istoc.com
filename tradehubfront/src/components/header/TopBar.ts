@@ -1247,7 +1247,11 @@ export function TopBar(props?: TopBarProps): string {
  *   1. groupedItems (multi-supplier) — products listing page sends grouped cart items by supplier
  *   2. Legacy single-product — product detail page sends single product with colorItems
  */
+let _headerCartInitialized = false;
+
 export function initHeaderCart(): void {
+  _headerCartInitialized = true; // auto-init'e "zaten çağrıldı" sinyali ver
+
   // localStorage'dan sepet verisini yükle (her sayfada çalışır)
   cartStore.load();
 
@@ -1586,4 +1590,17 @@ function initCompactSearchSuggestions(): void {
       loadSuggestions();
     });
   }
+}
+
+// ── Auto-init: initHeaderCart() çağırmayan sayfalar için ─────────────────────
+// DOMContentLoaded, tüm sync modül scriptleri bittikten SONRA tetiklenir.
+// Eğer sayfa sync olarak initHeaderCart() çağırdıysa (_headerCartInitialized=true)
+// auto-init atlanır. Async (.then() içinde) çağıran veya hiç çağırmayan sayfalar
+// için auto-init devreye girer.
+if (document.readyState === 'complete') {
+  setTimeout(() => { if (!_headerCartInitialized) initHeaderCart(); }, 0);
+} else {
+  document.addEventListener('DOMContentLoaded', () => {
+    if (!_headerCartInitialized) initHeaderCart();
+  });
 }

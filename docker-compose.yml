@@ -23,7 +23,11 @@ services:
     build:
       context: ./tradehubback
       dockerfile: Dockerfile
-    command: /home/frappe/frappe-bench/env/bin/gunicorn -b 0.0.0.0:8000 -w 4 -t 120 frappe_wsgi:application
+    command: >
+      /bin/bash -c "
+        /home/frappe/frappe-bench/env/bin/pip install --quiet -e /home/frappe/frappe-bench/apps/tradehub_core &&
+        exec /home/frappe/frappe-bench/env/bin/gunicorn -b 0.0.0.0:8000 -w 4 -t 120 frappe_wsgi:application
+      "
     ports:
       - "${BACKEND_PORT:-8001}:8000"
     environment:
@@ -34,7 +38,7 @@ services:
       - ./tradehubback/sites:/home/frappe/frappe-bench/sites
       - ./tradehubback/sites/common_site_config.docker.json:/home/frappe/frappe-bench/sites/common_site_config.json
       - ./tradehubback/frappe_wsgi.py:/home/frappe/frappe-bench/frappe_wsgi.py
-      - ./tradehubback/apps/tradehub:/home/frappe/frappe-bench/apps/tradehub_core
+      - ./tradehubback/apps/tradehub_core:/home/frappe/frappe-bench/apps/tradehub_core
       - backend-logs:/home/frappe/frappe-bench/logs
     depends_on:
       db:
@@ -71,11 +75,15 @@ services:
     build:
       context: ./tradehubback
       dockerfile: Dockerfile
-    command: bench worker
+    command: >
+      /bin/bash -c "
+        /home/frappe/frappe-bench/env/bin/pip install --quiet -e /home/frappe/frappe-bench/apps/tradehub_core &&
+        exec bench worker
+      "
     volumes:
       - ./tradehubback/sites:/home/frappe/frappe-bench/sites
       - ./tradehubback/sites/common_site_config.docker.json:/home/frappe/frappe-bench/sites/common_site_config.json
-      - ./tradehubback/apps/tradehub:/home/frappe/frappe-bench/apps/tradehub_core
+      - ./tradehubback/apps/tradehub_core:/home/frappe/frappe-bench/apps/tradehub_core
       - backend-logs:/home/frappe/frappe-bench/logs
     depends_on:
       - redis-queue
@@ -89,11 +97,15 @@ services:
     build:
       context: ./tradehubback
       dockerfile: Dockerfile
-    command: bench schedule
+    command: >
+      /bin/bash -c "
+        /home/frappe/frappe-bench/env/bin/pip install --quiet -e /home/frappe/frappe-bench/apps/tradehub_core &&
+        exec bench schedule
+      "
     volumes:
       - ./tradehubback/sites:/home/frappe/frappe-bench/sites
       - ./tradehubback/sites/common_site_config.docker.json:/home/frappe/frappe-bench/sites/common_site_config.json
-      - ./tradehubback/apps/tradehub:/home/frappe/frappe-bench/apps/tradehub_core
+      - ./tradehubback/apps/tradehub_core:/home/frappe/frappe-bench/apps/tradehub_core
       - backend-logs:/home/frappe/frappe-bench/logs
     depends_on:
       - redis-queue
@@ -148,18 +160,13 @@ services:
     restart: unless-stopped
 
   # ──────────────────────────────────────────────
-  # Mailpit — E-posta test sunucusu
+  # Mailpit — Lokal SMTP test sunucusu
   # ──────────────────────────────────────────────
   mailpit:
     image: axllent/mailpit:latest
     ports:
-      - "${MAILPIT_SMTP_PORT:-1025}:1025"
-      - "${MAILPIT_UI_PORT:-8025}:8025"
-    healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8025/api/v1/info"]
-      interval: 15s
-      timeout: 5s
-      retries: 5
+      - "8025:8025"   # Web UI
+      - "1025:1025"   # SMTP
     restart: unless-stopped
 
 volumes:

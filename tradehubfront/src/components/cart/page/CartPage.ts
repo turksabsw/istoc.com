@@ -89,6 +89,38 @@ export function initCartPage(suppliers?: CartSupplier[], shippingFee?: number, d
   // are managed by Alpine.data('cartPage') component registered in alpine.ts.
 }
 
+/** Show an error toast (e.g. stock exceeded). Used by the cartPage Alpine component. */
+export function showCartError(message: string): void {
+  const existing = document.getElementById('cart-error-toast');
+  if (existing) existing.remove();
+
+  const toast = document.createElement('div');
+  toast.id = 'cart-error-toast';
+  toast.className = 'fixed top-4 left-1/2 -translate-x-1/2 z-[9999] flex items-center justify-between gap-4 px-4 py-3 min-w-[340px] rounded bg-[#FEE2E2] border border-[#FECACA] shadow-sm text-[14px] text-[#333] transition-all duration-300 translate-y-[-20px] opacity-0';
+  toast.innerHTML = `
+    <div class="flex items-center gap-2">
+      <svg class="w-4 h-4 text-[#dc2626] shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+      <span>${message}</span>
+    </div>
+    <button class="text-[#999] hover:text-[#666] shrink-0" onclick="this.parentElement.remove()">
+      <svg class="w-3.5 h-3.5" viewBox="0 0 1024 1024" fill="currentColor"><path d="M563.8 512l262.5-312.9c4.4-5.2.7-13.1-6.1-13.1h-79.8c-4.7 0-9.2 2.1-12.3 5.7L511.6 449.8 295.1 191.7c-3-3.6-7.5-5.7-12.3-5.7H203c-6.8 0-10.5 7.9-6.1 13.1L459.4 512 196.9 824.9A7.95 7.95 0 0 0 203 838h79.8c4.7 0 9.2-2.1 12.3-5.7l216.5-258.1 216.5 258.1c3 3.6 7.5 5.7 12.3 5.7h79.8c6.8 0 10.5-7.9 6.1-13.1L563.8 512z"/></svg>
+    </button>
+  `;
+
+  document.body.appendChild(toast);
+  requestAnimationFrame(() => {
+    toast.style.transform = 'translate(-50%, 0)';
+    toast.style.opacity = '1';
+  });
+  setTimeout(() => {
+    if (document.body.contains(toast)) {
+      toast.style.opacity = '0';
+      toast.style.transform = 'translate(-50%, -20px)';
+      setTimeout(() => toast.remove(), 300);
+    }
+  }, 4000);
+}
+
 /** Show a toast notification when a product is moved to favorites. Used by the cartPage Alpine component. */
 export function showFavoriteToast(): void {
   const existing = document.getElementById('fav-toast');

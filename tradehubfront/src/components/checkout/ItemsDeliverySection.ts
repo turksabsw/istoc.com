@@ -18,6 +18,7 @@ export interface CheckoutDeliverySkuLine {
   variantText: string;
   unitPrice: number;
   quantity: number;
+  listingVariant?: string;
 }
 
 export interface CheckoutDeliveryProductCard {

@@ -2,13 +2,6 @@ import { getBaseUrl } from './url'
 
 const BASE_URL = import.meta.env.VITE_API_URL || ''
 
-function getCsrfToken(): string {
-  return document.cookie
-    .split('; ')
-    .find(row => row.startsWith('csrf_token='))
-    ?.split('=')[1] || 'Guest';
-}
-
 /** Extract a human-readable error message from a Frappe JSON error body. */
 function extractFrappeError(raw: string): string {
   try {
@@ -21,6 +14,12 @@ function extractFrappeError(raw: string): string {
     if (body.message) return body.message
   } catch { /* not JSON or unexpected structure */ }
   return ''
+}
+
+/** Cookie'den Frappe CSRF token'ını okur */
+function getCsrfToken(): string {
+  const match = document.cookie.match(/csrftoken=([^;]+)/)
+  return match ? match[1] : 'fetch'
 }
 
 export async function api<T>(
@@ -63,6 +62,10 @@ export async function api<T>(
  * @param method  - tam method yolu: 'tradehub_core.api.seller.get_my_profile'
  * @param params  - GET parametreleri veya POST body
  * @param post    - true ise POST, false ise GET (varsayılan: false)
+ *
+ * @example
+ *   const user = await callMethod('tradehub_core.api.auth.get_current_user')
+ *   const result = await callMethod('tradehub_core.api.seller.become_seller', { seller_name: 'Test' }, true)
  */
 export async function callMethod<T = unknown>(
   method: string,
@@ -104,10 +107,34 @@ export async function callMethod<T = unknown>(
   }
 
   if (!res.ok) {
-    const err = await res.json().catch(() => ({})) as { exception?: string; message?: string }
-    throw new Error(err.exception || err.message || `HTTP ${res.status}`)
+    const raw = await res.text()
+    const msg = extractFrappeError(raw)
+    throw new Error(msg || `HTTP ${res.status}`)
   }
 
   const data = await res.json() as { message: T }
   return data.message
+}
+
+/** Frappe native login endpoint'i */
+export async function frappeLogin(email: string, password: string): Promise<void> {
+  const res = await fetch(`${BASE_URL}/method/login`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ usr: email, pwd: password }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({})) as { message?: string }
+    throw new Error(err.message || 'Giriş başarısız')
+  }
+}
+
+/** Frappe native logout endpoint'i */
+export async function frappeLogout(): Promise<void> {
+  await fetch(`${BASE_URL}/method/logout`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'X-Frappe-CSRF-Token': getCsrfToken() },
+  })
 }

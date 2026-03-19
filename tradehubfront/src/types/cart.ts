@@ -20,6 +20,19 @@ export interface CartSku {
   minQty: number;
   maxQty: number;
   selected: boolean;
+  baseUnitPrice: number;
+  basePriceAddon: number;
+  baseCurrency: string;
+  listingVariant?: string;  // Frappe Listing Variant adı (merge için)
+  isAvailable?: boolean;    // false ise listing silinmiş/pasif, snapshot gösteriliyor
+}
+
+export interface CartShippingMethod {
+  id: string;
+  method: string;
+  estimatedDays: string;
+  baseCost: number;
+  baseCurrency: string;
 }
 
 export interface CartProduct {
@@ -48,6 +61,7 @@ export interface CartSupplier {
   selected: boolean;
   products: CartProduct[];
   paymentMethods?: PaymentMethod[];
+  shippingFee?: number;  // Satıcı bazlı kargo ücreti (checkout'ta seçilince CartStore'a set edilir)
 }
 
 export interface CartSummaryData {
@@ -55,6 +69,8 @@ export interface CartSummaryData {
   items: CartSummaryItem[];
   productSubtotal: number;
   discount: number;
+  couponDiscount: number;
+  couponCode: string;
   shippingFee: number;
   subtotal: number;
   currency: string;

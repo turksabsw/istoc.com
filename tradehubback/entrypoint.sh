@@ -1,10 +1,18 @@
 #!/bin/bash
 set -e
 
-# Volume mount ile gelen tradehub_core app'ini editable olarak kur
-if [ -d "/home/frappe/frappe-bench/apps/tradehub_core/tradehub_core" ]; then
-    /home/frappe/frappe-bench/env/bin/pip install -q -e /home/frappe/frappe-bench/apps/tradehub_core 2>/dev/null || true
-fi
+# Generate correct assets.json from actual dist files
+python3 /home/frappe/frappe-bench/generate_assets_json.py
 
-# Orjinal komutu çalıştır
+# Ensure symlinks for app public dirs exist in sites/assets
+ASSETS_DIR="/home/frappe/frappe-bench/sites/assets"
+for app_dir in /home/frappe/frappe-bench/apps/*/; do
+    app_name=$(basename "$app_dir")
+    public_dir="$app_dir$app_name/public"
+    if [ -d "$public_dir" ]; then
+        ln -sfn "$public_dir" "$ASSETS_DIR/$app_name"
+    fi
+done
+
+# Execute the original command
 exec "$@"

@@ -2,9 +2,11 @@ import Alpine from 'alpinejs'
 import { t } from '../i18n'
 import { addToFavorites } from '../stores/favorites'
 import { cartStore } from '../components/cart/state/CartStore'
-import { showFavoriteToast } from '../components/cart/page/CartPage'
+import { showFavoriteToast, showCartError } from '../components/cart/page/CartPage'
 import { sanitizeHtml } from '../utils/sanitize'
 import { getBaseUrl } from '../components/auth/AuthLayout'
+import { apiUpdateCartItem, apiRemoveCartItem } from '../services/cartService'
+import { isLoggedIn } from '../utils/auth'
 
 Alpine.data('cartPage', () => ({
   init() {
@@ -151,7 +153,17 @@ Alpine.data('cartPage', () => ({
     if (!inputId) return;
 
     const skuId = inputId.replace('sku-qty-', '');
+    const prevQty = cartStore.getSku(skuId)?.sku.quantity ?? value;
     cartStore.updateSkuQuantity(skuId, value);
+
+    if (isLoggedIn()) {
+      apiUpdateCartItem(skuId, value).catch((err: Error) => {
+        // Hata: miktarı geri al ve kullanıcıya göster
+        cartStore.updateSkuQuantity(skuId, prevQty);
+        this.syncSkuQuantityInput(skuId, prevQty);
+        showCartError(err.message || t('cart.stockError'));
+      });
+    }
   },
 
   handleSkuFillMin(event: CustomEvent) {
@@ -161,11 +173,19 @@ Alpine.data('cartPage', () => ({
     const snapshot = cartStore.getSku(skuId);
     if (!snapshot) return;
 
+    const prevQty = snapshot.sku.quantity;
     cartStore.fillSkuToMinQty(skuId);
 
     const updatedSku = cartStore.getSku(skuId)?.sku;
     if (updatedSku) {
       this.syncSkuQuantityInput(skuId, updatedSku.quantity);
+      if (isLoggedIn()) {
+        apiUpdateCartItem(skuId, updatedSku.quantity).catch((err: Error) => {
+          cartStore.updateSkuQuantity(skuId, prevQty);
+          this.syncSkuQuantityInput(skuId, prevQty);
+          showCartError(err.message || t('cart.stockError'));
+        });
+      }
     }
   },
 
@@ -180,6 +200,10 @@ Alpine.data('cartPage', () => ({
     const supplierProductCount = snapshot?.supplier.products.length ?? 0;
 
     cartStore.deleteSku(skuId);
+
+    if (isLoggedIn()) {
+      apiRemoveCartItem(skuId).catch(() => { /* silent */ });
+    }
 
     const el = this.$el as HTMLElement;
     el.querySelector(`[data-sku-id="${skuId}"]`)?.remove();
@@ -200,7 +224,14 @@ Alpine.data('cartPage', () => ({
     const supplierId = snapshot?.supplier.id;
     const supplierProductCount = snapshot?.supplier.products.length ?? 0;
 
+    // Collect sku ids before deletion for API calls
+    const skuIds = snapshot?.product.skus.map(s => s.id) ?? [];
+
     cartStore.deleteProduct(productId);
+
+    if (isLoggedIn()) {
+      skuIds.forEach(id => apiRemoveCartItem(id).catch(() => { /* silent */ }));
+    }
 
     const el = this.$el as HTMLElement;
     el.querySelector(`[data-product-id="${productId}"]`)?.remove();
@@ -213,6 +244,10 @@ Alpine.data('cartPage', () => ({
   handleBatchDelete() {
     const selectedIds = new Set(cartStore.getSelectedSkus().map((sku) => sku.id));
     cartStore.deleteSelected();
+
+    if (isLoggedIn()) {
+      selectedIds.forEach(id => apiRemoveCartItem(id).catch(() => { /* silent */ }));
+    }
 
     const el = this.$el as HTMLElement;
     selectedIds.forEach((skuId) => {

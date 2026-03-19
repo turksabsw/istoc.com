@@ -175,7 +175,22 @@ export function initLoginPage(options: LoginPageOptions = {}): void {
         const user = await getSessionUser();
 
         if (user) {
-          window.location.href = getRedirectUrl(user);
+          // ?redirect= parametresi varsa ve aynı origin'deyse oraya git
+          const redirectParam = new URLSearchParams(window.location.search).get('redirect');
+          if (redirectParam) {
+            try {
+              const redirectUrl = new URL(redirectParam);
+              if (redirectUrl.origin === window.location.origin) {
+                window.location.href = redirectParam;
+              } else {
+                window.location.href = getRedirectUrl(user);
+              }
+            } catch {
+              window.location.href = redirectParam;
+            }
+          } else {
+            window.location.href = getRedirectUrl(user);
+          }
         } else {
           window.location.href = getBaseUrl();
         }

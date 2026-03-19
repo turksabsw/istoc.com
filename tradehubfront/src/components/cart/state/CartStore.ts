@@ -5,6 +5,7 @@
  */
 
 import type { CartSupplier, CartProduct, CartSku, CartSummaryData } from '../../../types/cart';
+import { getSelectedCurrencyInfo } from '../../../services/currencyService';
 
 export class CartStore {
   private static STORAGE_KEY = 'tradehub_cart';
@@ -12,6 +13,8 @@ export class CartStore {
   private suppliers: CartSupplier[] = [];
   private shippingFee = 0;
   private discount = 0;
+  private couponDiscount = 0;
+  private couponCode = '';
   private currency = '$';
   private listeners = new Set<() => void>();
 
@@ -159,7 +162,7 @@ export class CartStore {
     for (const supplier of this.suppliers) {
       for (const product of supplier.products) {
         for (const sku of product.skus) {
-          if (sku.selected) {
+          if (sku.selected && sku.isAvailable !== false) {
             selectedCount++;
             productSubtotal += sku.unitPrice * sku.quantity;
             items.push({ image: sku.skuImage, quantity: sku.quantity });
@@ -173,10 +176,56 @@ export class CartStore {
       items,
       productSubtotal,
       discount: this.discount,
+      couponDiscount: this.couponDiscount,
+      couponCode: this.couponCode,
       shippingFee: this.shippingFee,
-      subtotal: productSubtotal - this.discount + this.shippingFee,
-      currency: this.currency,
+      subtotal: productSubtotal - this.discount - this.couponDiscount + this.shippingFee,
+      currency: getSelectedCurrencyInfo().symbol,
     };
+  }
+
+  setCouponDiscount(amount: number, code: string): void {
+    this.couponDiscount = amount;
+    this.couponCode = code;
+    this.notify();
+  }
+
+  clearCoupon(): void {
+    this.couponDiscount = 0;
+    this.couponCode = '';
+    this.notify();
+  }
+
+  getCouponCode(): string {
+    return this.couponCode;
+  }
+
+  /** Bir satıcının seçili SKU'larının ara toplamını döndür */
+  getSupplierSubtotal(supplierId: string): number {
+    const supplier = this.getSupplier(supplierId);
+    if (!supplier) return 0;
+    let subtotal = 0;
+    for (const product of supplier.products) {
+      for (const sku of product.skus) {
+        if (sku.selected && sku.isAvailable !== false) {
+          subtotal += sku.unitPrice * sku.quantity;
+        }
+      }
+    }
+    return subtotal;
+  }
+
+  /** Bir satıcıya ait kayıtlı kargo ücretini döndür */
+  getSupplierShippingFee(supplierId: string): number {
+    return this.getSupplier(supplierId)?.shippingFee ?? 0;
+  }
+
+  /** Bir satıcının kargo ücretini güncelle */
+  setSupplierShippingFee(supplierId: string, fee: number): void {
+    const supplier = this.getSupplier(supplierId);
+    if (!supplier) return;
+    supplier.shippingFee = fee;
+    this.notify();
   }
 
   getTotalSkuCount(): number {

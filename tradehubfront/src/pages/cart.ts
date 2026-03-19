@@ -6,6 +6,7 @@
 import '../style.css'
 import { initFlowbite } from 'flowbite'
 import { initStickyHeights } from '../utils/stickyHeights'
+import { initCurrency, getSelectedCurrencyInfo } from '../services/currencyService'
 
 // Header components (reuse from main page)
 import { TopBar, initMobileDrawer, SubHeader, MegaMenu, initMegaMenu, initHeaderCart } from '../components/header'
@@ -26,68 +27,129 @@ import { startAlpine } from '../alpine'
 // Cart components
 import { CartPage, initCartPage } from '../components/cart/page/CartPage'
 import { cartStore } from '../components/cart/state/CartStore'
-import { getMockCartSuppliers, getMockCartSummary, getMockAssuranceItems } from '../data/mockCart'
-const mockCartSuppliers = getMockCartSuppliers();
-const mockCartSummary = getMockCartSummary();
-const mockAssuranceItems = getMockAssuranceItems();
+import { fetchCart, apiMergeGuestCart } from '../services/cartService'
+import { getSessionUser } from '../utils/auth'
+import { getMockAssuranceItems } from '../data/mockCart'
 
-// localStorage'dan sepet verisini yükle, yoksa mock verisini kullan
-if (!cartStore.load()) {
-  cartStore.init(mockCartSuppliers, mockCartSummary.shippingFee, mockCartSummary.currency, mockCartSummary.discount);
-}
-const cartSuppliers = cartStore.getSuppliers();
-const cartSummary = cartStore.getSummary();
+const assuranceItems = getMockAssuranceItems();
 
 const appEl = document.querySelector<HTMLDivElement>('#app')!;
 appEl.classList.add('relative');
-appEl.innerHTML = `
-  <!-- Header -->
-  <div id="sticky-header" class="relative bg-white border-b border-[#e5e5e5] w-full z-40">
-    <div class="relative z-50 bg-white">
-      ${TopBar()}
-      ${SubHeader()}
-    </div>
-  </div>
 
-  ${MegaMenu()}
-
-  <!-- Main Content -->
-  <main class="min-h-screen bg-surface relative z-10 pt-4 flex flex-col">
-    <div class="container-boxed">
-      ${Breadcrumb([{ label: 'Sepetim' }])}
+function renderPage(suppliers: ReturnType<typeof cartStore.getSuppliers>, summary: ReturnType<typeof cartStore.getSummary>) {
+  appEl.innerHTML = `
+    <!-- Header -->
+    <div id="sticky-header" class="relative bg-white border-b border-[#e5e5e5] w-full z-40">
+      <div class="relative z-50 bg-white">
+        ${TopBar()}
+        ${SubHeader()}
+      </div>
     </div>
 
-    <!-- Client-side Cart Container -->
-    ${CartPage({
-  suppliers: cartSuppliers,
-  summary: cartSummary,
-  assuranceItems: mockAssuranceItems
-})}
-  </main>
+    ${MegaMenu()}
 
-  <!-- Footer -->
-  <footer class="relative z-10 mt-12 border-t border-border-default pt-12 pb-8 bg-white">
-    <div class="container-boxed">
-      ${FooterLinks()}
-    </div>
-  </footer>
+    <!-- Main Content -->
+    <main class="min-h-screen bg-surface relative z-10 pt-4 flex flex-col">
+      <div class="container-boxed">
+        ${Breadcrumb([{ label: 'Sepetim' }])}
+      </div>
 
-  <!-- Floating Panel -->
-  ${FloatingPanel()}
-`;
+      <!-- Client-side Cart Container -->
+      ${CartPage({ suppliers, summary, assuranceItems })}
+    </main>
 
-// Initialize all behaviors
-initMegaMenu();
-initFlowbite();
-initMobileDrawer();
-initLanguageSelector();
+    <!-- Footer -->
+    <footer class="relative z-10 mt-12 border-t border-border-default pt-12 pb-8 bg-white">
+      <div class="container-boxed">
+        ${FooterLinks()}
+      </div>
+    </footer>
 
-// Initialize cart page logic (store zaten load() ile yüklendi)
-initCartPage();
+    <!-- Floating Panel -->
+    ${FloatingPanel()}
+  `;
 
-// Header cart init'i store doldurulduktan SONRA gelsin ki badge güncellensin
-initHeaderCart();
-initStickyHeights();
+  initMegaMenu();
+  initFlowbite();
+  initMobileDrawer();
+  initLanguageSelector();
+  initStickyHeights();
 
-// Start Alpine LAST — after innerHTML is set so it can find all x-data directives in the DOM
-startAlpine();
+  initCurrency().then(() => {
+    initCartPage();
+    initHeaderCart();
+  });
+
+  startAlpine();
+}
+
+async function initCartPage_async() {
+  // 1) localStorage'dan yükle (hızlı, fallback)
+  cartStore.load();
+
+  // 2) Önce para birimini yükle — cartStore.init() currency sembolüne ihtiyaç duyar
+  await initCurrency();
+  const currencySymbol = getSelectedCurrencyInfo().symbol;
+
+  try {
+    // 3) Oturum kontrolü
+    const sessionUser = await getSessionUser();
+    if (sessionUser) {
+      // 4a) API'dan sepeti getir
+      const apiCart = await fetchCart();
+
+      if (apiCart.suppliers.length > 0) {
+        // Backend'deki listing ID'leri
+        const backendListingIds = new Set(
+          apiCart.suppliers.flatMap(s => s.products.map(p => p.id))
+        );
+
+        // localStorage'da olup backend'de olmayan ürünler
+        const localOnlyItems = cartStore.getSuppliers().flatMap(s =>
+          s.products
+            .filter(p => !backendListingIds.has(p.id))
+            .flatMap(p =>
+              p.skus.map(sku => ({
+                listing: p.id,
+                quantity: sku.quantity,
+                ...(sku.listingVariant ? { listing_variant: sku.listingVariant } : {}),
+              }))
+            )
+        );
+
+        if (localOnlyItems.length > 0) {
+          // Fazladan local ürünleri backend'e merge et, sonucu kullan
+          const merged = await apiMergeGuestCart(localOnlyItems);
+          cartStore.init(
+            merged.suppliers.length > 0 ? merged.suppliers : apiCart.suppliers,
+            0, currencySymbol, 0
+          );
+        } else {
+          // Sadece backend verisini kullan
+          cartStore.init(apiCart.suppliers, 0, currencySymbol, 0);
+        }
+      } else if (cartStore.getTotalSkuCount() > 0) {
+        // Backend boş, localStorage'da ürün var → tümünü merge et
+        const localItems = cartStore.getSuppliers().flatMap(s =>
+          s.products.flatMap(p =>
+            p.skus.map(sku => ({
+              listing: p.id,
+              quantity: sku.quantity,
+              ...(sku.listingVariant ? { listing_variant: sku.listingVariant } : {}),
+            }))
+          )
+        );
+        const merged = await apiMergeGuestCart(localItems);
+        if (merged.suppliers.length > 0) {
+          cartStore.init(merged.suppliers, 0, currencySymbol, 0);
+        }
+      }
+    }
+  } catch {
+    // API erişilemez ya da misafir kullanıcı — localStorage verisiyle devam et
+  }
+
+  renderPage(cartStore.getSuppliers(), cartStore.getSummary());
+}
+
+initCartPage_async();

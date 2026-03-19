@@ -90,7 +90,7 @@ export function ManufacturerList(): string {
               </div>
 
               <!-- Content Row -->
-              <div class="flex justify-between gap-4">
+              <div class="flex gap-4 items-stretch">
                 <!-- Left: Stats -->
                 <div class="w-[200px] xl:w-[244px] shrink-0 pr-3">
                   <h4 class="text-[13px] xl:text-[14px] font-normal text-[#222] mb-1">${t('mfr.list.rankingsAndReviews')}</h4>
@@ -104,7 +104,7 @@ export function ManufacturerList(): string {
                   </template>
                 </div>
 
-                <!-- Right: Product cards grid -->
+                <!-- Middle: Product cards (max 3) -->
                 <div class="flex-1 min-w-0 h-[165px] xl:h-[220px] flex items-stretch gap-3">
                   <template x-if="!seller.products || seller.products.length === 0">
                     <div class="w-full h-full rounded-lg bg-gray-100 flex items-center justify-center text-gray-200">
@@ -113,7 +113,7 @@ export function ManufacturerList(): string {
                       </svg>
                     </div>
                   </template>
-                  <template x-for="(p, i) in (seller.products || []).slice(0, 4)" :key="p.name">
+                  <template x-for="(p, i) in (seller.products || []).slice(0, 3)" :key="p.name">
                     <div class="flex flex-col bg-white border border-gray-100 rounded-lg overflow-hidden w-[140px] xl:w-[180px] flex-shrink-0">
                       <div class="bg-gray-50 flex-1 overflow-hidden">
                         <img x-show="p.image" :src="p.image" :alt="p.product_name" class="w-full h-full object-cover" />
@@ -129,6 +129,46 @@ export function ManufacturerList(): string {
                     </div>
                   </template>
                 </div>
+
+                <!-- Right: Gallery panel -->
+                <template x-if="seller.gallery_images && seller.gallery_images.length > 0">
+                  <div
+                    class="w-[165px] xl:w-[220px] shrink-0 h-[165px] xl:h-[220px] rounded-lg overflow-hidden relative cursor-pointer group"
+                    x-data="{ activeIdx: 0 }"
+                  >
+                    <img
+                      :src="seller.gallery_images[activeIdx]"
+                      :alt="seller.seller_name + ' galeri'"
+                      class="w-full h-full object-cover transition-opacity duration-300"
+                    />
+                    <!-- Photo count badge -->
+                    <div class="absolute bottom-2 right-2 bg-black/60 text-white text-[11px] px-2 py-1 rounded flex items-center gap-1">
+                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                      </svg>
+                      <span x-text="(activeIdx + 1) + '/' + seller.gallery_images.length"></span>
+                    </div>
+                    <!-- Navigation arrows (visible on hover) -->
+                    <template x-if="seller.gallery_images.length > 1">
+                      <div class="absolute inset-0 flex items-center justify-between px-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          type="button"
+                          class="w-6 h-6 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70"
+                          @click.prevent="activeIdx = (activeIdx - 1 + seller.gallery_images.length) % seller.gallery_images.length"
+                        >
+                          <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                        </button>
+                        <button
+                          type="button"
+                          class="w-6 h-6 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70"
+                          @click.prevent="activeIdx = (activeIdx + 1) % seller.gallery_images.length"
+                        >
+                          <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                        </button>
+                      </div>
+                    </template>
+                  </div>
+                </template>
               </div>
             </div>
 
