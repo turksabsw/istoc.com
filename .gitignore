@@ -1,2 +1,10 @@
 # Frappe Marketplace - git'e gönderilmeyecek
 Frappe_Marketplace-main/
+
+# Python cache dosyaları
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+
+# Virtual environment
+tradehubback/env/
