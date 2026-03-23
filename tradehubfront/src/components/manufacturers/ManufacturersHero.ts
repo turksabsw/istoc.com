@@ -1,7 +1,4 @@
-import { isLoggedIn, getUser } from '../../utils/auth';
 import { t } from '../../i18n';
-import { searchListings } from '../../services/listingService';
-import { initCurrency } from '../../services/currencyService';
 import { getBrowsingHistory } from '../../services/browsingHistoryService';
 
 interface SubcategoryGroup {
@@ -488,186 +485,206 @@ function renderSourceByCategory(): string {
   `;
 }
 
+function sampleCard(dataVar: string, label: string): string {
+  const SKELETON = `<div class="w-full h-full bg-gray-100 animate-pulse rounded"></div>`;
+  return `
+    <a :href="${dataVar} ? '/pages/product-detail.html?id=' + ${dataVar}.name : '/pages/products.html'" class="block w-[calc(50%-5.5px)] group">
+      <div class="w-full h-[105px] overflow-hidden rounded flex items-center justify-center" style="background-color: var(--mfr-sample-img-bg, #f5f5f5)">
+        <template x-if="${dataVar} && ${dataVar}.primary_image">
+          <img :src="${dataVar}.primary_image" :alt="${dataVar}.title" class="max-w-full max-h-full object-contain group-hover:scale-105 transition-transform duration-300" />
+        </template>
+        <template x-if="!${dataVar}">${SKELETON}</template>
+      </div>
+      <p class="w-full h-8 min-h-[32px] mt-1 text-sm leading-4 text-center overflow-hidden text-ellipsis" style="color: var(--mfr-sample-label-color, #666666)">${label}</p>
+    </a>`;
+}
+
 function renderMiddleColumn(): string {
   return `
-    <div class="flex-1 flex flex-col h-[400px]">
-
+    <div class="flex-1 flex flex-col h-[400px]"
+      x-data="{
+        popular: null, newArrival: null, bestSeller: null, featured: null,
+        async init() {
+          const base = (window.API_BASE || '/api') + '/method/tradehub_core.api.listing.get_listings';
+          const opts = { credentials: 'omit' };
+          try {
+            const [a, b, c, d] = await Promise.all([
+              fetch(base + '?sort_by=view_count&sort_order=desc&page_size=1', opts).then(r => r.json()),
+              fetch(base + '?is_new_arrival=true&page_size=1', opts).then(r => r.json()),
+              fetch(base + '?is_best_seller=true&page_size=1', opts).then(r => r.json()),
+              fetch(base + '?is_featured=true&page_size=1', opts).then(r => r.json()),
+            ]);
+            const first = (r) => (r.message?.data || [])[0] || null;
+            this.popular = first(a);
+            this.newArrival = first(b);
+            this.bestSeller = first(c);
+            this.featured = first(d);
+          } catch(e) { console.error('Samples fetch failed', e); }
+        }
+      }"
+    >
       <!-- Card A: Get samples -->
       <div class="h-[192px] mb-4 p-4" style="background-color: var(--mfr-hero-card-bg, #ffffff); border-radius: var(--mfr-hero-card-radius, 6px); box-shadow: var(--mfr-hero-card-shadow, 0 0 12px rgba(0,0,0,0.05))">
-        <h3 class="text-lg font-bold leading-6 mb-2.5" style="color: var(--mfr-sample-heading-color, #222222)" title="${t('mfr.getSamples')}">${t('mfr.getSamples')}</h3>
+        <h3 class="text-lg font-bold leading-6 mb-2.5" style="color: var(--mfr-sample-heading-color, #222222)">${t('mfr.getSamples')}</h3>
         <div class="flex flex-wrap justify-between">
-          <a href="#" class="block w-[calc(50%-5.5px)] group">
-            <div class="w-full h-[105px] overflow-hidden rounded flex items-center justify-center" style="background-color: var(--mfr-sample-img-bg, #f5f5f5)">
-              <img src="" id="mfr-sample-img-1" alt="${t('mfr.popularProducts')}" class="max-w-full max-h-full object-contain group-hover:scale-105 transition-transform duration-300">
-            </div>
-            <p class="w-full h-8 min-h-[32px] mt-1 text-sm leading-4 text-center overflow-hidden text-ellipsis" style="color: var(--mfr-sample-label-color, #666666)" title="${t('mfr.popularProducts')}">${t('mfr.popularProducts')}</p>
-          </a>
-          <a href="#" class="block w-[calc(50%-5.5px)] group">
-            <div class="w-full h-[105px] overflow-hidden rounded flex items-center justify-center" style="background-color: var(--mfr-sample-img-bg, #f5f5f5)">
-              <img src="" id="mfr-sample-img-2" alt="${t('mfr.newArrivals')}" class="max-w-full max-h-full object-contain group-hover:scale-105 transition-transform duration-300">
-            </div>
-            <p class="w-full h-8 min-h-[32px] mt-1 text-sm leading-4 text-center overflow-hidden text-ellipsis" style="color: var(--mfr-sample-label-color, #666666)" title="${t('mfr.newArrivals')}">${t('mfr.newArrivals')}</p>
-          </a>
+          ${sampleCard('popular', t('mfr.popularProducts'))}
+          ${sampleCard('newArrival', t('mfr.newArrivals'))}
         </div>
       </div>
 
       <!-- Card B: Get samples (2) -->
       <div class="h-[192px] p-4" style="background-color: var(--mfr-hero-card-bg, #ffffff); border-radius: var(--mfr-hero-card-radius, 6px); box-shadow: var(--mfr-hero-card-shadow, 0 0 12px rgba(0,0,0,0.05))">
-        <h3 class="text-lg font-bold leading-6 mb-2.5" style="color: var(--mfr-sample-heading-color, #222222)" title="${t('mfr.getSamples')}">${t('mfr.getSamples')}</h3>
+        <h3 class="text-lg font-bold leading-6 mb-2.5" style="color: var(--mfr-sample-heading-color, #222222)">${t('mfr.getSamples')}</h3>
         <div class="flex flex-wrap justify-between">
-          <a href="#" class="block w-[calc(50%-5.5px)] group">
-            <div class="w-full h-[105px] overflow-hidden rounded flex items-center justify-center" style="background-color: var(--mfr-sample-img-bg, #f5f5f5)">
-              <img src="" id="mfr-sample-img-3" alt="${t('mfr.bestSellers')}" class="max-w-full max-h-full object-contain group-hover:scale-105 transition-transform duration-300">
-            </div>
-            <p class="w-full h-8 min-h-[32px] mt-1 text-sm leading-4 text-center overflow-hidden text-ellipsis" style="color: var(--mfr-sample-label-color, #666666)" title="${t('mfr.bestSellers')}">${t('mfr.bestSellers')}</p>
-          </a>
-          <a href="#" class="block w-[calc(50%-5.5px)] group">
-            <div class="w-full h-[105px] overflow-hidden rounded flex items-center justify-center" style="background-color: var(--mfr-sample-img-bg, #f5f5f5)">
-              <img src="" id="mfr-sample-img-4" alt="${t('mfr.campaigns')}" class="max-w-full max-h-full object-contain group-hover:scale-105 transition-transform duration-300">
-            </div>
-            <p class="w-full h-8 min-h-[32px] mt-1 text-sm leading-4 text-center overflow-hidden text-ellipsis" style="color: var(--mfr-sample-label-color, #666666)" title="${t('mfr.campaigns')}">${t('mfr.campaigns')}</p>
-          </a>
+          ${sampleCard('bestSeller', t('mfr.bestSellers'))}
+          ${sampleCard('featured', t('mfr.campaigns'))}
         </div>
       </div>
-
     </div>
   `;
 }
 
 function renderTopRankingColumn(): string {
-  const items = [
-    { imgId: 'mfr-rank-img-1', label: t('mfr.mostPopular') },
-    { imgId: 'mfr-rank-img-2', label: t('mfr.topSellers') },
-    { imgId: 'mfr-rank-img-3', label: t('mfr.leadingFactories') },
-    { imgId: 'mfr-rank-img-4', label: t('mfr.quickResponse') },
-  ];
-
   return `
-    <div class="top-ranking flex-1 h-[400px] p-4" style="background-color: var(--mfr-hero-card-bg, #ffffff); border-radius: var(--mfr-hero-card-radius, 6px); box-shadow: var(--mfr-hero-card-shadow, 0 0 12px rgba(0,0,0,0.05))">
-      <h3 class="text-lg font-bold leading-6 mb-4" style="color: var(--mfr-ranking-heading-color, #222222)" title="${t('mfr.topRankedMfrs')}">${t('mfr.topRankedMfrs')}</h3>
+    <div class="top-ranking flex-1 h-[400px] p-4" style="background-color: var(--mfr-hero-card-bg, #ffffff); border-radius: var(--mfr-hero-card-radius, 6px); box-shadow: var(--mfr-hero-card-shadow, 0 0 12px rgba(0,0,0,0.05))"
+      x-data="{
+        sellers: [],
+        async init() {
+          const api = (window.API_BASE || '/api') + '/method/tradehub_core.api.seller.get_sellers?page_size=4';
+          try {
+            const res = await fetch(api, { credentials: 'omit' }).then(r => r.json());
+            this.sellers = res.message?.sellers || [];
+          } catch(e) { console.error('Sellers fetch failed', e); }
+        }
+      }"
+    >
+      <h3 class="text-lg font-bold leading-6 mb-4" style="color: var(--mfr-ranking-heading-color, #222222)">${t('mfr.topRankedMfrs')}</h3>
       <div class="products flex flex-wrap justify-between">
-        ${items.map(item => `
-          <a href="#" class="block w-[calc(50%-5.5px)] h-[156px] mb-4 group" title="${item.label}">
-            <div class="w-full h-[116px] rounded overflow-hidden flex items-center justify-center">
-              <img src="" id="${item.imgId}" alt="${item.label}" class="max-w-full max-h-full w-[116px] h-[116px] object-contain group-hover:scale-105 transition-transform duration-300">
+        <!-- Loading skeleton -->
+        <template x-if="sellers.length === 0">
+          <div class="w-full grid grid-cols-2 gap-3">
+            <template x-for="i in 4" :key="i"><div class="h-[140px] bg-gray-100 animate-pulse rounded"></div></template>
+          </div>
+        </template>
+
+        <!-- Seller cards -->
+        <template x-for="(seller, idx) in sellers.slice(0, 4)" :key="seller.seller_code">
+          <a :href="'/pages/seller/seller-storefront.html?seller=' + seller.seller_code"
+             class="block w-[calc(50%-5.5px)] h-[156px] mb-4 group">
+            <div class="w-full h-[116px] rounded overflow-hidden flex items-center justify-center bg-gray-50">
+              <template x-if="seller.logo">
+                <img :src="seller.logo" :alt="seller.seller_name" class="max-w-full max-h-full w-[116px] h-[116px] object-contain group-hover:scale-105 transition-transform duration-300" />
+              </template>
+              <template x-if="!seller.logo && seller.product_images && seller.product_images.length > 0">
+                <img :src="seller.product_images[0]" :alt="seller.seller_name" class="max-w-full max-h-full w-[116px] h-[116px] object-cover group-hover:scale-105 transition-transform duration-300" />
+              </template>
+              <template x-if="!seller.logo && (!seller.product_images || seller.product_images.length === 0)">
+                <svg class="w-10 h-10 text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+              </template>
             </div>
-            <p class="w-full h-8 min-h-[32px] mt-1 text-sm leading-4 text-center overflow-hidden text-ellipsis" style="color: var(--mfr-ranking-label-color, #666666)" title="${item.label}">${item.label}</p>
+            <p class="w-full h-8 min-h-[32px] mt-1 text-sm leading-4 text-center overflow-hidden text-ellipsis" style="color: var(--mfr-ranking-label-color, #666666)" x-text="seller.seller_name"></p>
           </a>
-        `).join('')}
+        </template>
       </div>
     </div>
   `;
 }
 
 function renderProfileColumn(): string {
+  const history = getBrowsingHistory();
+  const thumbs = history.slice(0, 4);
 
-  const loggedIn = isLoggedIn();
-  const user = getUser();
-  const userName = user ? user.name : 'Guest';
+  const historyHtml = thumbs.length > 0
+    ? thumbs.map(h => `
+        <a href="${h.href}" class="aspect-square rounded-md overflow-hidden group" title="${h.title || ''}">
+          <img src="${h.image}" alt="${h.title || ''}" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300">
+        </a>`).join('')
+    : `<p class="text-xs text-gray-400 col-span-4">${t('mfr.noHistory')}</p>`;
 
   return `
     <div class="flex-1 h-[400px] overflow-hidden flex flex-col" style="border-radius: var(--mfr-hero-card-radius, 6px)">
 
-      <!-- Top card: user-info -->
-      <div class="h-[268px] mb-4 py-3 px-4 flex flex-col" style="background-color: var(--mfr-hero-card-bg, #ffffff); border-radius: var(--mfr-hero-card-radius, 6px); box-shadow: var(--mfr-hero-card-shadow, 0 0 12px rgba(0,0,0,0.05))">
+      <!-- Top card: user-info (Alpine — async session check) -->
+      <div class="h-[268px] mb-4 py-3 px-4 flex flex-col" style="background-color: var(--mfr-hero-card-bg, #ffffff); border-radius: var(--mfr-hero-card-radius, 6px); box-shadow: var(--mfr-hero-card-shadow, 0 0 12px rgba(0,0,0,0.05))"
+        x-data="{
+          loggedIn: false,
+          userName: 'Guest',
+          async init() {
+            const api = (window.API_BASE || '/api') + '/method/tradehub_core.api.v1.auth.get_session_user';
+            try {
+              const res = await fetch(api, { credentials: 'include' }).then(r => r.json());
+              if (res.message?.logged_in && res.message.user) {
+                this.loggedIn = true;
+                this.userName = res.message.user.full_name || res.message.user.email;
+              }
+            } catch(e) {}
+          }
+        }"
+      >
         <!-- Avatar row -->
         <div class="flex items-center h-[42px] mb-3">
           <div class="w-10 h-10 rounded-full border mr-3 flex items-center justify-center text-gray-400 flex-shrink-0" style="background-color: var(--mfr-profile-avatar-bg, #dddddd); border-color: var(--mfr-profile-avatar-bg, #dddddd)">
             <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"></path></svg>
           </div>
           <div>
-            ${loggedIn
-      ? `<span class="text-xs" style="color: var(--mfr-profile-text-color, #222222)">Welcome back</span>
-                 <p class="text-base font-bold leading-6" style="color: var(--mfr-profile-text-color, #222222)">${userName}</p>`
-      : `<span class="text-xs" style="color: var(--mfr-profile-text-color, #222222)">${t('mfr.welcome')}</span>
-                 <p class="text-base font-bold leading-6" style="color: var(--mfr-profile-text-color, #222222)">Guest</p>`
-    }
+            <template x-if="loggedIn">
+              <div>
+                <span class="text-xs" style="color: var(--mfr-profile-text-color, #222222)">${t('mfr.welcome')}</span>
+                <p class="text-base font-bold leading-6" style="color: var(--mfr-profile-text-color, #222222)" x-text="userName"></p>
+              </div>
+            </template>
+            <template x-if="!loggedIn">
+              <div>
+                <span class="text-xs" style="color: var(--mfr-profile-text-color, #222222)">${t('mfr.welcome')}</span>
+                <p class="text-base font-bold leading-6" style="color: var(--mfr-profile-text-color, #222222)">Guest</p>
+              </div>
+            </template>
           </div>
         </div>
 
-        ${loggedIn
-      ? `<!-- Favorites (Logged In) -->
-             <div class="flex items-center justify-center rounded-md p-3 mt-4 mb-4 bg-gray-50 dark:bg-gray-800 border border-transparent">
-               <div class="flex-1 text-center border-r border-gray-200 dark:border-gray-700">
-                 <div class="flex items-center justify-center gap-1.5">
-                   <span class="text-xl font-bold dark:text-gray-100">2</span>
-                   <span class="text-xs text-left leading-tight text-gray-600 dark:text-gray-400">Favorite<br/>products</span>
-                 </div>
-               </div>
-               <div class="flex-1 text-center">
-                 <div class="flex items-center justify-center gap-1.5 ml-2">
-                   <span class="text-xl font-bold dark:text-gray-100">0</span>
-                   <span class="text-xs text-left leading-tight text-gray-600 dark:text-gray-400">Favorite<br/>suppliers</span>
-                 </div>
-               </div>
-             </div>`
-      : `<!-- Buttons (Logged Out) -->
-             <div class="flex justify-between mt-6 mb-4">
-               <a href="/login" class="w-[calc(50%-4px)] flex items-center justify-center rounded-full h-10 text-xs font-bold transition-colors" style="background-color: var(--mfr-profile-btn-bg, #cc9900); color: var(--mfr-profile-btn-text, #ffffff)" onmouseover="this.style.backgroundColor='var(--mfr-profile-btn-hover, #8a6800)'" onmouseout="this.style.backgroundColor='var(--mfr-profile-btn-bg, #cc9900)'" data-spm="button_login">${t('auth.login.submit')}</a>
-               <a href="/register" class="w-[calc(50%-4px)] flex items-center justify-center rounded-full h-10 text-xs font-bold transition-colors" style="background-color: var(--mfr-profile-btn-bg, #cc9900); color: var(--mfr-profile-btn-text, #ffffff)" onmouseover="this.style.backgroundColor='var(--mfr-profile-btn-hover, #8a6800)'" onmouseout="this.style.backgroundColor='var(--mfr-profile-btn-bg, #cc9900)'" data-spm="button_register">${t('auth.register.freeSignUp')}</a>
-             </div>`
-    }
+        <!-- Logged-in: favorites stats -->
+        <template x-if="loggedIn">
+          <div class="flex items-center justify-center rounded-md p-3 mt-4 mb-4 bg-gray-50 border border-transparent">
+            <div class="flex-1 text-center border-r border-gray-200">
+              <div class="flex items-center justify-center gap-1.5">
+                <span class="text-xl font-bold">0</span>
+                <span class="text-xs text-left leading-tight text-gray-600">Favorite<br/>products</span>
+              </div>
+            </div>
+            <div class="flex-1 text-center">
+              <div class="flex items-center justify-center gap-1.5 ml-2">
+                <span class="text-xl font-bold">0</span>
+                <span class="text-xs text-left leading-tight text-gray-600">Favorite<br/>suppliers</span>
+              </div>
+            </div>
+          </div>
+        </template>
 
-        <!-- Search history (from LocalStorage) -->
-        <div class="mt-auto" id="mfr-browsing-history-section">
-          <a href="#" class="block text-base font-bold mb-2 leading-6" style="color: var(--mfr-profile-text-color, #222222)">${t('mfr.yourSearchHistory')}</a>
-          <div class="grid grid-cols-4 gap-2" id="mfr-browsing-history-grid"></div>
+        <!-- Logged-out: sign in / register buttons -->
+        <template x-if="!loggedIn">
+          <div class="flex justify-between mt-6 mb-4">
+            <a href="/pages/auth/login.html" class="w-[calc(50%-4px)] flex items-center justify-center rounded-full h-10 text-xs font-bold transition-colors" style="background-color: var(--mfr-profile-btn-bg, #cc9900); color: var(--mfr-profile-btn-text, #ffffff)">${t('auth.login.submit')}</a>
+            <a href="/pages/auth/register.html" class="w-[calc(50%-4px)] flex items-center justify-center rounded-full h-10 text-xs font-bold transition-colors" style="background-color: var(--mfr-profile-btn-bg, #cc9900); color: var(--mfr-profile-btn-text, #ffffff)">${t('auth.register.freeSignUp')}</a>
+          </div>
+        </template>
+
+        <!-- Browsing history from localStorage -->
+        <div class="mt-auto">
+          <p class="block text-base font-bold mb-2 leading-6" style="color: var(--mfr-profile-text-color, #222222)">${t('mfr.yourSearchHistory')}</p>
+          <div class="grid grid-cols-4 gap-2">${historyHtml}</div>
         </div>
       </div>
 
       <!-- Bottom card: RFQ -->
       <div class="flex-1 py-3 px-4 flex flex-col items-center justify-center text-center" style="background-color: var(--mfr-hero-card-bg, #ffffff); border-radius: var(--mfr-hero-card-radius, 6px); box-shadow: var(--mfr-hero-card-shadow, 0 0 12px rgba(0,0,0,0.05))">
         <p class="text-xs font-semibold mb-4" style="color: var(--mfr-profile-rfq-text, #222222)">${t('mfr.oneRequestMultipleQuotes')}</p>
-        <a href="/pages/dashboard/rfq.html" class="hover-expand-center w-full h-10 flex items-center justify-center border rounded-full text-xs font-bold transition-colors" style="background-color: var(--mfr-hero-card-bg, #ffffff); border-color: var(--mfr-profile-rfq-border, #222222); color: var(--mfr-profile-rfq-text, #222222)" title="${t('mfr.rfqTitle')}">
+        <a href="/pages/dashboard/rfq.html" class="hover-expand-center w-full h-10 flex items-center justify-center border rounded-full text-xs font-bold transition-colors" style="background-color: var(--mfr-hero-card-bg, #ffffff); border-color: var(--mfr-profile-rfq-border, #222222); color: var(--mfr-profile-rfq-text, #222222)">
           ${t('mfr.rfqTitle')}
         </a>
       </div>
 
     </div>
   `;
-}
-
-export async function initManufacturersHeroImages(): Promise<void> {
-  try {
-    await initCurrency();
-    const result = await searchListings({ page_size: 12 });
-    const products = result.products;
-
-    // Populate "Numune alin" images (first 4 products)
-    for (let i = 0; i < 4 && i < products.length; i++) {
-      const img = document.getElementById(`mfr-sample-img-${i + 1}`) as HTMLImageElement | null;
-      if (img && products[i].imageSrc) {
-        img.src = products[i].imageSrc!;
-      }
-    }
-
-    // Populate "Top ranking" images (next 4 products, or reuse)
-    for (let i = 0; i < 4; i++) {
-      const productIdx = Math.min(i + 4, products.length - 1);
-      const img = document.getElementById(`mfr-rank-img-${i + 1}`) as HTMLImageElement | null;
-      if (img && products[productIdx]?.imageSrc) {
-        img.src = products[productIdx].imageSrc!;
-      }
-    }
-
-    // Populate browsing history from LocalStorage
-    const browsingItems = getBrowsingHistory();
-    const historyGrid = document.getElementById('mfr-browsing-history-grid');
-    const historySection = document.getElementById('mfr-browsing-history-section');
-    if (historyGrid && historySection) {
-      if (browsingItems.length === 0) {
-        historySection.style.display = 'none';
-      } else {
-        historyGrid.innerHTML = browsingItems.map(item => `
-          <a href="${item.href}" class="aspect-square rounded-md overflow-hidden group">
-            <img src="${item.image}" alt="${item.title}" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300">
-          </a>
-        `).join('');
-      }
-    }
-  } catch (err) {
-    console.warn('[ManufacturersHero] Failed to load images:', err);
-  }
 }
 
 export function initCategoryFlyout(): void {

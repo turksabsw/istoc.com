@@ -9,18 +9,11 @@ export interface PaymentMethod {
   icon: string;
 }
 
-export interface CartPriceTier {
-  minQty: number;
-  maxQty: number | null;
-  price: number;
-}
-
 export interface CartSku {
   id: string;
   skuImage: string;
   variantText: string;
   unitPrice: number;
-  priceAddon: number;
   currency: string;
   unit: string;
   quantity: number;
@@ -30,6 +23,8 @@ export interface CartSku {
   baseUnitPrice: number;
   basePriceAddon: number;
   baseCurrency: string;
+  listingVariant?: string;  // Frappe Listing Variant adı (merge için)
+  isAvailable?: boolean;    // false ise listing silinmiş/pasif, snapshot gösteriliyor
 }
 
 export interface CartShippingMethod {
@@ -50,9 +45,6 @@ export interface CartProduct {
   deleteIcon: string;
   skus: CartSku[];
   selected: boolean;
-  priceTiers?: CartPriceTier[];
-  baseCurrency?: string;
-  shippingMethods?: CartShippingMethod[];
 }
 
 export interface CartProductTag {
@@ -69,6 +61,7 @@ export interface CartSupplier {
   selected: boolean;
   products: CartProduct[];
   paymentMethods?: PaymentMethod[];
+  shippingFee?: number;  // Satıcı bazlı kargo ücreti (checkout'ta seçilince CartStore'a set edilir)
 }
 
 export interface CartSummaryData {
@@ -76,6 +69,8 @@ export interface CartSummaryData {
   items: CartSummaryItem[];
   productSubtotal: number;
   discount: number;
+  couponDiscount: number;
+  couponCode: string;
   shippingFee: number;
   subtotal: number;
   currency: string;

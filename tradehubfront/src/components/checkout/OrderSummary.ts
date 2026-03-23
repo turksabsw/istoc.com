@@ -1,6 +1,6 @@
 import type { OrderSummary as OrderSummaryData, OrderSummaryThumbnail } from '../../types/checkout';
 import { t } from '../../i18n';
-import { formatCurrency } from '../../services/currencyService';
+import { formatCurrency, getSelectedCurrency } from '../../services/currencyService';
 
 export interface ProtectionSummaryItem {
   icon: string;
@@ -48,12 +48,12 @@ function renderThumbnailGrid(thumbnails: OrderSummaryThumbnail[], itemCount: num
 }
 
 export function OrderSummary({ data, protectionItems, tradeAssuranceText }: OrderSummaryProps): string {
-  const currency = data.currency;
-  const fmtMoney = (amount: number) => formatCurrency(amount, currency);
+  const cur = getSelectedCurrency();
+  const fmt = (v: number) => formatCurrency(v, cur);
 
-  const subtotalStr = fmtMoney(data.itemSubtotal);
-  const shippingStr = fmtMoney(data.shipping);
-  const totalStr = fmtMoney(data.total);
+  const subtotalStr = fmt(data.itemSubtotal);
+  const shippingStr = fmt(data.shipping);
+  const totalStr = fmt(data.total);
   const implicitDiscount = Number((data.itemSubtotal + data.shipping - data.total).toFixed(2));
 
   // The protection items rendering
@@ -70,7 +70,7 @@ export function OrderSummary({ data, protectionItems, tradeAssuranceText }: Orde
   return `
     <div
       class="checkout-sidebar w-full p-4 sm:p-5 xl:p-[28px] bg-[#FFFFFF] border border-[#e5e5e5] rounded-xl xl:max-h-[calc(100vh-48px)] overflow-y-auto [&::-webkit-scrollbar]:w-[6px] [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-black/20 hover:[&::-webkit-scrollbar-thumb]:bg-black/30 [&::-webkit-scrollbar-thumb]:rounded-full"
-      x-data="checkoutOrderSummary({ itemSubtotal: ${data.itemSubtotal}, discount: ${implicitDiscount}, initialShippingFee: ${data.shipping}, currency: '${currency}' })"
+      x-data="checkoutOrderSummary({ itemSubtotal: ${data.itemSubtotal}, discount: ${implicitDiscount}, initialShippingFee: ${data.shipping}, currency: '${cur}' })"
     >
       <!-- Title -->
       <div class="text-[20px] font-bold leading-7 text-[#222222] mb-5 font-inter">

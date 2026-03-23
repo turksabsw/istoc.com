@@ -25,12 +25,6 @@ export function SellPageLayout(): string {
     { name: t('sellPage.testimonial3Name'), company: t('sellPage.testimonial3Company'), quote: t('sellPage.testimonial3Quote'), metric: t('sellPage.testimonial3Metric') },
   ];
 
-  const stepLabels = [
-    t('sellPage.stepBusinessInfo'),
-    t('sellPage.stepContact'),
-    t('sellPage.stepProducts'),
-    t('sellPage.stepVerification'),
-  ];
 
   return `
     <!-- Hero -->
@@ -42,7 +36,7 @@ export function SellPageLayout(): string {
       <div class="max-w-[1200px] mx-auto px-4 sm:px-6 text-center relative z-10">
         <h1 class="text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-4">${t('sellPage.heroTitle')}</h1>
         <p class="text-white/80 text-base sm:text-lg max-w-[600px] mx-auto mb-8">${t('sellPage.heroDesc')}</p>
-        <a href="#register-form" class="inline-block px-8 py-3.5 bg-white text-primary-600 font-semibold rounded-lg hover:bg-gray-50 transition-colors text-base shadow-lg">${t('sellPage.heroCta')}</a>
+        <a href="/pages/auth/register.html?type=supplier" data-seller-cta class="inline-block px-8 py-3.5 bg-white text-primary-600 font-semibold rounded-lg hover:bg-gray-50 transition-colors text-base shadow-lg">${t('sellPage.heroCta')}</a>
       </div>
     </section>
 
@@ -81,149 +75,12 @@ export function SellPageLayout(): string {
       </div>
     </section>
 
-    <!-- Registration Form -->
-    <section id="register-form" class="py-14 sm:py-20 scroll-mt-20">
-      <div class="max-w-[700px] mx-auto px-4 sm:px-6" x-data="sellPage()">
-        <template x-if="!submitted">
-          <div>
-            <h2 class="text-2xl font-bold text-gray-900 mb-6 text-center">${t('sellPage.formTitle')}</h2>
-
-            <!-- Step Indicator -->
-            <div class="flex items-center justify-center mb-6">
-              ${[1,2,3,4].map((s, i) => `
-                <div class="flex items-center ${i < 3 ? 'flex-1' : ''}">
-                  <div class="flex flex-col items-center">
-                    <div class="w-9 h-9 rounded-full flex items-center justify-center text-sm font-semibold shrink-0 transition-colors"
-                      :class="currentStep > ${s} ? 'bg-primary-500 text-white' : currentStep === ${s} ? 'border-2 border-primary-500 text-primary-500 bg-white' : 'border-2 border-gray-300 text-gray-400 bg-white'">
-                      <template x-if="currentStep > ${s}"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg></template>
-                      <template x-if="currentStep <= ${s}"><span>${s}</span></template>
-                    </div>
-                    <span class="hidden sm:block text-xs mt-1.5 text-center whitespace-nowrap" :class="currentStep === ${s} ? 'text-primary-600 font-medium' : 'text-gray-500'">${stepLabels[i]}</span>
-                  </div>
-                  ${i < 3 ? `<div class="flex-1 h-0.5 mx-2 sm:mx-3 transition-colors" :class="currentStep > ${s} ? 'bg-primary-500' : 'bg-gray-300'"></div>` : ''}
-                </div>
-              `).join('')}
-            </div>
-
-            <div class="bg-white rounded-lg border border-gray-200 p-6 sm:p-8">
-              <!-- Step 1: Business Info -->
-              <div x-show="currentStep === 1">
-                <h3 class="text-lg font-semibold text-gray-900 mb-4">${t('sellPage.businessInfoTitle')}</h3>
-                <div class="space-y-4">
-                  <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">${t('sellPage.companyNameLabel')}</label>
-                    <input type="text" x-model="formData.companyName" class="w-full px-4 py-2.5 border rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none" :class="formErrors.companyName ? 'border-red-400' : 'border-gray-300'">
-                    <p x-show="formErrors.companyName" x-text="formErrors.companyName" class="text-xs text-red-500 mt-1"></p>
-                  </div>
-                  <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">${t('sellPage.businessTypeLabel')}</label>
-                    <select x-model="formData.businessType" class="w-full px-4 py-2.5 border rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none" :class="formErrors.businessType ? 'border-red-400' : 'border-gray-300'">
-                      <option value="">${t('sellPage.selectPlaceholder')}</option>
-                      <template x-for="bt in businessTypes" :key="bt"><option :value="bt" x-text="bt"></option></template>
-                    </select>
-                    <p x-show="formErrors.businessType" x-text="formErrors.businessType" class="text-xs text-red-500 mt-1"></p>
-                  </div>
-                  <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">${t('sellPage.taxNumberLabel')}</label>
-                    <input type="text" x-model="formData.taxNumber" class="w-full px-4 py-2.5 border rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none" :class="formErrors.taxNumber ? 'border-red-400' : 'border-gray-300'">
-                    <p x-show="formErrors.taxNumber" x-text="formErrors.taxNumber" class="text-xs text-red-500 mt-1"></p>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Step 2: Contact -->
-              <div x-show="currentStep === 2">
-                <h3 class="text-lg font-semibold text-gray-900 mb-4">${t('sellPage.contactInfoTitle')}</h3>
-                <div class="space-y-4">
-                  <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">${t('sellPage.contactNameLabel')}</label>
-                    <input type="text" x-model="formData.contactName" class="w-full px-4 py-2.5 border rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none" :class="formErrors.contactName ? 'border-red-400' : 'border-gray-300'">
-                    <p x-show="formErrors.contactName" x-text="formErrors.contactName" class="text-xs text-red-500 mt-1"></p>
-                  </div>
-                  <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">${t('sellPage.emailLabel')}</label>
-                    <input type="email" x-model="formData.email" class="w-full px-4 py-2.5 border rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none" :class="formErrors.email ? 'border-red-400' : 'border-gray-300'">
-                    <p x-show="formErrors.email" x-text="formErrors.email" class="text-xs text-red-500 mt-1"></p>
-                  </div>
-                  <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">${t('sellPage.phoneLabel')}</label>
-                    <input type="tel" x-model="formData.phone" class="w-full px-4 py-2.5 border rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none" :class="formErrors.phone ? 'border-red-400' : 'border-gray-300'" placeholder="+90 5XX XXX XXXX">
-                    <p x-show="formErrors.phone" x-text="formErrors.phone" class="text-xs text-red-500 mt-1"></p>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Step 3: Products -->
-              <div x-show="currentStep === 3">
-                <h3 class="text-lg font-semibold text-gray-900 mb-4">${t('sellPage.productInfoTitle')}</h3>
-                <div class="space-y-4">
-                  <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">${t('sellPage.mainCategoriesLabel')} <span class="text-gray-400 font-normal">${t('sellPage.mainCategoriesHint')}</span></label>
-                    <div class="grid grid-cols-2 gap-2">
-                      <template x-for="cat in categoryOptions" :key="cat">
-                        <label class="flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition-colors" :class="formData.mainCategories.includes(cat) ? 'border-primary-500 bg-primary-50' : 'border-gray-200 hover:bg-gray-50'">
-                          <input type="checkbox" :checked="formData.mainCategories.includes(cat)" @change="toggleCategory(cat)" class="sr-only">
-                          <div class="w-4 h-4 rounded border flex items-center justify-center shrink-0" :class="formData.mainCategories.includes(cat) ? 'bg-primary-500 border-primary-500' : 'border-gray-300'">
-                            <svg x-show="formData.mainCategories.includes(cat)" class="w-3 h-3 text-white" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
-                          </div>
-                          <span class="text-sm text-gray-700" x-text="cat"></span>
-                        </label>
-                      </template>
-                    </div>
-                    <p x-show="formErrors.mainCategories" x-text="formErrors.mainCategories" class="text-xs text-red-500 mt-1"></p>
-                  </div>
-                  <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">${t('sellPage.estimatedProductCount')}</label>
-                    <select x-model="formData.productCount" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none">
-                      <option value="">${t('sellPage.selectPlaceholder')}</option>
-                      <option value="1-50">1-50</option>
-                      <option value="51-200">51-200</option>
-                      <option value="201-1000">201-1.000</option>
-                      <option value="1000+">1.000+</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Step 4: Verification -->
-              <div x-show="currentStep === 4">
-                <h3 class="text-lg font-semibold text-gray-900 mb-4">${t('sellPage.verificationTitle')}</h3>
-                <div class="bg-gray-50 rounded-lg p-4 text-sm space-y-2 mb-6">
-                  <p><span class="text-gray-500">${t('sellPage.summaryCompany')}</span> <span x-text="formData.companyName || '-'" class="font-medium"></span></p>
-                  <p><span class="text-gray-500">${t('sellPage.summaryBusinessType')}</span> <span x-text="formData.businessType || '-'"></span></p>
-                  <p><span class="text-gray-500">${t('sellPage.summaryContact')}</span> <span x-text="formData.contactName || '-'"></span></p>
-                  <p><span class="text-gray-500">${t('sellPage.summaryEmail')}</span> <span x-text="formData.email || '-'"></span></p>
-                  <p><span class="text-gray-500">${t('sellPage.summaryCategories')}</span> <span x-text="formData.mainCategories.join(', ') || '-'"></span></p>
-                </div>
-                <label class="flex items-start gap-3 cursor-pointer">
-                  <input type="checkbox" x-model="formData.termsAccepted" class="mt-1 w-4 h-4 text-primary-500 border-gray-300 rounded focus:ring-primary-500">
-                  <span class="text-sm text-gray-600">${t('sellPage.termsText')}<a href="/pages/legal/terms.html" class="text-primary-500 hover:underline">${t('sellPage.termsLink')}</a> ${t('sellPage.termsAnd')} <a href="/pages/legal/privacy.html" class="text-primary-500 hover:underline">${t('sellPage.privacyLink')}</a>${t('sellPage.termsSuffix')}</span>
-                </label>
-                <p x-show="formErrors.termsAccepted" x-text="formErrors.termsAccepted" class="text-xs text-red-500 mt-1"></p>
-              </div>
-
-              <!-- Navigation -->
-              <div class="flex justify-between mt-8">
-                <button x-show="currentStep > 1" @click="prevStep()" class="px-5 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 cursor-pointer">${t('sellPage.btnBack')}</button>
-                <div x-show="currentStep === 1"></div>
-                <button x-show="currentStep < 4" @click="nextStep()" class="th-btn cursor-pointer ml-auto">${t('sellPage.btnNext')}</button>
-                <button x-show="currentStep === 4" @click="submitForm()" class="th-btn cursor-pointer ml-auto">${t('sellPage.btnSubmit')}</button>
-              </div>
-            </div>
-          </div>
-        </template>
-
-        <!-- Success -->
-        <template x-if="submitted">
-          <div class="bg-white rounded-lg border border-gray-200 p-8 text-center">
-            <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-green-100 flex items-center justify-center">
-              <svg class="w-8 h-8 text-green-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
-            </div>
-            <h3 class="text-lg font-semibold text-gray-900 mb-2">${t('sellPage.successTitle')}</h3>
-            <p class="text-sm text-gray-500 mb-4">${t('sellPage.successDesc')}</p>
-            <a href="/" class="th-btn inline-block">${t('sellPage.successCta')}</a>
-          </div>
-        </template>
+    <!-- Registration CTA -->
+    <section class="py-14 sm:py-20">
+      <div class="max-w-[600px] mx-auto px-4 sm:px-6 text-center">
+        <h2 class="text-2xl font-bold text-gray-900 mb-3">${t('sellPage.formTitle')}</h2>
+        <p class="text-gray-500 mb-6">${t('sellPage.heroDesc')}</p>
+        <a href="/pages/auth/register.html?type=supplier" data-seller-cta class="th-btn inline-block text-base px-8 py-3">${t('sellPage.heroCta')}</a>
       </div>
     </section>
 

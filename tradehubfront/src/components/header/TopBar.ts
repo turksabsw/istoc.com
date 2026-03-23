@@ -8,12 +8,14 @@
 import type { LocaleOption, CurrencyOption } from '../../types/navigation';
 import { megaCategories } from './MegaMenu';
 import { cartStore } from '../cart/state/CartStore';
-import { isLoggedIn, getUser, logout } from '../../utils/auth';
+import { isLoggedIn, getUser, getSessionUser, logout } from '../../utils/auth';
+import { getSellerStoreUrl } from '../../utils/seller';
 import { mockConversations } from '../../data/mockMessages';
 import { t, getCurrentLang, updatePageTranslations } from '../../i18n';
 import type { SupportedLang } from '../../i18n';
-import { getSelectedCurrency, setSelectedCurrency } from '../../utils/currency';
-import { formatCurrency, getSelectedCurrencyInfo } from '../../services/currencyService';
+import { getSelectedCurrency, setSelectedCurrency, getCurrencySymbol } from '../../utils/currency';
+import { formatCurrency, formatPrice, getSelectedCurrency as csGetSelectedCurrency } from '../../services/currencyService';
+import { getSearchSuggestions } from '../../services/listingService';
 
 /** Default country options for the delivery selector */
 const countryOptions: LocaleOption[] = [
@@ -87,7 +89,7 @@ function renderCompactLogo(): string {
  */
 function renderUserButton(): string {
   const user = getUser();
-  const displayName = user?.name ?? t('topbar.defaultUser');
+  const displayName = user?.full_name ?? t('topbar.defaultUser');
   return `
     <div class="relative">
       <button
@@ -112,6 +114,7 @@ function renderUserButton(): string {
         </div>
         <ul class="py-1">
           <li><a href="/pages/dashboard/buyer-dashboard.html" class="block px-4 py-2 text-[13px] text-[#222] hover:bg-gray-50 transition-colors"><span data-i18n="header.myDashboard">${t('header.myDashboard')}</span></a></li>
+          ${(user?.seller_application_status || user?.has_seller_profile) ? `<li><a href="${getSellerStoreUrl(user!)}" class="block px-4 py-2 text-[13px] text-[#222] hover:bg-gray-50 transition-colors"><span data-i18n="header.myStore">${t('header.myStore')}</span></a></li>` : ''}
           <li><a href="/pages/dashboard/orders.html" class="block px-4 py-2 text-[13px] text-[#222] hover:bg-gray-50 transition-colors"><span data-i18n="header.myOrders">${t('header.myOrders')}</span></a></li>
           <li><a href="/pages/dashboard/messages.html" class="block px-4 py-2 text-[13px] text-[#222] hover:bg-gray-50 transition-colors"><span data-i18n="header.myMessages">${t('header.myMessages')}</span></a></li>
           <li><a href="/pages/dashboard/rfq.html" class="block px-4 py-2 text-[13px] text-[#222] hover:bg-gray-50 transition-colors"><span data-i18n="header.myRfq">${t('header.myRfq')}</span></a></li>
@@ -230,9 +233,6 @@ function renderCompactStickySearch(): string {
         </div>
 
         <div id="topbar-compact-reco-list" class="mt-3 space-y-2">
-          <button type="button" tabindex="-1" data-compact-expanded-interactive="true" data-search-value="women's intimates" @click="pickValue($event.currentTarget.dataset.searchValue)" class="block text-left text-[22px] font-normal leading-tight text-gray-900 transition-colors hover:text-primary-600 dark:text-white dark:hover:text-primary-400">women's intimates</button>
-          <button type="button" tabindex="-1" data-compact-expanded-interactive="true" data-search-value="iphones 15 pro max" @click="pickValue($event.currentTarget.dataset.searchValue)" class="block text-left text-[22px] font-normal leading-tight text-gray-900 transition-colors hover:text-primary-600 dark:text-white dark:hover:text-primary-400">iphones 15 pro max</button>
-          <button type="button" tabindex="-1" data-compact-expanded-interactive="true" data-search-value="watch" @click="pickValue($event.currentTarget.dataset.searchValue)" class="block text-left text-[22px] font-normal leading-tight text-gray-900 transition-colors hover:text-primary-600 dark:text-white dark:hover:text-primary-400">watch</button>
         </div>
 
         <div class="mt-4 flex items-center justify-between gap-4">
@@ -250,10 +250,7 @@ function renderCompactStickySearch(): string {
           </a>
         </div>
 
-        <div class="mt-3 grid grid-cols-1 gap-2 lg:grid-cols-3">
-          <button type="button" tabindex="-1" data-compact-expanded-interactive="true" data-search-value="Watch for Men" @click="pickValue($event.currentTarget.dataset.searchValue)" class="inline-flex items-center gap-1.5 rounded-md border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-700 transition-colors hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"><span class="text-primary-500">&#10022;</span><span>Watch for Men</span></button>
-          <button type="button" tabindex="-1" data-compact-expanded-interactive="true" data-search-value="Surron Light Bee X" @click="pickValue($event.currentTarget.dataset.searchValue)" class="inline-flex items-center gap-1.5 rounded-md border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-700 transition-colors hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"><span class="text-primary-500">&#10022;</span><span>Surron Light Bee X</span></button>
-          <button type="button" tabindex="-1" data-compact-expanded-interactive="true" data-search-value="Human Hair Wigs" @click="pickValue($event.currentTarget.dataset.searchValue)" class="inline-flex items-center gap-1.5 rounded-md border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-700 transition-colors hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"><span class="text-primary-500">&#10022;</span><span>Human Hair Wigs</span></button>
+        <div id="topbar-compact-chips" class="mt-3 grid grid-cols-1 gap-2 lg:grid-cols-3">
         </div>
       </div>
     </div>
@@ -340,7 +337,7 @@ function renderLanguageCurrencySelector(): string {
       <svg class="w-4 h-4" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
         <path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9.004 9.004 0 0 0 8.716-6.747M12 21a9.004 9.004 0 0 1-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 0 1 7.843 4.582M12 3a8.997 8.997 0 0 0-7.843 4.582m15.686 0A11.953 11.953 0 0 1 12 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0 1 21 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0 1 12 16.5a17.92 17.92 0 0 1-8.716-4.247m0 0A8.959 8.959 0 0 1 3 12c0-1.177.227-2.302.637-3.332" />
       </svg>
-      <span class="font-medium truncate" id="lang-currency-label">${getCurrentLang() === 'tr' ? 'Türkçe' : 'English'}-${getSelectedCurrency().code}</span>
+      <span class="font-medium truncate" data-i18n="header.englishUsd" id="lang-currency-label">${t('header.englishUsd')}</span>
     </button>
 
     <!-- Language & Currency Popover -->
@@ -698,7 +695,7 @@ function renderMobileDrawer(): string {
           </div>
 
           <!-- Profile Section -->
-          <div class="mx-4 mt-2 rounded-md bg-gray-50 dark:bg-gray-700 px-4 py-3 flex items-center gap-3">
+          <div id="mobile-drawer-profile" class="mx-4 mt-2 rounded-md bg-gray-50 dark:bg-gray-700 px-4 py-3 flex items-center gap-3">
             <div class="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center flex-shrink-0">
               <svg class="w-5 h-5 text-gray-400 dark:text-gray-300" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
@@ -804,7 +801,7 @@ function renderMobileDrawer(): string {
             <!-- Currency pills -->
             <div class="flex flex-wrap gap-2">
               ${getCurrencyOptions().map((currency, i) => `
-                <button type="button" data-currency-pill="${currency.code}" class="px-3 py-1.5 text-xs font-medium rounded-full border transition-colors ${i === 0 ? 'border-primary-500 text-primary-600 bg-primary-50 dark:border-primary-400 dark:text-primary-400 dark:bg-primary-900/20' : 'border-gray-300 text-gray-600 dark:border-gray-600 dark:text-gray-400 hover:border-gray-400 dark:hover:border-gray-500'}">
+                <button type="button" class="px-3 py-1.5 text-xs font-medium rounded-full border transition-colors ${i === 0 ? 'border-primary-500 text-primary-600 bg-primary-50 dark:border-primary-400 dark:text-primary-400 dark:bg-primary-900/20' : 'border-gray-300 text-gray-600 dark:border-gray-600 dark:text-gray-400 hover:border-gray-400 dark:hover:border-gray-500'}">
                   ${currency.code === 'TRY' ? 'TL' : currency.symbol}
                 </button>
               `).join('')}
@@ -1111,7 +1108,7 @@ export function TopBar(props?: TopBarProps): string {
               ${renderCartButton(0)}
 
               <!-- Auth/User Button -->
-              <div class="hidden lg:block">
+              <div class="hidden lg:block" data-auth-area>
                 ${isLoggedIn() ? renderUserButton() : renderAuthButtons()}
               </div>
 
@@ -1215,7 +1212,7 @@ export function TopBar(props?: TopBarProps): string {
             ${renderCartButton(0)}
 
             <!-- Auth/User Button (hidden on mobile) -->
-            <div class="hidden lg:block">
+            <div class="hidden lg:block" data-auth-area>
               ${isLoggedIn() ? renderUserButton() : renderAuthButtons()}
             </div>
 
@@ -1253,7 +1250,11 @@ export function TopBar(props?: TopBarProps): string {
  *   1. groupedItems (multi-supplier) — products listing page sends grouped cart items by supplier
  *   2. Legacy single-product — product detail page sends single product with colorItems
  */
+let _headerCartInitialized = false;
+
 export function initHeaderCart(): void {
+  _headerCartInitialized = true; // auto-init'e "zaten çağrıldı" sinyali ver
+
   // localStorage'dan sepet verisini yükle (her sayfada çalışır)
   cartStore.load();
 
@@ -1297,7 +1298,7 @@ export function initHeaderCart(): void {
     if (subtotalContainer) subtotalContainer.style.display = 'flex';
     if (subtotalPrice) {
       const gTotal = summary.subtotal || 0;
-      subtotalPrice.textContent = formatCurrency(gTotal, getSelectedCurrencyInfo().code);
+      subtotalPrice.textContent = formatCurrency(gTotal, csGetSelectedCurrency());
     }
 
     if (itemsContainer) {
@@ -1326,7 +1327,7 @@ export function initHeaderCart(): void {
                   <p class="text-[11px] text-gray-400">${sku.variantText || ''}</p>
                 </div>
                 <div class="flex flex-col items-end gap-1 flex-shrink-0">
-                  <span class="text-[13px] font-bold text-gray-900">${formatCurrency(sku.unitPrice, getSelectedCurrencyInfo().code)}</span>
+                  <span class="text-[13px] font-bold text-gray-900">${formatPrice(sku.unitPrice, sku.baseCurrency || 'USD')}</span>
                   <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">x${sku.quantity}</span>
                 </div>
               </div>`;
@@ -1380,7 +1381,7 @@ export function initHeaderCart(): void {
                   <div class="flex-1 min-w-0">
                     <p class="text-[11px] text-text-tertiary truncate">${item.label}</p>
                     <div class="flex items-center justify-between mt-0.5">
-                      <span class="text-[13px] font-semibold text-text-heading">${formatCurrency(item.unitPrice, getSelectedCurrencyInfo().code)}</span>
+                      <span class="text-[13px] font-semibold text-text-heading">${getCurrencySymbol()}${item.unitPrice.toFixed(2)}</span>
                       <span class="text-xs text-text-tertiary">x ${item.qty}</span>
                     </div>
                   </div>
@@ -1407,7 +1408,7 @@ export function initHeaderCart(): void {
                     <div class="flex-1 min-w-0">
                       <p class="text-xs text-text-tertiary">${desc}</p>
                       <div class="flex items-center justify-between mt-0.5">
-                        <span class="text-sm font-semibold text-text-heading">${formatCurrency(unitPrice, getSelectedCurrencyInfo().code)}</span>
+                        <span class="text-sm font-semibold text-text-heading">${getCurrencySymbol()}${unitPrice.toFixed(2)}</span>
                         <span class="text-xs text-text-tertiary">x ${vi.qty}</span>
                       </div>
                     </div>
@@ -1420,7 +1421,7 @@ export function initHeaderCart(): void {
                 <div class="w-12 h-12 rounded-md flex-shrink-0 bg-surface-muted border border-border-default"></div>
                 <div class="flex-1 min-w-0">
                   <div class="flex items-center justify-between mt-0.5">
-                    <span class="text-sm font-semibold text-text-heading">${formatCurrency(unitPrice, getSelectedCurrencyInfo().code)}</span>
+                    <span class="text-sm font-semibold text-text-heading">${getCurrencySymbol()}${unitPrice.toFixed(2)}</span>
                     <span class="text-xs text-text-tertiary">x ${quantity}</span>
                   </div>
                 </div>
@@ -1435,7 +1436,7 @@ export function initHeaderCart(): void {
       const subtotalContainer = document.getElementById('header-cart-subtotal');
       const subtotalPrice = document.getElementById('header-cart-subtotal-price');
       if (subtotalContainer) subtotalContainer.style.display = 'flex';
-      if (subtotalPrice) subtotalPrice.textContent = formatCurrency(grandTotal, getSelectedCurrencyInfo().code);
+      if (subtotalPrice) subtotalPrice.textContent = `${getCurrencySymbol()}${grandTotal.toFixed(2)}`;
     } else {
       renderFromStore();
     }
@@ -1443,20 +1444,65 @@ export function initHeaderCart(): void {
 }
 
 // Auto-init: logout handler via event delegation (works on any page that imports this module)
-document.addEventListener('click', (e) => {
+document.addEventListener('click', async (e) => {
   const target = e.target as HTMLElement;
   if (target.id === 'logout-btn' || target.closest('#logout-btn')) {
     e.preventDefault();
-    logout();
-    window.location.href = getBaseUrl();
+    await logout();
+    window.location.replace('/pages/auth/login.html');
   }
 });
+
+/**
+ * Check session state and update header auth UI accordingly.
+ * Replaces "Sign In" buttons with user dropdown when logged in,
+ * and updates mobile drawer profile section.
+ */
+export async function initAuthState(): Promise<void> {
+  const user = await getSessionUser();
+
+  // Update all desktop auth areas
+  const authAreas = document.querySelectorAll<HTMLElement>('[data-auth-area]');
+  authAreas.forEach(container => {
+    container.innerHTML = user ? renderUserButton() : renderAuthButtons();
+  });
+
+  // Update mobile drawer profile
+  const mobileProfile = document.getElementById('mobile-drawer-profile');
+  if (mobileProfile && user) {
+    const initials = (user.full_name || user.email || 'U').charAt(0).toUpperCase();
+    const escapedName = (user.full_name || user.email).replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const escapedEmail = user.email.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    mobileProfile.innerHTML = `
+      <div class="w-10 h-10 rounded-full bg-orange-100 dark:bg-orange-900 flex items-center justify-center flex-shrink-0">
+        <span class="text-sm font-bold text-orange-600 dark:text-orange-300">${initials}</span>
+      </div>
+      <div>
+        <p class="text-sm font-medium text-gray-900 dark:text-white">${escapedName}</p>
+        <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">${escapedEmail}</p>
+      </div>
+    `;
+  }
+
+  // Re-initialize Flowbite dropdowns for dynamically inserted elements
+  if (user) {
+    try {
+      const { initDropdowns } = await import('flowbite');
+      initDropdowns();
+    } catch {
+      // Flowbite not available, skip
+    }
+  }
+}
 
 /**
  * Initialize language selector functionality.
  * Wires up the language <select> in the header popover to change the app language.
  */
 export function initLanguageSelector(): void {
+  // Check auth state and update header UI (fire-and-forget)
+  initAuthState();
+
   // Run initial translation update for all data-i18n elements
   updatePageTranslations();
 
@@ -1471,12 +1517,6 @@ export function initLanguageSelector(): void {
 
   if (currencySelect) {
     currencySelect.value = getSelectedCurrency().code;
-
-    // Auto-apply currency change on selection (no Save button needed)
-    currencySelect.addEventListener('change', () => {
-      setSelectedCurrency(currencySelect.value);
-      window.location.reload();
-    });
   }
 
   // Desktop popover "Save" button — applies language + currency, then refreshes
@@ -1506,14 +1546,64 @@ export function initLanguageSelector(): void {
     });
   });
 
-  // Mobile currency pills — save + refresh on click
-  document.querySelectorAll<HTMLButtonElement>('[data-currency-pill]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const code = btn.getAttribute('data-currency-pill');
-      if (code) {
-        setSelectedCurrency(code);
-        window.location.reload();
+  // Load dynamic search suggestions for compact header dropdown
+  initCompactSearchSuggestions();
+}
+
+/**
+ * Loads dynamic search suggestions into the compact header dropdown.
+ * Populates recommendation list (large text) and chip buttons.
+ */
+function initCompactSearchSuggestions(): void {
+  const recoList = document.getElementById('topbar-compact-reco-list');
+  const chipsContainer = document.getElementById('topbar-compact-chips');
+  if (!recoList && !chipsContainer) return;
+
+  const loadSuggestions = async (): Promise<void> => {
+    try {
+      const data = await getSearchSuggestions();
+
+      // Populate large-text suggestion list (first 3 suggestions)
+      if (recoList) {
+        const items = data.suggestions.slice(0, 3);
+        recoList.innerHTML = items.map(item => `
+          <button type="button" tabindex="-1" data-compact-expanded-interactive="true" data-search-value="${item.text}" @click="pickValue($event.currentTarget.dataset.searchValue)" class="block w-full text-left text-[22px] font-normal leading-tight text-gray-900 transition-colors hover:text-primary-600 dark:text-white dark:hover:text-primary-400 truncate">${item.text}</button>
+        `).join('');
       }
+
+      // Populate chip buttons (categories or fallback to remaining suggestions)
+      if (chipsContainer) {
+        const chipItems = data.chips.length > 0 ? data.chips : data.suggestions.slice(3, 6);
+        chipsContainer.innerHTML = chipItems.map(item => `
+          <button type="button" tabindex="-1" data-compact-expanded-interactive="true" data-search-value="${item.text}" @click="pickValue($event.currentTarget.dataset.searchValue)" class="inline-flex items-center gap-1.5 rounded-md border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-700 transition-colors hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 min-w-0 overflow-hidden"><span class="text-primary-500 shrink-0">&#10022;</span><span class="truncate">${item.text}</span></button>
+        `).join('');
+      }
+    } catch {
+      // Silently fail — areas stay empty
+    }
+  };
+
+  loadSuggestions();
+
+  // Wire up "Refresh" button to reload suggestions
+  const refreshBtn = recoList?.parentElement?.querySelector('button');
+  if (refreshBtn) {
+    refreshBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      loadSuggestions();
     });
+  }
+}
+
+// ── Auto-init: initHeaderCart() çağırmayan sayfalar için ─────────────────────
+// DOMContentLoaded, tüm sync modül scriptleri bittikten SONRA tetiklenir.
+// Eğer sayfa sync olarak initHeaderCart() çağırdıysa (_headerCartInitialized=true)
+// auto-init atlanır. Async (.then() içinde) çağıran veya hiç çağırmayan sayfalar
+// için auto-init devreye girer.
+if (document.readyState === 'complete') {
+  setTimeout(() => { if (!_headerCartInitialized) initHeaderCart(); }, 0);
+} else {
+  document.addEventListener('DOMContentLoaded', () => {
+    if (!_headerCartInitialized) initHeaderCart();
   });
 }

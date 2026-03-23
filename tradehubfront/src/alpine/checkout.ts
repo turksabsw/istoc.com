@@ -2,11 +2,11 @@ import Alpine from 'alpinejs'
 import {
   countries as checkoutCountries,
   districtsByProvince,
-  geolocationMockAddress,
 } from '../data/mockCheckout'
 import type { SavedAddress } from '../types/checkout'
 import { getUser, isLoggedIn } from '../utils/auth'
 import { formatCurrency } from '../services/currencyService'
+import { t } from '../i18n'
 
 interface CheckoutDeliveryMethod {
   id: string;
@@ -77,6 +77,7 @@ Alpine.data('checkoutItemsDelivery', () => ({
 
     this.loadSupplierNotes();
     this.emitShippingFeeUpdate();
+    this.emitNotesUpdate();
   },
 
   selectMethod(orderId: string, methodId: string) {
@@ -130,6 +131,7 @@ Alpine.data('checkoutItemsDelivery', () => ({
     }
 
     this.persistSupplierNotes();
+    this.emitNotesUpdate();
     this.closeNoteModal();
   },
 
@@ -156,7 +158,16 @@ Alpine.data('checkoutItemsDelivery', () => ({
 
   emitShippingFeeUpdate() {
     window.dispatchEvent(new CustomEvent('checkout:shipping-updated', {
-      detail: { shippingFee: this.getSelectedShippingFeeTotal() },
+      detail: {
+        shippingFee: this.getSelectedShippingFeeTotal(),
+        selectedMethodByOrderId: { ...this.selectedMethodByOrderId },
+      },
+    }));
+  },
+
+  emitNotesUpdate() {
+    window.dispatchEvent(new CustomEvent('checkout:notes-updated', {
+      detail: { notesByOrderId: { ...this.supplierNotesByOrderId } },
     }));
   },
 }));
@@ -165,11 +176,12 @@ Alpine.data('checkoutOrderSummary', (props?: { itemSubtotal?: number; discount?:
   itemSubtotal: Number(props?.itemSubtotal ?? 0),
   discount: Number(props?.discount ?? 0),
   shippingFee: Number(props?.initialShippingFee ?? 0),
-  currency: props?.currency ?? 'TRY',
+  currency: props?.currency ?? 'USD',
 
   // Coupon state
   couponCode: '',
   couponError: '',
+  couponApplying: false,
   couponApplied: null as { code: string; type: string; value: number; description: string } | null,
   couponDiscount: 0,
 
@@ -184,27 +196,38 @@ Alpine.data('checkoutOrderSummary', (props?: { itemSubtotal?: number; discount?:
     });
   },
 
-  applyCoupon() {
+  async applyCoupon() {
     const code = this.couponCode.trim().toUpperCase();
-    if (!code) { this.couponError = 'Please enter a coupon code'; return; }
+    if (!code) { this.couponError = t('checkout.couponRequired'); return; }
+    if (this.couponApplying) return;
 
-    const coupons = (window as unknown as Record<string, unknown>).__mockCoupons as Array<{ code: string; type: string; value: number; minOrder: number; description: string }> | undefined;
-    const coupon = coupons?.find(c => c.code === code);
-    if (!coupon) { this.couponError = 'Invalid coupon code'; return; }
-
-    const subtotalBeforeCoupon = this.itemSubtotal + this.shippingFee - this.discount;
-    if (coupon.minOrder > 0 && subtotalBeforeCoupon < coupon.minOrder) {
-      this.couponError = `Minimum order amount: ${this.currency} ${coupon.minOrder.toFixed(2)}`;
-      return;
-    }
-
-    this.couponApplied = { code: coupon.code, type: coupon.type, value: coupon.value, description: coupon.description };
+    this.couponApplying = true;
     this.couponError = '';
-    this.recalcCouponDiscount();
 
-    window.dispatchEvent(new CustomEvent('checkout:coupon-updated', {
-      detail: { coupon: this.couponApplied, couponDiscount: this.couponDiscount },
-    }));
+    try {
+      const validateFn = (window as unknown as Record<string, unknown>).__validateCoupon as
+        ((code: string, total: number) => Promise<{ code: string; type: string; value: number; minOrder: number; description: string }>) | undefined;
+
+      const orderTotal = this.itemSubtotal + this.shippingFee - this.discount;
+
+      if (validateFn) {
+        const coupon = await validateFn(code, orderTotal);
+        this.couponApplied = { code: coupon.code, type: coupon.type, value: coupon.value, description: coupon.description };
+        this.couponError = '';
+        this.recalcCouponDiscount();
+
+        window.dispatchEvent(new CustomEvent('checkout:coupon-updated', {
+          detail: { coupon: this.couponApplied, couponDiscount: this.couponDiscount },
+        }));
+      } else {
+        this.couponError = t('checkout.couponServiceUnavailable');
+      }
+    } catch (e: unknown) {
+      const msg = (e as { message?: string })?.message || 'Geçersiz kupon kodu';
+      this.couponError = msg;
+    } finally {
+      this.couponApplying = false;
+    }
   },
 
   removeCoupon() {
@@ -874,55 +897,4 @@ Alpine.data('shippingForm', () => ({
     this.isAddAddressModalOpen = false;
   },
 
-  useCurrentLocation() {
-    if (!navigator.geolocation) return;
-
-    if (confirm('Allow TradeHub to access your current location?')) {
-      navigator.geolocation.getCurrentPosition(
-        () => {
-          const el = this.$el as HTMLElement;
-          const setInput = (id: string, value: string) => {
-            const input = el.querySelector<HTMLInputElement>(`#${id}`);
-            if (input) input.value = value;
-          };
-
-          setInput('street-address', geolocationMockAddress.street || '');
-          setInput('postal-code', geolocationMockAddress.postalCode);
-          this.stateDisplay = geolocationMockAddress.state;
-          this.updateCityDropdown(geolocationMockAddress.state);
-          this.cityDisplay = geolocationMockAddress.city;
-
-          this.errors.streetAddress = false;
-          this.errors.postalCode = false;
-          this.errors.state = false;
-          this.errors.city = false;
-        },
-        () => {
-          // Silent fail on geolocation denial
-        }
-      );
-    }
-  },
-
-  useCurrentLocationForAddForm() {
-    if (!navigator.geolocation) return;
-
-    if (confirm('Allow TradeHub to access your current location?')) {
-      navigator.geolocation.getCurrentPosition(
-        () => {
-          this.addAddressForm.street = geolocationMockAddress.street || '';
-          this.addAddressForm.state = geolocationMockAddress.state;
-          this.addAddressForm.city = geolocationMockAddress.city;
-          this.addAddressForm.postalCode = geolocationMockAddress.postalCode;
-          this.addFormErrors.street = false;
-          this.addFormErrors.state = false;
-          this.addFormErrors.city = false;
-          this.addFormErrors.postalCode = false;
-        },
-        () => {
-          // Silent fail on geolocation denial
-        }
-      );
-    }
-  },
 }));

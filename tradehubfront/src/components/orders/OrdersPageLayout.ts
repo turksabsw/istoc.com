@@ -4,7 +4,7 @@
  * Supports hash-based sub-pages: #all-orders, #refunds, #reviews, #coupons, #tax-info
  */
 import { getBaseUrl } from '../../utils/url';
-import { getCurrencyCode } from '../../utils/currency';
+import { getCurrencyCode, getCurrencySymbol } from '../../utils/currency';
 import { t } from '../../i18n';
 
 interface OrdersNavItem {
@@ -58,7 +58,8 @@ function renderAllOrders(): string {
       <!-- Header -->
       <div class="flex items-center justify-between gap-2 px-5 max-sm:px-3 pt-6 max-[480px]:pt-4 pb-5 max-[480px]:pb-3 border-b border-gray-100">
         <h1 class="text-[22px] max-sm:text-lg max-[480px]:text-base font-bold text-gray-900" data-i18n="orders.yourOrders">${t('orders.yourOrders')}</h1>
-        <button data-modal="remittance-modal" class="px-5 max-sm:px-3 max-[480px]:px-2.5 py-2 text-sm max-sm:text-xs text-gray-700 bg-white border border-gray-300 rounded-full cursor-pointer whitespace-nowrap transition-colors hover:border-gray-400 hover:bg-gray-50">
+        <button @click="document.getElementById('remittance-modal')?.classList.remove('hidden'); document.getElementById('remittance-modal')?.classList.add('flex'); document.body.style.overflow = 'hidden'"
+          class="px-5 max-sm:px-3 max-[480px]:px-2.5 py-2 text-sm max-sm:text-xs text-gray-700 bg-white border border-gray-300 rounded-full cursor-pointer whitespace-nowrap transition-colors hover:border-gray-400 hover:bg-gray-50">
           ${t('orders.submitRemittanceProof')}
         </button>
       </div>
@@ -267,8 +268,16 @@ function renderAllOrders(): string {
         </div>
       </template>
 
+      <!-- Loading Indicator -->
+      <template x-if="loading">
+        <div class="flex flex-col items-center justify-center gap-3 py-16 text-center">
+          <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-600"></div>
+          <p class="text-sm text-gray-500">${t('orders.loadingOrders') || 'Siparişler yükleniyor...'}</p>
+        </div>
+      </template>
+
       <!-- Orders List -->
-      <div class="px-7 max-sm:px-3 max-[480px]:px-2 pb-6 space-y-4 max-[480px]:space-y-3">
+      <div x-show="!loading" class="px-7 max-sm:px-3 max-[480px]:px-2 pb-6 space-y-4 max-[480px]:space-y-3">
         <template x-if="filteredOrders.length === 0">
           <div class="flex flex-col items-center justify-center gap-3 py-16 text-center">
             ${EMPTY_RECEIPT_ICON}
@@ -436,42 +445,52 @@ function renderAllOrders(): string {
 
         <!-- Section 2: Progress Stepper -->
         <div class="px-7 max-sm:px-3 py-6 border-b border-gray-100">
-          <div class="flex items-center justify-between max-w-2xl mx-auto max-sm:max-w-full">
-            <!-- Step 1: Siparis -->
-            <div class="flex flex-col items-center gap-1.5 relative z-10">
-              <div class="w-8 h-8 max-sm:w-6 max-sm:h-6 rounded-full flex items-center justify-center text-xs font-bold transition-colors"
-                   :class="getStepIndex(selectedOrder) >= 0 ? 'bg-amber-500 text-white' : 'bg-gray-200 text-gray-500'">1</div>
-              <span class="text-xs max-sm:text-[10px] text-gray-600 whitespace-nowrap">${t('orders.stepOrder')}</span>
+          <!-- Cancelled banner -->
+          <template x-if="isCancelled(selectedOrder)">
+            <div class="flex items-center justify-center gap-2 py-3 px-4 bg-red-50 border border-red-200 rounded-lg max-w-2xl mx-auto">
+              <svg class="w-5 h-5 text-red-500 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M18.364 5.636l-12.728 12.728M5.636 5.636l12.728 12.728"/></svg>
+              <span class="text-sm font-medium text-red-700">${t('orders.orderCancelled') || 'Bu sipariş iptal edilmiştir'}</span>
             </div>
-            <div class="flex-1 h-0.5 -mt-4 max-sm:-mt-3" :class="getStepIndex(selectedOrder) >= 1 ? 'bg-amber-500' : 'bg-gray-200'"></div>
-            <!-- Step 2: Ödeme -->
-            <div class="flex flex-col items-center gap-1.5 relative z-10">
-              <div class="w-8 h-8 max-sm:w-6 max-sm:h-6 rounded-full flex items-center justify-center text-xs font-bold transition-colors"
-                   :class="getStepIndex(selectedOrder) >= 1 ? 'bg-amber-500 text-white' : 'bg-gray-200 text-gray-500'">2</div>
-              <span class="text-xs max-sm:text-[10px] text-gray-600 whitespace-nowrap">${t('orders.stepPayment')}</span>
+          </template>
+          <!-- Normal stepper (only for non-cancelled orders) -->
+          <template x-if="!isCancelled(selectedOrder)">
+            <div class="flex items-center justify-between max-w-2xl mx-auto max-sm:max-w-full">
+              <!-- Step 1: Siparis -->
+              <div class="flex flex-col items-center gap-1.5 relative z-10">
+                <div class="w-8 h-8 max-sm:w-6 max-sm:h-6 rounded-full flex items-center justify-center text-xs font-bold transition-colors"
+                     :class="getStepIndex(selectedOrder) >= 0 ? 'bg-amber-500 text-white' : 'bg-gray-200 text-gray-500'">1</div>
+                <span class="text-xs max-sm:text-[10px] text-gray-600 whitespace-nowrap">${t('orders.stepOrder')}</span>
+              </div>
+              <div class="flex-1 h-0.5 -mt-4 max-sm:-mt-3" :class="getStepIndex(selectedOrder) >= 1 ? 'bg-amber-500' : 'bg-gray-200'"></div>
+              <!-- Step 2: Ödeme -->
+              <div class="flex flex-col items-center gap-1.5 relative z-10">
+                <div class="w-8 h-8 max-sm:w-6 max-sm:h-6 rounded-full flex items-center justify-center text-xs font-bold transition-colors"
+                     :class="getStepIndex(selectedOrder) >= 1 ? 'bg-amber-500 text-white' : 'bg-gray-200 text-gray-500'">2</div>
+                <span class="text-xs max-sm:text-[10px] text-gray-600 whitespace-nowrap">${t('orders.stepPayment')}</span>
+              </div>
+              <div class="flex-1 h-0.5 -mt-4 max-sm:-mt-3" :class="getStepIndex(selectedOrder) >= 2 ? 'bg-amber-500' : 'bg-gray-200'"></div>
+              <!-- Step 3: Kargolama -->
+              <div class="flex flex-col items-center gap-1.5 relative z-10">
+                <div class="w-8 h-8 max-sm:w-6 max-sm:h-6 rounded-full flex items-center justify-center text-xs font-bold transition-colors"
+                     :class="getStepIndex(selectedOrder) >= 2 ? 'bg-amber-500 text-white' : 'bg-gray-200 text-gray-500'">3</div>
+                <span class="text-xs max-sm:text-[10px] text-gray-600 whitespace-nowrap">${t('orders.stepShipping')}</span>
+              </div>
+              <div class="flex-1 h-0.5 -mt-4 max-sm:-mt-3" :class="getStepIndex(selectedOrder) >= 3 ? 'bg-amber-500' : 'bg-gray-200'"></div>
+              <!-- Step 4: Teslimat -->
+              <div class="flex flex-col items-center gap-1.5 relative z-10">
+                <div class="w-8 h-8 max-sm:w-6 max-sm:h-6 rounded-full flex items-center justify-center text-xs font-bold transition-colors"
+                     :class="getStepIndex(selectedOrder) >= 3 ? 'bg-amber-500 text-white' : 'bg-gray-200 text-gray-500'">4</div>
+                <span class="text-xs max-sm:text-[10px] text-gray-600 whitespace-nowrap">${t('orders.stepDelivery')}</span>
+              </div>
+              <div class="flex-1 h-0.5 -mt-4 max-sm:-mt-3" :class="getStepIndex(selectedOrder) >= 4 ? 'bg-amber-500' : 'bg-gray-200'"></div>
+              <!-- Step 5: Degerlendirme -->
+              <div class="flex flex-col items-center gap-1.5 relative z-10">
+                <div class="w-8 h-8 max-sm:w-6 max-sm:h-6 rounded-full flex items-center justify-center text-xs font-bold transition-colors"
+                     :class="getStepIndex(selectedOrder) >= 4 ? 'bg-amber-500 text-white' : 'bg-gray-200 text-gray-500'">5</div>
+                <span class="text-xs max-sm:text-[10px] text-gray-600 whitespace-nowrap">${t('orders.stepReview')}</span>
+              </div>
             </div>
-            <div class="flex-1 h-0.5 -mt-4 max-sm:-mt-3" :class="getStepIndex(selectedOrder) >= 2 ? 'bg-amber-500' : 'bg-gray-200'"></div>
-            <!-- Step 3: Kargolama -->
-            <div class="flex flex-col items-center gap-1.5 relative z-10">
-              <div class="w-8 h-8 max-sm:w-6 max-sm:h-6 rounded-full flex items-center justify-center text-xs font-bold transition-colors"
-                   :class="getStepIndex(selectedOrder) >= 2 ? 'bg-amber-500 text-white' : 'bg-gray-200 text-gray-500'">3</div>
-              <span class="text-xs max-sm:text-[10px] text-gray-600 whitespace-nowrap">${t('orders.stepShipping')}</span>
-            </div>
-            <div class="flex-1 h-0.5 -mt-4 max-sm:-mt-3" :class="getStepIndex(selectedOrder) >= 3 ? 'bg-amber-500' : 'bg-gray-200'"></div>
-            <!-- Step 4: Teslimat -->
-            <div class="flex flex-col items-center gap-1.5 relative z-10">
-              <div class="w-8 h-8 max-sm:w-6 max-sm:h-6 rounded-full flex items-center justify-center text-xs font-bold transition-colors"
-                   :class="getStepIndex(selectedOrder) >= 3 ? 'bg-amber-500 text-white' : 'bg-gray-200 text-gray-500'">4</div>
-              <span class="text-xs max-sm:text-[10px] text-gray-600 whitespace-nowrap">${t('orders.stepDelivery')}</span>
-            </div>
-            <div class="flex-1 h-0.5 -mt-4 max-sm:-mt-3" :class="getStepIndex(selectedOrder) >= 4 ? 'bg-amber-500' : 'bg-gray-200'"></div>
-            <!-- Step 5: Degerlendirme -->
-            <div class="flex flex-col items-center gap-1.5 relative z-10">
-              <div class="w-8 h-8 max-sm:w-6 max-sm:h-6 rounded-full flex items-center justify-center text-xs font-bold transition-colors"
-                   :class="getStepIndex(selectedOrder) >= 4 ? 'bg-amber-500 text-white' : 'bg-gray-200 text-gray-500'">5</div>
-              <span class="text-xs max-sm:text-[10px] text-gray-600 whitespace-nowrap">${t('orders.stepReview')}</span>
-            </div>
-          </div>
+          </template>
         </div>
 
         <!-- Section 3: Status -->
@@ -507,17 +526,21 @@ function renderAllOrders(): string {
             </ul>
           </div>
 
-          <!-- 3 Action Buttons -->
-          <div class="flex items-center gap-3 mt-4 flex-wrap">
-            <button @click="window.location.href='${getBaseUrl()}pages/order/order-success.html'" class="th-btn th-btn-pill">
-              ${t('orders.makePayment')}
-            </button>
+          <!-- Action Buttons (status-aware) -->
+          <div class="flex items-center gap-3 mt-4 flex-wrap" x-show="isActionable(selectedOrder)">
+            <template x-if="canPay(selectedOrder)">
+              <button @click="window.location.href='${getBaseUrl()}pages/order/order-success.html'" class="th-btn th-btn-pill">
+                ${t('orders.makePayment')}
+              </button>
+            </template>
             <button @click="openModal('showModifyShipping')" class="th-btn-outline th-btn-pill">
               ${t('orders.modifyShippingDetails')}
             </button>
-            <button @click="openModal('showCancelOrder')" class="th-btn-outline th-btn-pill">
-              ${t('orders.cancelOrderBtn')}
-            </button>
+            <template x-if="canCancel(selectedOrder)">
+              <button @click="openModal('showCancelOrder')" class="th-btn-outline th-btn-pill">
+                ${t('orders.cancelOrderBtn')}
+              </button>
+            </template>
           </div>
         </div>
 
@@ -642,8 +665,15 @@ function renderAllOrders(): string {
             <!-- Left: Payment status -->
             <div>
               <div class="flex items-center gap-2 mb-3">
-                <span class="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-medium bg-green-50 text-green-700 rounded-full">
-                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M5 13l4 4L19 7"/></svg>
+                <span class="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded-full"
+                    :class="selectedOrder.payment.status === 'Paid' ? 'bg-green-50 text-green-700' :
+                            selectedOrder.payment.status === 'Processing' ? 'bg-blue-50 text-blue-700' :
+                            selectedOrder.payment.status === 'Refunded' ? 'bg-purple-50 text-purple-700' :
+                            'bg-amber-50 text-amber-700'">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"
+                       x-show="selectedOrder.payment.status === 'Paid'"><path stroke-linecap="round" d="M5 13l4 4L19 7"/></svg>
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"
+                       x-show="selectedOrder.payment.status !== 'Paid'"><path stroke-linecap="round" d="M12 8v4m0 4h.01"/><circle cx="12" cy="12" r="10"/></svg>
                   <span x-text="selectedOrder.payment.status"></span>
                 </span>
               </div>
@@ -801,21 +831,64 @@ function renderAllOrders(): string {
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M6 18L18 6M6 6l12 12"/></svg>
               </button>
             </div>
-            <!-- Body -->
+            <!-- Body — Dynamic timeline based on order status -->
             <div class="px-6 py-5 overflow-y-auto max-h-[60vh]">
               <div class="relative pl-6 border-l-2 border-gray-200 space-y-6">
-                <!-- Timeline item -->
+                <!-- Step 1: Order submitted (always) -->
                 <div class="relative">
                   <div class="absolute -left-[25px] top-1 w-3 h-3 bg-amber-500 rounded-full border-2 border-white"></div>
                   <p class="text-sm font-medium text-gray-900">${t('orders.orderSubmitted')}</p>
                   <p class="text-xs text-gray-500 mt-0.5" x-text="selectedOrder.orderDate"></p>
                   <p class="text-xs text-gray-400 mt-1" x-text="'${t('orders.orderPrefix')} ' + selectedOrder.orderNumber"></p>
                 </div>
-                <div class="relative">
-                  <div class="absolute -left-[25px] top-1 w-3 h-3 bg-gray-300 rounded-full border-2 border-white"></div>
-                  <p class="text-sm font-medium text-gray-600">${t('orders.awaitingPayment')}</p>
-                  <p class="text-xs text-gray-400 mt-1">${t('orders.waitingPaymentMessage')}</p>
-                </div>
+
+                <!-- Cancelled -->
+                <template x-if="selectedOrder.status === 'Cancelled'">
+                  <div class="relative">
+                    <div class="absolute -left-[25px] top-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white"></div>
+                    <p class="text-sm font-medium text-red-600">${t('orders.orderCancelled')}</p>
+                    <p class="text-xs text-gray-400 mt-1" x-text="selectedOrder.statusDescription"></p>
+                  </div>
+                </template>
+
+                <!-- Normal flow steps -->
+                <template x-if="selectedOrder.status !== 'Cancelled'">
+                  <div class="space-y-6">
+                    <!-- Step 2: Payment -->
+                    <div class="relative">
+                      <div class="absolute -left-[25px] top-1 w-3 h-3 rounded-full border-2 border-white"
+                           :class="getStepIndex(selectedOrder) >= 1 ? 'bg-amber-500' : 'bg-gray-300'"></div>
+                      <p class="text-sm font-medium" :class="getStepIndex(selectedOrder) >= 1 ? 'text-gray-900' : 'text-gray-400'"
+                         x-text="getStepIndex(selectedOrder) === 0 ? '${t('orders.awaitingPayment')}' : '${t('orders.orderConfirming')}'"></p>
+                      <p class="text-xs text-gray-400 mt-1"
+                         x-text="getStepIndex(selectedOrder) === 0 ? '${t('orders.waitingPaymentMessage')}' : '${t('orders.orderConfirmingMessage')}'"></p>
+                    </div>
+                    <!-- Step 3: Preparing -->
+                    <template x-if="getStepIndex(selectedOrder) >= 2">
+                      <div class="relative">
+                        <div class="absolute -left-[25px] top-1 w-3 h-3 bg-amber-500 rounded-full border-2 border-white"></div>
+                        <p class="text-sm font-medium text-gray-900">${t('orders.orderPreparing')}</p>
+                        <p class="text-xs text-gray-400 mt-1">${t('orders.orderPreparingMessage')}</p>
+                      </div>
+                    </template>
+                    <!-- Step 4: Delivering -->
+                    <template x-if="getStepIndex(selectedOrder) >= 3">
+                      <div class="relative">
+                        <div class="absolute -left-[25px] top-1 w-3 h-3 bg-amber-500 rounded-full border-2 border-white"></div>
+                        <p class="text-sm font-medium text-gray-900">${t('orders.orderDelivering')}</p>
+                        <p class="text-xs text-gray-400 mt-1">${t('orders.orderDeliveringMessage')}</p>
+                      </div>
+                    </template>
+                    <!-- Step 5: Completed -->
+                    <template x-if="getStepIndex(selectedOrder) >= 4">
+                      <div class="relative">
+                        <div class="absolute -left-[25px] top-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
+                        <p class="text-sm font-medium text-green-700">${t('orders.orderCompleted')}</p>
+                        <p class="text-xs text-gray-400 mt-1">${t('orders.orderCompletedMessage')}</p>
+                      </div>
+                    </template>
+                  </div>
+                </template>
               </div>
             </div>
             <!-- Footer -->
@@ -919,59 +992,110 @@ function renderAllOrders(): string {
             </div>
             <!-- Body -->
             <div class="px-6 py-5 overflow-y-auto max-h-[55vh]">
-              <!-- Payment records tab -->
-              <div x-show="paymentHistoryTab === 'records'">
-                <table class="w-full text-sm">
-                  <thead>
-                    <tr class="border-b border-gray-200">
-                      <th class="text-left text-xs font-semibold text-gray-500 uppercase pb-3 pr-4">${t('orders.date')}</th>
-                      <th class="text-left text-xs font-semibold text-gray-500 uppercase pb-3 pr-4">${t('orders.method')}</th>
-                      <th class="text-right text-xs font-semibold text-gray-500 uppercase pb-3 pr-4">${t('orders.amount')}</th>
-                      <th class="text-right text-xs font-semibold text-gray-500 uppercase pb-3">${t('orders.status')}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td colspan="4" class="py-12 text-center text-gray-400 text-sm">${t('orders.noPaymentRecords')}</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-              <!-- Refunds tab -->
-              <div x-show="paymentHistoryTab === 'refunds'">
-                <table class="w-full text-sm">
-                  <thead>
-                    <tr class="border-b border-gray-200">
-                      <th class="text-left text-xs font-semibold text-gray-500 uppercase pb-3 pr-4">${t('orders.date')}</th>
-                      <th class="text-left text-xs font-semibold text-gray-500 uppercase pb-3 pr-4">${t('orders.reason')}</th>
-                      <th class="text-right text-xs font-semibold text-gray-500 uppercase pb-3 pr-4">${t('orders.amount')}</th>
-                      <th class="text-right text-xs font-semibold text-gray-500 uppercase pb-3">${t('orders.status')}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td colspan="4" class="py-12 text-center text-gray-400 text-sm">${t('orders.noRefundRecords')}</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-              <!-- Wire transfer tab -->
-              <div x-show="paymentHistoryTab === 'wire'">
-                <table class="w-full text-sm">
-                  <thead>
-                    <tr class="border-b border-gray-200">
-                      <th class="text-left text-xs font-semibold text-gray-500 uppercase pb-3 pr-4">${t('orders.date')}</th>
-                      <th class="text-left text-xs font-semibold text-gray-500 uppercase pb-3 pr-4">${t('orders.reference')}</th>
-                      <th class="text-right text-xs font-semibold text-gray-500 uppercase pb-3 pr-4">${t('orders.amount')}</th>
-                      <th class="text-right text-xs font-semibold text-gray-500 uppercase pb-3">${t('orders.status')}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td colspan="4" class="py-12 text-center text-gray-400 text-sm">${t('orders.noWireTransferRecords')}</td>
-                    </tr>
-                  </tbody>
-                </table>
+              <!-- Loading -->
+              <template x-if="paymentLoading">
+                <div class="flex items-center justify-center py-12">
+                  <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-amber-600"></div>
+                </div>
+              </template>
+
+              <div x-show="!paymentLoading">
+                <!-- Payment records tab -->
+                <div x-show="paymentHistoryTab === 'records'">
+                  <table class="w-full text-sm">
+                    <thead>
+                      <tr class="border-b border-gray-200">
+                        <th class="text-left text-xs font-semibold text-gray-500 uppercase pb-3 pr-4">${t('orders.date')}</th>
+                        <th class="text-left text-xs font-semibold text-gray-500 uppercase pb-3 pr-4">${t('orders.method')}</th>
+                        <th class="text-right text-xs font-semibold text-gray-500 uppercase pb-3 pr-4">${t('orders.amount')}</th>
+                        <th class="text-right text-xs font-semibold text-gray-500 uppercase pb-3">${t('orders.status')}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <template x-if="paymentRecords.length === 0">
+                        <tr>
+                          <td colspan="4" class="py-12 text-center text-gray-400 text-sm">${t('orders.noPaymentRecords')}</td>
+                        </tr>
+                      </template>
+                      <template x-for="rec in paymentRecords" :key="rec.name">
+                        <tr class="border-b border-gray-100">
+                          <td class="py-3 pr-4 text-gray-700" x-text="rec.payment_date ? new Date(rec.payment_date).toLocaleDateString('tr-TR') : '-'"></td>
+                          <td class="py-3 pr-4 text-gray-700" x-text="rec.method || '-'"></td>
+                          <td class="py-3 pr-4 text-right font-medium text-gray-900" x-text="(rec.currency || 'USD') + ' ' + Number(rec.amount || 0).toFixed(2)"></td>
+                          <td class="py-3 text-right">
+                            <span class="inline-flex px-2 py-0.5 text-xs font-medium rounded-full"
+                                  :class="rec.status === 'Completed' ? 'bg-green-50 text-green-700' : rec.status === 'Failed' ? 'bg-red-50 text-red-700' : 'bg-amber-50 text-amber-700'"
+                                  x-text="rec.status"></span>
+                          </td>
+                        </tr>
+                      </template>
+                    </tbody>
+                  </table>
+                </div>
+                <!-- Refunds tab -->
+                <div x-show="paymentHistoryTab === 'refunds'">
+                  <table class="w-full text-sm">
+                    <thead>
+                      <tr class="border-b border-gray-200">
+                        <th class="text-left text-xs font-semibold text-gray-500 uppercase pb-3 pr-4">${t('orders.date')}</th>
+                        <th class="text-left text-xs font-semibold text-gray-500 uppercase pb-3 pr-4">${t('orders.reason')}</th>
+                        <th class="text-right text-xs font-semibold text-gray-500 uppercase pb-3 pr-4">${t('orders.amount')}</th>
+                        <th class="text-right text-xs font-semibold text-gray-500 uppercase pb-3">${t('orders.status')}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <template x-if="refundRecords.length === 0">
+                        <tr>
+                          <td colspan="4" class="py-12 text-center text-gray-400 text-sm">${t('orders.noRefundRecords')}</td>
+                        </tr>
+                      </template>
+                      <template x-for="rec in refundRecords" :key="rec.name">
+                        <tr class="border-b border-gray-100">
+                          <td class="py-3 pr-4 text-gray-700" x-text="rec.payment_date ? new Date(rec.payment_date).toLocaleDateString('tr-TR') : '-'"></td>
+                          <td class="py-3 pr-4 text-gray-700" x-text="rec.reason || '-'"></td>
+                          <td class="py-3 pr-4 text-right font-medium text-red-600" x-text="(rec.currency || 'USD') + ' -' + Number(rec.amount || 0).toFixed(2)"></td>
+                          <td class="py-3 text-right">
+                            <span class="inline-flex px-2 py-0.5 text-xs font-medium rounded-full"
+                                  :class="rec.status === 'Refunded' ? 'bg-purple-50 text-purple-700' : 'bg-amber-50 text-amber-700'"
+                                  x-text="rec.status"></span>
+                          </td>
+                        </tr>
+                      </template>
+                    </tbody>
+                  </table>
+                </div>
+                <!-- Wire transfer tab -->
+                <div x-show="paymentHistoryTab === 'wire'">
+                  <table class="w-full text-sm">
+                    <thead>
+                      <tr class="border-b border-gray-200">
+                        <th class="text-left text-xs font-semibold text-gray-500 uppercase pb-3 pr-4">${t('orders.date')}</th>
+                        <th class="text-left text-xs font-semibold text-gray-500 uppercase pb-3 pr-4">${t('orders.reference')}</th>
+                        <th class="text-right text-xs font-semibold text-gray-500 uppercase pb-3 pr-4">${t('orders.amount')}</th>
+                        <th class="text-right text-xs font-semibold text-gray-500 uppercase pb-3">${t('orders.status')}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <template x-if="wireRecords.length === 0">
+                        <tr>
+                          <td colspan="4" class="py-12 text-center text-gray-400 text-sm">${t('orders.noWireTransferRecords')}</td>
+                        </tr>
+                      </template>
+                      <template x-for="rec in wireRecords" :key="rec.name">
+                        <tr class="border-b border-gray-100">
+                          <td class="py-3 pr-4 text-gray-700" x-text="rec.payment_date ? new Date(rec.payment_date).toLocaleDateString('tr-TR') : '-'"></td>
+                          <td class="py-3 pr-4 text-gray-700 font-mono text-xs" x-text="rec.reference || '-'"></td>
+                          <td class="py-3 pr-4 text-right font-medium text-gray-900" x-text="(rec.currency || 'USD') + ' ' + Number(rec.amount || 0).toFixed(2)"></td>
+                          <td class="py-3 text-right">
+                            <span class="inline-flex px-2 py-0.5 text-xs font-medium rounded-full"
+                                  :class="rec.status === 'Completed' ? 'bg-green-50 text-green-700' : rec.status === 'Failed' ? 'bg-red-50 text-red-700' : 'bg-amber-50 text-amber-700'"
+                                  x-text="rec.status"></span>
+                          </td>
+                        </tr>
+                      </template>
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
             <!-- Footer -->
@@ -1616,7 +1740,7 @@ function renderCoupons(): string {
                 <!-- Value display -->
                 <div class="flex-shrink-0 text-right">
                   <span class="text-lg font-bold" :class="coupon.status === 'available' ? 'text-(--color-text-heading,#111827)' : 'text-(--color-text-muted,#666)'"
-                    x-text="coupon.type === 'shipping' ? '${t('orders.free')}' : (coupon.type === 'percent' ? '%' + coupon.value : '$' + coupon.value)"></span>
+                    x-text="coupon.type === 'shipping' ? '${t('orders.free')}' : (coupon.type === 'percent' ? '%' + coupon.value : '${getCurrencySymbol()}' + coupon.value)"></span>
                 </div>
               </div>
             </div>
@@ -1628,7 +1752,7 @@ function renderCoupons(): string {
       <div x-show="activeTab === 'coupons-credit'">
         <div class="mx-7 my-5 p-5 border border-(--color-border-default,#e5e5e5) rounded-lg">
           <p class="text-sm text-(--color-text-body,#333) mb-2">${t('orders.totalCreditBalance')}</p>
-          <p class="text-[28px] font-bold text-(--color-text-heading,#111827) mb-2" x-text="'$' + creditBalance.toFixed(2)"></p>
+          <p class="text-[28px] font-bold text-(--color-text-heading,#111827) mb-2" x-text="'${getCurrencySymbol()}' + creditBalance.toFixed(2)"></p>
           <p class="text-[13px] text-(--color-text-muted,#666)">${t('orders.creditEqualsUsd')} <a href="#terms" class="text-(--color-text-link,#cc9900) hover:text-(--color-text-link-hover,#b38600) underline">${t('orders.termsAndConditions')}</a></p>
         </div>
 
@@ -1661,7 +1785,7 @@ function renderCoupons(): string {
                   <td class="px-4 py-3 text-[13px] text-(--color-text-body,#333)" x-text="entry.description"></td>
                   <td class="px-4 py-3 text-[13px] text-(--color-text-muted,#666) whitespace-nowrap" x-text="formatDate(entry.date)"></td>
                   <td class="px-4 py-3 text-[13px] font-semibold whitespace-nowrap" :class="creditAmountClass(entry.type)"
-                    x-text="(entry.amount >= 0 ? '+' : '') + '$' + Math.abs(entry.amount).toFixed(2)"></td>
+                    x-text="(entry.amount >= 0 ? '+' : '') + '${getCurrencySymbol()}' + Math.abs(entry.amount).toFixed(2)"></td>
                 </tr>
               </template>
             </tbody>

@@ -121,13 +121,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
         <!-- Actions -->
         <div class="flex flex-col gap-3 max-w-[320px] mx-auto">
-          <a href="/pages/dashboard/payment.html"
-            class="w-full bg-[#d24600] hover:bg-[#b03b00] text-white font-bold py-3 px-6 rounded-full transition-colors text-[15px] text-center block no-underline">
-            <span data-i18n="paymentStatus.makePayment">${t('paymentStatus.makePayment')}</span>
-          </a>
           <a href="/pages/dashboard/orders.html"
-            class="w-full bg-white border border-[#ccc] hover:border-[#999] hover:bg-gray-50 text-[#333] font-bold py-3 px-6 rounded-full transition-all text-center block text-[15px] no-underline">
+            class="w-full bg-[#d24600] hover:bg-[#b03b00] text-white font-bold py-3 px-6 rounded-full transition-colors text-[15px] text-center block no-underline">
             <span data-i18n="paymentStatus.viewAllOrders">${t('paymentStatus.viewAllOrders')}</span>
+          </a>
+          <a href="/"
+            class="w-full bg-white border border-[#ccc] hover:border-[#999] hover:bg-gray-50 text-[#333] font-bold py-3 px-6 rounded-full transition-all text-center block text-[15px] no-underline">
+            <span data-i18n="paymentStatus.continueShopping">${t('paymentStatus.continueShopping')}</span>
           </a>
         </div>
       </div>

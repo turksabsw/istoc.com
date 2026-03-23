@@ -14,6 +14,18 @@ export interface SellerProfile {
   location: string;
   mainCategories: string[];
   email?: string;
+  phone?: string;
+  website?: string;
+  city?: string;
+  district?: string;
+  address?: string;
+  company_name?: string;
+  description?: string;
+  business_type?: string;
+  main_markets?: string;
+  staff_count?: number;
+  annual_revenue?: string;
+  founded_year?: number;
   deliveryBadge?: string;
   assessmentBadge?: string;
   verificationDate: string;

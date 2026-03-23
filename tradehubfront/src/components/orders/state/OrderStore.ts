@@ -1,125 +1,142 @@
 /**
- * OrderStore — Merkezi Sipariş State Store
- * CartStore singleton pattern'i ile localStorage persistence.
+ * OrderStore — API-only Sipariş State Store
+ * Tüm sipariş verisi backend'den (Buyer Order DocType) gelir.
+ * localStorage kullanılmaz — eski mock veri sayfa yüklenirken temizlenir.
  */
 
 import type { Order, OrderStatus, OrderStatusColor } from '../../../types/order';
+import { callMethod } from '../../../utils/api';
 
-const STORAGE_KEY = 'tradehub_orders';
-const SEED_FLAG = 'tradehub_orders_seeded';
+// Eski mock verinin tüm kalıntılarını temizle
+localStorage.removeItem('tradehub_orders');
+localStorage.removeItem('tradehub_orders_seeded');
+localStorage.removeItem('tradehub_orders_api_migrated');
 
-const SEED_ORDERS: Order[] = [
-  {
-    id: 'ord-seed-1',
-    orderNumber: '29303B587501029918',
-    orderDate: 'Mar 04, 2026, PST',
-    total: '118.28',
-    currency: 'USD',
-    seller: 'Guangzhou Yuanfuyuan Leather Co., Ltd.',
-    status: 'Waiting for payment',
-    statusColor: 'text-amber-600',
-    statusDescription: 'Please complete your payment soon.',
-    products: [
-      {
-        name: 'Custom Retro Waterproof Tote Satchel Camera Shoulder Crossbody Laptop Vintage Bag Waxed Canvas Messenger Bag for Men',
-        variation: 'Gray',
-        unitPrice: '59.14',
-        quantity: 2,
-        totalPrice: '118.28',
-        image: 'https://placehold.co/80x80/292929/FFF?text=Bag+1',
-      },
-    ],
+interface ApiOrderItem {
+  product_name: string;
+  variation: string;
+  unit_price: number;
+  quantity: number;
+  total_price: number;
+  image: string;
+}
+
+interface ApiOrder {
+  name: string;
+  order_number: string;
+  order_date: string;
+  seller_name: string;
+  status: string;
+  status_color: string;
+  status_description: string;
+  grand_total: number;
+  currency: string;
+  payment_method: string;
+  payment_status: string;
+  shipping_status: string;
+  subtotal: number;
+  shipping_fee: number;
+  supplier_name: string;
+  supplier_contact: string;
+  supplier_phone: string;
+  supplier_email: string;
+  shipping_address: string;
+  ship_from: string;
+  shipping_method: string;
+  incoterms: string;
+  cancel_reason: string;
+  items: ApiOrderItem[];
+}
+
+function apiOrderToOrder(apiOrder: ApiOrder): Order {
+  const dateStr = apiOrder.order_date
+    ? new Date(apiOrder.order_date).toLocaleDateString('en-US', {
+        month: 'short',
+        day: '2-digit',
+        year: 'numeric',
+      }) + ', PST'
+    : '';
+
+  return {
+    id: apiOrder.name,
+    orderNumber: apiOrder.order_number,
+    orderDate: dateStr,
+    total: String(apiOrder.grand_total || 0),
+    currency: apiOrder.currency || 'USD',
+    seller: apiOrder.seller_name || '',
+    status: (apiOrder.status || 'Waiting for payment') as OrderStatus,
+    statusColor: (apiOrder.status_color || 'text-amber-600') as OrderStatusColor,
+    statusDescription: apiOrder.status_description || '',
+    products: (apiOrder.items || []).map((item) => ({
+      name: item.product_name,
+      variation: item.variation || '',
+      unitPrice: String(item.unit_price || 0),
+      quantity: item.quantity || 1,
+      totalPrice: String(item.total_price || 0),
+      image: item.image || '',
+    })),
     shipping: {
-      trackingStatus: 'Pending',
-      address: 'Turkey',
-      shipFrom: 'China',
-      method: 'Standard',
-      incoterms: 'DAP',
+      trackingStatus: apiOrder.shipping_status || 'Pending',
+      address: apiOrder.shipping_address || '',
+      shipFrom: apiOrder.ship_from || '',
+      method: apiOrder.shipping_method || 'Standard',
+      incoterms: apiOrder.incoterms || 'DAP',
     },
     payment: {
-      status: 'Unpaid',
-      hasRecord: false,
-      subtotal: '118.28',
-      shippingFee: '0.00',
-      grandTotal: '118.28',
+      status: apiOrder.payment_status || 'Unpaid',
+      hasRecord: apiOrder.payment_status === 'Paid',
+      subtotal: String(apiOrder.subtotal || 0),
+      shippingFee: String(apiOrder.shipping_fee || 0),
+      grandTotal: String(apiOrder.grand_total || 0),
     },
     supplier: {
-      name: 'Guangzhou Yuanfuyuan Leather Co., Ltd.',
-      contact: 'Sales Team',
-      phone: '+86 123 4567 8900',
-      email: 'contact@yuanfuyuan.com',
+      name: apiOrder.supplier_name || apiOrder.seller_name || '',
+      contact: apiOrder.supplier_contact || 'Sales Team',
+      phone: apiOrder.supplier_phone || '',
+      email: apiOrder.supplier_email || '',
     },
-    paymentMethod: 'bank_transfer',
-    createdAt: new Date('2026-03-04T10:00:00').getTime(),
-  },
-  {
-    id: 'ord-seed-2',
-    orderNumber: '29303B591501029918',
-    orderDate: 'Mar 04, 2026, PST',
-    total: '330.80',
-    currency: 'USD',
-    seller: 'Yiwu Yingzi Leather Co., Ltd.',
-    status: 'Waiting for payment',
-    statusColor: 'text-amber-600',
-    statusDescription: 'Please complete your payment soon.',
-    products: [
-      {
-        name: "Wholesale Custom Handmade Luxury Metallic Handbags Beach Bag Luxury Wedding Evening Clutch Bag Women's Crochet Bag for Women",
-        variation: 'Blue, M',
-        unitPrice: '30.07',
-        quantity: 11,
-        totalPrice: '330.80',
-        image: 'https://placehold.co/80x80/292929/FFF?text=Bag+2',
-      },
-    ],
-    shipping: {
-      trackingStatus: 'Pending',
-      address: 'Turkey',
-      shipFrom: 'China',
-      method: 'Standard',
-      incoterms: 'DAP',
-    },
-    payment: {
-      status: 'Unpaid',
-      hasRecord: false,
-      subtotal: '330.80',
-      shippingFee: '0.00',
-      grandTotal: '330.80',
-    },
-    supplier: {
-      name: 'Yiwu Yingzi Leather Co., Ltd.',
-      contact: 'Sales Team',
-      phone: '+86 123 4567 8900',
-      email: 'contact@yingzi.com',
-    },
-    paymentMethod: 'bank_transfer',
-    createdAt: new Date('2026-03-04T10:00:00').getTime(),
-  },
-];
+    paymentMethod: apiOrder.payment_method || '',
+    createdAt: apiOrder.order_date ? new Date(apiOrder.order_date).getTime() : Date.now(),
+  };
+}
 
 export class OrderStore {
   private orders: Order[] = [];
   private listeners = new Set<() => void>();
+  private loading = false;
+  private loaded = false;
 
-  load(): void {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw) as Order[];
-        if (Array.isArray(parsed)) {
-          this.orders = parsed;
-        }
-      }
-    } catch { /* corrupted data — start fresh */ }
+  async load(): Promise<void> {
+    await this.fetchFromApi();
+  }
 
-    // Seed mock orders on first-ever load
-    if (!localStorage.getItem(SEED_FLAG)) {
-      this.orders = [...SEED_ORDERS, ...this.orders];
-      localStorage.setItem(SEED_FLAG, '1');
-      this.save();
-    }
-
+  async fetchFromApi(): Promise<void> {
+    if (this.loading) return;
+    this.loading = true;
     this.notify();
+
+    try {
+      const result = await callMethod<{
+        success: boolean;
+        orders: ApiOrder[];
+        total: number;
+      }>(
+        'tradehub_core.api.order.get_my_orders',
+        { page_size: 100 },
+      );
+
+      if (result?.success && Array.isArray(result.orders)) {
+        this.orders = result.orders.map(apiOrderToOrder);
+        this.loaded = true;
+      }
+    } catch (err) {
+      console.warn('[OrderStore] API fetch failed:', err);
+      // API başarısız → boş liste (mock data yok artık)
+      this.orders = [];
+    } finally {
+      this.loading = false;
+      this.notify();
+    }
   }
 
   getOrders(): Order[] {
@@ -130,10 +147,29 @@ export class OrderStore {
     return this.orders.find((o) => o.orderNumber === orderNumber);
   }
 
-  addOrders(newOrders: Order[]): void {
-    this.orders = [...newOrders, ...this.orders];
-    this.save();
-    this.notify();
+  isLoading(): boolean {
+    return this.loading;
+  }
+
+  isLoaded(): boolean {
+    return this.loaded;
+  }
+
+  /** Sipariş iptal — API'ye gönder */
+  async cancelOrder(orderNumber: string, reason: string): Promise<boolean> {
+    try {
+      await callMethod<{ success: boolean }>(
+        'tradehub_core.api.order.cancel_order',
+        { order_number: orderNumber, reason },
+        true,
+      );
+      // Local state'i güncelle
+      this.updateOrderStatus(orderNumber, 'Cancelled', 'text-red-600', 'Order cancelled by buyer.');
+      return true;
+    } catch (err) {
+      console.error('[OrderStore] cancel_order failed:', err);
+      return false;
+    }
   }
 
   updateOrderStatus(
@@ -147,7 +183,6 @@ export class OrderStore {
     order.status = status;
     order.statusColor = statusColor;
     order.statusDescription = statusDescription;
-    this.save();
     this.notify();
   }
 
@@ -160,12 +195,6 @@ export class OrderStore {
     for (const listener of this.listeners) {
       listener();
     }
-  }
-
-  private save(): void {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(this.orders));
-    } catch { /* quota exceeded */ }
   }
 }
 

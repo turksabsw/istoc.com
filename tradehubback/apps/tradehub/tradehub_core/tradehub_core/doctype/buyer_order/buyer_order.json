@@ -1,0 +1,235 @@
+{
+ "name": "Buyer Order",
+ "doctype": "DocType",
+ "module": "TradeHub Core",
+ "naming_rule": "By fieldname",
+ "autoname": "field:order_number",
+ "engine": "InnoDB",
+ "track_changes": 1,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "fields": [
+  {
+   "fieldname": "order_number",
+   "fieldtype": "Data",
+   "label": "Order Number",
+   "reqd": 1,
+   "unique": 1,
+   "set_only_once": 1,
+   "in_list_view": 1,
+   "bold": 1
+  },
+  {
+   "fieldname": "order_date",
+   "fieldtype": "Datetime",
+   "label": "Order Date",
+   "reqd": 1,
+   "default": "Now",
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "cb_header",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "buyer",
+   "fieldtype": "Link",
+   "label": "Buyer",
+   "options": "User",
+   "reqd": 1,
+   "search_index": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "seller_name",
+   "fieldtype": "Data",
+   "label": "Seller Name",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "sb_status",
+   "fieldtype": "Section Break",
+   "label": "Status"
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Waiting for payment\nConfirming\nPreparing Shipment\nDelivering\nCompleted\nCancelled",
+   "default": "Waiting for payment",
+   "reqd": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "status_color",
+   "fieldtype": "Data",
+   "label": "Status Color",
+   "default": "text-amber-600"
+  },
+  {
+   "fieldname": "status_description",
+   "fieldtype": "Small Text",
+   "label": "Status Description"
+  },
+  {
+   "fieldname": "cancel_reason",
+   "fieldtype": "Small Text",
+   "label": "Cancel Reason"
+  },
+  {
+   "fieldname": "sb_pricing",
+   "fieldtype": "Section Break",
+   "label": "Pricing"
+  },
+  {
+   "fieldname": "currency",
+   "fieldtype": "Data",
+   "label": "Currency",
+   "default": "USD"
+  },
+  {
+   "fieldname": "subtotal",
+   "fieldtype": "Currency",
+   "label": "Subtotal"
+  },
+  {
+   "fieldname": "cb_pricing",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "shipping_fee",
+   "fieldtype": "Currency",
+   "label": "Shipping Fee",
+   "default": "0"
+  },
+  {
+   "fieldname": "grand_total",
+   "fieldtype": "Currency",
+   "label": "Grand Total",
+   "reqd": 1,
+   "bold": 1
+  },
+  {
+   "fieldname": "sb_payment",
+   "fieldtype": "Section Break",
+   "label": "Payment"
+  },
+  {
+   "fieldname": "payment_method",
+   "fieldtype": "Data",
+   "label": "Payment Method"
+  },
+  {
+   "fieldname": "payment_status",
+   "fieldtype": "Select",
+   "label": "Payment Status",
+   "options": "Unpaid\nProcessing\nPaid\nRefunded",
+   "default": "Unpaid"
+  },
+  {
+   "fieldname": "sb_shipping",
+   "fieldtype": "Section Break",
+   "label": "Shipping"
+  },
+  {
+   "fieldname": "shipping_status",
+   "fieldtype": "Data",
+   "label": "Shipping Status",
+   "default": "Pending"
+  },
+  {
+   "fieldname": "shipping_address",
+   "fieldtype": "Data",
+   "label": "Shipping Address"
+  },
+  {
+   "fieldname": "ship_from",
+   "fieldtype": "Data",
+   "label": "Ship From"
+  },
+  {
+   "fieldname": "cb_shipping",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "shipping_method",
+   "fieldtype": "Data",
+   "label": "Shipping Method"
+  },
+  {
+   "fieldname": "incoterms",
+   "fieldtype": "Data",
+   "label": "Incoterms",
+   "default": "DAP"
+  },
+  {
+   "fieldname": "sb_supplier",
+   "fieldtype": "Section Break",
+   "label": "Supplier Info"
+  },
+  {
+   "fieldname": "supplier_name",
+   "fieldtype": "Data",
+   "label": "Supplier Name"
+  },
+  {
+   "fieldname": "supplier_contact",
+   "fieldtype": "Data",
+   "label": "Supplier Contact"
+  },
+  {
+   "fieldname": "cb_supplier",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "supplier_phone",
+   "fieldtype": "Data",
+   "label": "Supplier Phone"
+  },
+  {
+   "fieldname": "supplier_email",
+   "fieldtype": "Data",
+   "label": "Supplier Email"
+  },
+  {
+   "fieldname": "sb_items",
+   "fieldtype": "Section Break",
+   "label": "Items"
+  },
+  {
+   "fieldname": "items",
+   "fieldtype": "Table",
+   "label": "Items",
+   "options": "Buyer Order Item",
+   "reqd": 1
+  }
+ ],
+ "permissions": [
+  {
+   "role": "System Manager",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "report": 1,
+   "share": 1,
+   "export": 1,
+   "import": 1
+  },
+  {
+   "role": "Marketplace Admin",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "report": 1,
+   "export": 1
+  }
+ ],
+ "actions": [],
+ "links": [],
+ "states": []
+}

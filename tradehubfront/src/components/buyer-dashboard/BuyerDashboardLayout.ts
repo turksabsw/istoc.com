@@ -12,6 +12,7 @@ import { initOperationSlider } from './OperationSlider';
 import { FavoritesSection } from '../right-panel/FavoritesSection';
 import { BrowsingHistorySection } from '../right-panel/BrowsingHistorySection';
 import { PromotionSection, initPromotionSection } from '../right-panel/PromotionSection';
+import { getBrowsingHistory } from '../../services/browsingHistoryService';
 
 export interface BuyerDashboardLayoutProps {
   data: BuyerDashboardData;
@@ -43,7 +44,14 @@ export function BuyerDashboardLayout({ data, emailVerified = true }: BuyerDashbo
           <!-- Right Panel -->
           <div class="w-[380px] max-xl:w-[300px] max-lg:w-full flex-shrink-0 flex flex-col gap-[clamp(0.5rem,0.4rem+0.4vw,0.875rem)]">
             ${FavoritesSection()}
-            ${BrowsingHistorySection(data.browsingHistory)}
+            ${BrowsingHistorySection(getBrowsingHistory().map(h => ({
+              id: h.id,
+              image: h.image,
+              price: h.price ?? 0,
+              currency: h.currency ?? '$',
+              minOrder: h.minOrder ?? '',
+              href: h.href,
+            })))}
             ${PromotionSection(data.promotions)}
           </div>
         </div>

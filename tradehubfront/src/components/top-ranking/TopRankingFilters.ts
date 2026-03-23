@@ -7,14 +7,11 @@
  */
 
 import { t } from '../../i18n';
+import { getRegionOptions, getRankingMainCategories } from '../../data/mockTopRanking';
 
 export function TopRankingFilters(): string {
-  const regions = [
-    { id: 'global' as const, labelKey: 'topRankingPage.regionGlobal' },
-    { id: 'us' as const, labelKey: 'topRankingPage.regionUS' },
-    { id: 'europe' as const, labelKey: 'topRankingPage.regionEurope' },
-  ];
-  const mainCategories: { id: string; nameKey: string; subCategories?: { id: string; nameKey: string }[] }[] = [];
+  const regions = getRegionOptions();
+  const mainCategories = getRankingMainCategories();
 
   // ── Desktop dropdown: region radios ──
   const regionRadios = regions.map(r => `

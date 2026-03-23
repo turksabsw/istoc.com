@@ -7,7 +7,7 @@
 import type { CartSummaryData, AssuranceItem } from '../../../types/cart';
 import { PriceDisplay } from '../atoms/PriceDisplay';
 import { t } from '../../../i18n';
-import { formatCurrency, getSelectedCurrencyInfo } from '../../../services/currencyService';
+import { getSelectedCurrency } from '../../../services/currencyService';
 
 function getDefaultAssuranceItems(): AssuranceItem[] {
   return [
@@ -97,12 +97,12 @@ export function CartSummary(
       <div class="flex flex-col gap-3">
         <div class="flex justify-between items-center text-sm leading-5 text-[#333]">
           <span data-i18n="cart.productSubtotal">${t('cart.productSubtotal')}</span>
-          <span class="sc-summary-product-subtotal">${PriceDisplay({ amount: data.productSubtotal, currency: data.currency })}</span>
+          <span class="sc-summary-product-subtotal">${PriceDisplay({ amount: data.productSubtotal, fromCurrency: getSelectedCurrency() })}</span>
         </div>
         ${data.discount > 0 ? `
         <div class="sc-summary-discount-row flex justify-between items-center text-[14px] leading-[18px]">
           <span class="text-[#333]" data-i18n="cart.productDiscount">${t('cart.productDiscount')}</span>
-          <span class="sc-summary-discount text-[#FF6600] font-semibold">- ${formatCurrency(data.discount, getSelectedCurrencyInfo().code)}</span>
+          <span class="sc-summary-discount text-[#FF6600] font-semibold">- ${PriceDisplay({ amount: data.discount, fromCurrency: getSelectedCurrency() })}</span>
         </div>` : `
         <div class="sc-summary-discount-row flex justify-between items-center text-[14px] leading-[18px] hidden">
           <span class="text-[#333]" data-i18n="cart.productDiscount">${t('cart.productDiscount')}</span>
@@ -110,18 +110,18 @@ export function CartSummary(
         </div>`}
         <div class="flex justify-between items-center text-sm leading-5 text-[#333]">
           <span data-i18n="cart.shippingFee">${t('cart.shippingFee')}</span>
-          <span>${PriceDisplay({ amount: data.shippingFee, currency: data.currency })}</span>
+          <span>${PriceDisplay({ amount: data.shippingFee, fromCurrency: getSelectedCurrency() })}</span>
         </div>
       </div>
 
       <div class="flex justify-between items-center text-base sm:text-lg font-bold leading-6 text-[#222] pt-4 border-t border-[#e5e5e5] mt-2">
         <span class="min-w-0 truncate mr-2" data-i18n="cart.subtotalExTax">${t('cart.subtotalExTax')}</span>
-        <span class="sc-summary-subtotal">${PriceDisplay({ amount: data.subtotal, currency: data.currency, bold: true })}</span>
+        <span class="sc-summary-subtotal">${PriceDisplay({ amount: data.subtotal, fromCurrency: getSelectedCurrency(), bold: true })}</span>
       </div>
 
       ${data.discount > 0 ? `
       <div class="sc-summary-savings-banner mt-3 w-full h-12 rounded-[4px] px-3 py-1.5 flex items-center" style="background:linear-gradient(90deg,#ffead1,#ffd5d1)">
-        <span class="text-[14px] leading-[18px] text-[#4B1D1F]">${t('cart.savedOnOrder', { amount: `<strong class="text-[#FF6600]">${formatCurrency(data.discount, getSelectedCurrencyInfo().code)}</strong>` })}</span>
+        <span class="text-[14px] leading-[18px] text-[#4B1D1F]">${t('cart.savedOnOrder', { amount: `<strong class="text-[#FF6600]">${PriceDisplay({ amount: data.discount, fromCurrency: getSelectedCurrency() })}</strong>` })}</span>
       </div>` : `
       <div class="sc-summary-savings-banner mt-3 w-full h-12 rounded-[4px] px-3 py-1.5 flex items-center hidden" style="background:linear-gradient(90deg,#ffead1,#ffd5d1)">
         <span class="text-[14px] leading-[18px] text-[#4B1D1F]">${t('cart.savedOnOrder', { amount: '<strong class="text-[#FF6600]"></strong>' })}</span>

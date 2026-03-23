@@ -11,6 +11,10 @@ export interface BrowsingHistoryItem {
   image: string;
   title: string;
   href: string;
+  price?: number;
+  currency?: string;
+  minOrder?: string;
+  priceRange?: string;
   timestamp: number;
 }
 

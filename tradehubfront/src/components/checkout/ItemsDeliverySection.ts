@@ -3,7 +3,7 @@
  * Seller-based order list and delivery option selection.
  */
 
-import { formatCurrency, getSelectedCurrencyInfo } from '../../services/currencyService';
+import { getCurrencyCode } from '../../utils/currency';
 
 export interface CheckoutDeliveryMethod {
   id: string;
@@ -18,6 +18,7 @@ export interface CheckoutDeliverySkuLine {
   variantText: string;
   unitPrice: number;
   quantity: number;
+  listingVariant?: string;
 }
 
 export interface CheckoutDeliveryProductCard {
@@ -54,8 +55,8 @@ function escapeJsSingleQuoted(value: string): string {
   return value.replaceAll('\\', '\\\\').replaceAll("'", "\\'");
 }
 
-function fmtPrice(value: number): string {
-  return formatCurrency(value, getSelectedCurrencyInfo().code);
+function formatUsd(value: number): string {
+  return `${getCurrencyCode()} ${value.toFixed(2)}`;
 }
 
 function renderMethodOption(order: CheckoutDeliveryOrderGroup, method: CheckoutDeliveryMethod): string {
@@ -76,7 +77,7 @@ function renderMethodOption(order: CheckoutDeliveryOrderGroup, method: CheckoutD
         @change="selectMethod('${safeOrderId}', '${safeMethodId}')"
       />
       <span class="text-sm sm:text-[18px] font-semibold text-[#111827] leading-tight">${method.etaLabel}</span>
-      <span class="ml-auto text-sm sm:text-[18px] text-[#374151] border-l border-[#d1d5db] pl-2 sm:pl-3">Shipping fee: <strong>${fmtPrice(method.shippingFee)}</strong></span>
+      <span class="ml-auto text-sm sm:text-[18px] text-[#374151] border-l border-[#d1d5db] pl-2 sm:pl-3">Shipping fee: <strong>${formatUsd(method.shippingFee)}</strong></span>
     </label>
   `;
 }
@@ -88,14 +89,14 @@ function renderSkuLine(sku: CheckoutDeliverySkuLine): string {
       <img src="${sku.image}" alt="" class="w-12 h-12 sm:w-14 sm:h-14 rounded object-cover border border-[#e5e7eb]" />
       <div>
         <p class="text-sm sm:text-[16px] text-[#111827]">${sku.variantText}</p>
-        <p class="text-sm sm:text-[17px] font-semibold text-[#111827]">${fmtPrice(sku.unitPrice)} <span class="font-normal text-[#4b5563]">/piece</span></p>
+        <p class="text-sm sm:text-[17px] font-semibold text-[#111827]">${formatUsd(sku.unitPrice)} <span class="font-normal text-[#4b5563]">/piece</span></p>
         <p class="flex gap-3 sm:hidden text-sm font-semibold text-[#111827] mt-1">
           <span>x ${sku.quantity}</span>
-          <span>${fmtPrice(total)}</span>
+          <span>${formatUsd(total)}</span>
         </p>
       </div>
       <span class="hidden sm:inline text-[17px] font-semibold text-[#111827]">x ${sku.quantity}</span>
-      <span class="hidden sm:inline text-[17px] font-semibold text-[#111827]">${fmtPrice(total)}</span>
+      <span class="hidden sm:inline text-[17px] font-semibold text-[#111827]">${formatUsd(total)}</span>
     </div>
   `;
 }

@@ -1,5 +1,6 @@
 import Alpine from 'alpinejs'
 import { t } from '../i18n'
+import { callMethod } from '../utils/api'
 import { orderStore } from '../components/orders/state/OrderStore'
 import { getOrderTabs, getOrderFilters } from '../components/buyer-dashboard/ordersData'
 
@@ -27,13 +28,19 @@ Alpine.data('ordersListComponent', () => ({
   selectedOrder: null,
   copiedNumber: false,
   orders: [] as any[],
+  loading: true,
+  error: '',
 
-  init() {
-    orderStore.load();
-    this.orders = orderStore.getOrders();
+  async init() {
     orderStore.subscribe(() => {
       this.orders = orderStore.getOrders();
+      this.loading = orderStore.isLoading();
     });
+
+    // Backend'den siparişleri çek (OrderStore.load() → order.py::get_my_orders)
+    await orderStore.load();
+    this.orders = orderStore.getOrders();
+    this.loading = false;
   },
 
   get filteredOrders() {
@@ -131,9 +138,49 @@ Alpine.data('ordersListComponent', () => ({
   cancelReason: '',
   cancellingOrder: null as any,
 
+  // Payment history data (API-driven)
+  paymentRecords: [] as any[],
+  refundRecords: [] as any[],
+  wireRecords: [] as any[],
+  paymentLoading: false,
+
   openModal(name: string) {
     (this as any)[name] = true;
     document.body.style.overflow = 'hidden';
+
+    // Ödeme geçmişi modal'ı açılırken API'den veri çek
+    if (name === 'showPaymentHistory' && this.selectedOrder) {
+      this.fetchPaymentRecords((this.selectedOrder as any).orderNumber);
+    }
+  },
+
+  async fetchPaymentRecords(orderNumber: string) {
+    this.paymentLoading = true;
+    this.paymentRecords = [];
+    this.refundRecords = [];
+    this.wireRecords = [];
+
+    try {
+      const result = await callMethod<{
+        success: boolean;
+        payments: any[];
+        refunds: any[];
+        wire_transfers: any[];
+      }>(
+        'tradehub_core.api.order.get_payment_records',
+        { order_number: orderNumber },
+      );
+
+      if (result?.success) {
+        this.paymentRecords = result.payments || [];
+        this.refundRecords = result.refunds || [];
+        this.wireRecords = result.wire_transfers || [];
+      }
+    } catch (err) {
+      console.warn('[Orders] Payment records fetch failed:', err);
+    } finally {
+      this.paymentLoading = false;
+    }
   },
 
   closeModal(name: string) {
@@ -141,10 +188,12 @@ Alpine.data('ordersListComponent', () => ({
     document.body.style.overflow = '';
   },
 
-  confirmCancelOrder() {
+  async confirmCancelOrder() {
     const order = (this.cancellingOrder || this.selectedOrder) as any;
     if (!order || !this.cancelReason) return;
-    orderStore.updateOrderStatus(order.orderNumber, 'Cancelled', 'text-red-600', 'Order cancelled by buyer.');
+
+    await orderStore.cancelOrder(order.orderNumber, this.cancelReason);
+
     this.cancelReason = '';
     this.cancellingOrder = null;
     this.closeModal('showCancelOrder');
@@ -155,10 +204,29 @@ Alpine.data('ordersListComponent', () => ({
 
   getStepIndex(order: any) {
     if (!order) return -1;
+    if (order.status === 'Cancelled') return -2;
     if (order.status === 'Waiting for payment') return 0;
-    if (order.status === 'Delivering') return 2;
+    if (order.status === 'Confirming') return 1;
+    if (order.status === 'Preparing Shipment') return 2;
+    if (order.status === 'Delivering') return 3;
     if (order.status === 'Completed') return 4;
-    return 1;
+    return 0;
+  },
+
+  isCancelled(order: any) {
+    return order?.status === 'Cancelled';
+  },
+
+  isActionable(order: any) {
+    return order && order.status !== 'Cancelled' && order.status !== 'Completed';
+  },
+
+  canPay(order: any) {
+    return order && (order.status === 'Waiting for payment');
+  },
+
+  canCancel(order: any) {
+    return order && order.status !== 'Cancelled' && order.status !== 'Completed' && order.status !== 'Delivering';
   }
 }));
 

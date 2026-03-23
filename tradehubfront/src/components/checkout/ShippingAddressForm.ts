@@ -217,8 +217,7 @@ function renderAddAddressModal(countryOptions: string): string {
             <div>
               <label class="block text-[14px] text-[#6b7280] mb-1">Street address or P.O. box *</label>
               <div class="relative">
-                <input class="w-full h-12 rounded-lg border border-[#d1d5db] px-3 sm:pr-[180px] text-[14px] text-[#111827] outline-none focus:border-[#111827]" type="text" x-model="addAddressForm.street" />
-                <button type="button" class="hidden sm:flex absolute right-3 top-1/2 -translate-y-1/2 text-[14px] text-[var(--color-primary-500)] hover:text-[var(--color-primary-700)]" @click="useCurrentLocationForAddForm()">Use my current location</button>
+                <input class="w-full h-12 rounded-lg border border-[#d1d5db] px-3 text-[14px] text-[#111827] outline-none focus:border-[#111827]" type="text" x-model="addAddressForm.street" />
               </div>
               <p class="mt-1 text-[12px] text-[#dc2626]" x-show="addFormErrors.street">Required</p>
             </div>
@@ -357,12 +356,7 @@ export function ShippingAddressForm(props: ShippingAddressFormProps = {}): strin
             </div>
             <div class="h-[30px]"></div>
 
-            ${floatField('street-address', 'streetAddress', pageContent.streetAddressLabel, true, 'text', '', `
-              <button type="button" id="use-location-btn" @click.prevent="useCurrentLocation()" class="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1 bg-[#FFFFFF] px-[16px] py-0 text-[14px] text-[var(--color-primary-500)] hover:text-[var(--color-primary-700)] transition-colors">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
-                <span>${pageContent.useCurrentLocationText}</span>
-              </button>
-            `)}
+            ${floatField('street-address', 'streetAddress', pageContent.streetAddressLabel, true, 'text')}
 
             ${floatField('apartment', 'apartment', pageContent.apartmentLabel, false)}
 

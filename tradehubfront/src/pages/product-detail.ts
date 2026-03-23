@@ -105,11 +105,20 @@ async function renderProductPage() {
 
   // Save to browsing history
   if (product.id && product.images.length > 0) {
+    const priceRange = product.priceMin && product.priceMax
+      ? `${product.priceMin.toFixed(2)}-${product.priceMax.toFixed(2)}`
+      : product.priceMin
+        ? `${product.priceMin.toFixed(2)}`
+        : '';
     saveToBrowsingHistory({
       id: product.id,
       image: product.images[0].src,
       title: product.title,
       href: `/pages/product-detail.html?id=${product.id}`,
+      price: product.priceMin ?? 0,
+      currency: product.baseCurrency === 'USD' ? '$' : product.baseCurrency,
+      minOrder: product.moq ? `Min. order: ${product.moq} ${product.unit || 'Pcs'}` : '',
+      priceRange: priceRange ? `$${priceRange}` : '',
     });
   }
 

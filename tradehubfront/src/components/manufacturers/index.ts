@@ -18,5 +18,5 @@ export function ManufacturersLayout(): string {
 }
 
 export { initHorizontalCategoryBar } from './HorizontalCategoryBar';
-export { initCategoryFlyout, initManufacturersHeroImages } from './ManufacturersHero';
+export { initCategoryFlyout } from './ManufacturersHero';
 export { initFactorySliders } from './ManufacturerList';

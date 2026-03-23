@@ -81,7 +81,7 @@ export async function initCurrency(): Promise<void> {
   // Fetch fresh rates from API (non-blocking if cache exists)
   try {
     const response = await api<{ message: CurrencySettings }>(
-      '/method/tradehub.api.currency.get_currency_settings'
+      '/method/tradehub_core.api.currency.get_currency_settings'
     )
     _settings = response.message
     _saveCachedRates(_settings)
@@ -294,3 +294,17 @@ function _formatNumber(num: number): string {
   }
   return num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
+
+// ── Global Access for Alpine templates ──
+
+declare global {
+  interface Window {
+    csFormatPrice: typeof formatPrice
+    csFormatPriceRange: typeof formatPriceRange
+    csFormatCurrency: typeof formatCurrency
+  }
+}
+
+window.csFormatPrice = formatPrice
+window.csFormatPriceRange = formatPriceRange
+window.csFormatCurrency = formatCurrency

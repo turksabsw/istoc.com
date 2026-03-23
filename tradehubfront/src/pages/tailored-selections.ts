@@ -31,15 +31,18 @@ import { TailoredSelectionsHero, initTailoredSelectionsHero, TailoredProductGrid
 import { searchListings } from '../services/listingService'
 import { initCurrency } from '../services/currencyService'
 
-// Data (types only)
-import type { TailoredCategory, TailoredProduct } from '../types/tailoredSelections'
+// Data
+import { getTailoredCategories } from '../data/mockTailoredSelections'
+import type { TailoredProduct } from '../types/tailoredSelections'
 
 // Utilities
 import { initAnimatedPlaceholder } from '../utils/animatedPlaceholder'
 
 /* ── Data ── */
 
-const categories: TailoredCategory[] = [];
+// Hero categories are editorial content (curated images, descriptions, colors) — kept static
+const categories = getTailoredCategories();
+// Products are loaded from API below
 const products: TailoredProduct[] = [];
 
 /* ── Category Pills HTML ── */

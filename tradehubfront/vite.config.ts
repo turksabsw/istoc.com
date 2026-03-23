@@ -85,6 +85,22 @@ function notFoundFallbackPlugin(): Plugin {
 
 export default defineConfig({
     base: process.env.GITHUB_PAGES === 'true' ? '/tradehubfront/' : '/',
+    server: {
+        proxy: {
+            '/api': {
+                target: 'http://localhost:8000',
+                changeOrigin: true,
+            },
+            '/files': {
+                target: 'http://localhost:8000',
+                changeOrigin: true,
+            },
+            '/private/files': {
+                target: 'http://localhost:8000',
+                changeOrigin: true,
+            },
+        },
+    },
     plugins: [
         tailwindcss(),
         cssEditorPlugin(),

@@ -6,7 +6,7 @@
 
 import { getCurrentProduct } from '../../alpine/product';
 import { t } from '../../i18n';
-import { formatPrice } from '../../utils/currency';
+import { formatCurrency, getSelectedCurrency } from '../../services/currencyService';
 import type { PriceTier, ProductVariant } from '../../types/product';
 import { openShippingModal, openCartDrawer } from './CartDrawer';
 
@@ -21,7 +21,7 @@ function renderPriceTiers(tiers: PriceTier[]): string {
     return `
           <div class="pd-price-tier ${i === 0 ? 'active' : ''}" data-tier-index="${i}">
             <span class="pd-price-tier-qty">${qtyLabel}</span>
-            <span class="pd-price-tier-price shrink-0">${formatPrice('$' + tier.price.toFixed(2))}</span>
+            <span class="pd-price-tier-price shrink-0">${formatCurrency(tier.price, getSelectedCurrency())}</span>
           </div>
         `;
   }).join('')}
@@ -103,7 +103,7 @@ export function ProductInfo(): string {
         <div id="pd-sample-price" class="flex items-center justify-between gap-2 px-4 py-2.5 rounded-lg mb-5" style="background: var(--color-surface-raised, #f5f5f5);">
           <div class="flex items-center gap-2 text-sm min-w-0" style="color: var(--color-text-body, #333333);">
             <svg class="shrink-0" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>
-            <span class="truncate">${t('product.samplePrice')}: <strong class="shrink-0">${formatPrice('$' + p.samplePrice.toFixed(2))}</strong></span>
+            <span class="truncate">${t('product.samplePrice')}: <strong class="shrink-0">${formatCurrency(p.samplePrice, getSelectedCurrency())}</strong></span>
           </div>
           <button type="button" data-order-sample="${mockProduct.id}" class="pd-sample-btn shrink-0 cursor-pointer">${t('cart.orderSample')}</button>
         </div>

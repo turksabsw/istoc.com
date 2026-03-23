@@ -1,11 +1,11 @@
 /**
  * SettingsAccountEdit Component
- * Account information view/edit form with localStorage CRUD.
+ * Account profile view/edit form backed by backend API.
+ * Detects account type (buyer/seller) and shows role-specific fields.
  */
 
 import { t } from '../../i18n';
-
-const STORAGE_KEY = 'tradehub_account_data';
+import { api } from '../../utils/api';
 
 const ICONS = {
   verified: `<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6" fill="#22c55e"/><path d="M4.5 7l2 2 3.5-3.5" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
@@ -13,69 +13,84 @@ const ICONS = {
 
 // ── Data Model ───────────────────────────────────────────────────
 
-export interface AccountData {
-  accountId: string;
-  firstName: string;
-  lastName: string;
-  gender: string;
+interface ProfileData {
+  member_id: string;
+  account_type: 'buyer' | 'seller';
+  first_name: string;
+  last_name: string;
   email: string;
-  emailVerified: boolean;
-  altEmail: string;
-  address: string;
-  city: string;
+  email_verified?: boolean;
+  phone: string;
   country: string;
-  postalCode: string;
-  phoneCountry: string;
-  phoneArea: string;
-  phoneNumber: string;
-  faxCountry: string;
-  faxArea: string;
-  faxNumber: string;
-  mobile: string;
-  department: string;
-  occupation: string;
+  // Seller-specific
+  seller_type?: string;
+  business_name?: string;
+  tax_id?: string;
+  tax_id_type?: string;
+  tax_office?: string;
+  address?: string;
+  city?: string;
+  bank_name?: string;
+  iban?: string;
+  account_holder_name?: string;
+  application_status?: string;
+  seller_status?: string;
 }
 
-const defaultData: AccountData = {
-  accountId: 'tr29243492599miuy',
-  firstName: 'Metin',
-  lastName: 'K.',
-  gender: '',
-  email: 'met***@gmail.com',
-  emailVerified: true,
-  altEmail: '',
-  address: '',
-  city: '',
-  country: 'Turkey',
-  postalCode: '',
-  phoneCountry: '',
-  phoneArea: '',
-  phoneNumber: '',
-  faxCountry: '',
-  faxArea: '',
-  faxNumber: '',
-  mobile: '',
-  department: '',
-  occupation: '',
+const emptyProfile: ProfileData = {
+  member_id: '', account_type: 'buyer', first_name: '', last_name: '',
+  email: '', phone: '', country: '',
 };
 
-// ── CRUD Methods ─────────────────────────────────────────────────
+// ── API ──────────────────────────────────────────────────────────
 
-function readAccountData(): AccountData {
+async function fetchProfile(): Promise<ProfileData> {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) {
-      return { ...defaultData, ...JSON.parse(raw) };
-    }
-  } catch { /* ignore parse errors */ }
-  return { ...defaultData };
+    const res = await api<{ message: ProfileData }>('/method/tradehub_core.api.v1.auth.get_user_profile');
+    return { ...emptyProfile, ...res.message };
+  } catch {
+    return { ...emptyProfile };
+  }
 }
 
-function saveAccountData(data: AccountData): void {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+async function saveProfile(data: Record<string, string>): Promise<boolean> {
+  try {
+    await api('/method/tradehub_core.api.v1.auth.update_user_profile', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return true;
+  } catch {
+    return false;
+  }
 }
 
-// ── Render: View Mode ────────────────────────────────────────────
+// ── Country list ─────────────────────────────────────────────────
+
+function countryOptions(selected: string): string {
+  const countries = [
+    { value: '', label: t('settings.selectCountry') },
+    { value: 'Turkey', label: 'Türkiye' },
+    { value: 'United States', label: 'United States' },
+    { value: 'Germany', label: 'Germany' },
+    { value: 'United Kingdom', label: 'United Kingdom' },
+    { value: 'France', label: 'France' },
+    { value: 'Netherlands', label: 'Netherlands' },
+    { value: 'Italy', label: 'Italy' },
+    { value: 'Spain', label: 'Spain' },
+    { value: 'China', label: 'China' },
+  ];
+  return countries.map(c =>
+    `<option value="${c.value}" ${c.value === selected ? 'selected' : ''}>${c.label}</option>`
+  ).join('');
+}
+
+// ── Shared helpers ───────────────────────────────────────────────
+
+const inputCls = "w-full py-2.5 px-3 border border-gray-300 rounded-lg text-sm outline-none transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10";
+const readonlyCls = "py-2.5 px-3 border border-gray-200 rounded-lg text-sm bg-gray-50";
+const labelCls = "block text-[13px] font-medium mb-1.5";
+const req = `<span class="text-red-500">*</span> `;
 
 function viewRow(label: string, value: string, extra?: string): string {
   const display = value || `<span style="color:var(--color-text-placeholder, #999999)">--</span>`;
@@ -87,40 +102,157 @@ function viewRow(label: string, value: string, extra?: string): string {
   `;
 }
 
-function renderViewMode(data: AccountData): string {
-  const phone = [data.phoneCountry, data.phoneArea, data.phoneNumber].filter(Boolean).join(' ');
-  const fax = [data.faxCountry, data.faxArea, data.faxNumber].filter(Boolean).join(' ');
-  const fullName = `${data.firstName} ${data.lastName}`.trim();
-  const address = [data.address, data.city, data.country].filter(Boolean).join(', ');
+function statusBadge(status: string): string {
+  const colors: Record<string, string> = {
+    'Active': 'color:#22c55e; background:#f0fdf4',
+    'Submitted': 'color:#f59e0b; background:#fffbeb',
+    'Under Review': 'color:#3b82f6; background:#eff6ff',
+    'Draft': 'color:#6b7280; background:#f3f4f6',
+    'Approved': 'color:#22c55e; background:#f0fdf4',
+    'Rejected': 'color:#ef4444; background:#fef2f2',
+  };
+  const style = colors[status] || 'color:#6b7280; background:#f3f4f6';
+  return `<span class="inline-flex items-center text-xs font-medium px-2 py-0.5 rounded-full" style="${style}">${status}</span>`;
+}
 
-  const verifiedBadge = data.emailVerified
+// ── Buyer: View ──────────────────────────────────────────────────
+
+function buyerView(d: ProfileData): string {
+  const fullName = `${d.first_name} ${d.last_name}`.trim();
+  const verifiedBadge = d.email_verified
     ? `<span class="inline-flex items-center gap-1 text-xs font-medium whitespace-nowrap" style="color:#22c55e">${ICONS.verified} ${t('settings.emailVerifiedText')}</span>`
     : '';
 
   return `
+    <div class="flex flex-col">
+      ${viewRow(t('settings.accountNumber'), d.member_id)}
+      ${viewRow(t('settings.fullName'), fullName)}
+      ${viewRow(t('settings.emailAddressField'), d.email, verifiedBadge)}
+      ${viewRow(t('settings.countryRegion'), d.country)}
+      ${viewRow(t('settings.phoneLabel'), d.phone)}
+    </div>
+  `;
+}
+
+// ── Buyer: Edit ──────────────────────────────────────────────────
+
+function buyerEdit(d: ProfileData): string {
+  return `
+    <div class="mb-5">
+      <label class="${labelCls}" style="color:var(--color-text-muted)">${t('settings.accountNumber')}</label>
+      <div class="${readonlyCls}">${d.member_id || '--'}</div>
+    </div>
+    <div class="grid grid-cols-2 max-sm:grid-cols-1 gap-4 mb-5">
+      <div>
+        <label class="${labelCls}" style="color:var(--color-text-muted)">${req}${t('settings.firstName')}</label>
+        <input type="text" class="${inputCls}" data-field="first_name" value="${d.first_name}" />
+      </div>
+      <div>
+        <label class="${labelCls}" style="color:var(--color-text-muted)">${req}${t('settings.lastName')}</label>
+        <input type="text" class="${inputCls}" data-field="last_name" value="${d.last_name}" />
+      </div>
+    </div>
+    <div class="mb-5">
+      <label class="${labelCls}" style="color:var(--color-text-muted)">${t('settings.emailAddressField')}</label>
+      <div class="${readonlyCls}">${d.email}</div>
+    </div>
+    <div class="mb-5">
+      <label class="${labelCls}" style="color:var(--color-text-muted)">${req}${t('settings.countryRegion')}</label>
+      <select class="${inputCls} bg-white cursor-pointer" data-field="country">${countryOptions(d.country)}</select>
+    </div>
+    <div class="mb-6">
+      <label class="${labelCls}" style="color:var(--color-text-muted)">${t('settings.phoneLabel')}</label>
+      <input type="tel" class="${inputCls} max-w-[300px]" data-field="phone" value="${d.phone}" placeholder="+90 5XX XXX XX XX" />
+    </div>
+  `;
+}
+
+// ── Seller: View ─────────────────────────────────────────────────
+
+function sellerView(d: ProfileData): string {
+  const fullName = `${d.first_name} ${d.last_name}`.trim();
+  const status = d.seller_status || d.application_status || '';
+
+  const sellerTypeMap: Record<string, string> = {
+    'Individual': t('settings.sellerTypeIndividual') || 'Bireysel',
+    'Business': t('settings.sellerTypeBusiness') || 'İşletme',
+    'Enterprise': t('settings.sellerTypeEnterprise') || 'Kurumsal',
+  };
+
+  return `
+    <div class="flex flex-col">
+      ${viewRow(t('settings.accountNumber'), d.member_id)}
+      ${status ? viewRow(t('settings.applicationStatus'), statusBadge(status)) : ''}
+      ${viewRow(t('settings.fullName'), fullName)}
+      ${viewRow(t('settings.emailAddressField'), d.email)}
+      ${viewRow(t('settings.sellerTypeLabel'), sellerTypeMap[d.seller_type || ''] || d.seller_type || '')}
+      ${viewRow(t('settings.businessNameLabel'), d.business_name || '')}
+      ${viewRow(t('settings.phoneLabel'), d.phone)}
+      ${viewRow(t('settings.countryRegion'), d.country)}
+      ${d.tax_id ? viewRow(t('settings.taxIdLabel'), `${d.tax_id_type || ''} ${d.tax_id}`.trim()) : ''}
+      ${d.tax_office ? viewRow(t('settings.taxOfficeLabel'), d.tax_office) : ''}
+      ${d.address || d.city ? viewRow(t('settings.addressLabel'), [d.address, d.city].filter(Boolean).join(', ')) : ''}
+      ${d.bank_name ? viewRow(t('settings.bankNameLabel'), d.bank_name) : ''}
+      ${d.iban ? viewRow('IBAN', d.iban) : ''}
+      ${d.account_holder_name ? viewRow(t('settings.accountHolderLabel'), d.account_holder_name) : ''}
+    </div>
+  `;
+}
+
+// ── Seller: Edit ─────────────────────────────────────────────────
+
+function sellerEdit(d: ProfileData): string {
+  return `
+    <div class="mb-5">
+      <label class="${labelCls}" style="color:var(--color-text-muted)">${t('settings.accountNumber')}</label>
+      <div class="${readonlyCls}">${d.member_id || '--'}</div>
+    </div>
+    <div class="grid grid-cols-2 max-sm:grid-cols-1 gap-4 mb-5">
+      <div>
+        <label class="${labelCls}" style="color:var(--color-text-muted)">${req}${t('settings.firstName')}</label>
+        <input type="text" class="${inputCls}" data-field="first_name" value="${d.first_name}" />
+      </div>
+      <div>
+        <label class="${labelCls}" style="color:var(--color-text-muted)">${req}${t('settings.lastName')}</label>
+        <input type="text" class="${inputCls}" data-field="last_name" value="${d.last_name}" />
+      </div>
+    </div>
+    <div class="mb-5">
+      <label class="${labelCls}" style="color:var(--color-text-muted)">${t('settings.emailAddressField')}</label>
+      <div class="${readonlyCls}">${d.email}</div>
+    </div>
+    <div class="mb-5">
+      <label class="${labelCls}" style="color:var(--color-text-muted)">${req}${t('settings.businessNameLabel')}</label>
+      <input type="text" class="${inputCls}" data-field="business_name" value="${d.business_name || ''}" />
+    </div>
+    <div class="mb-5">
+      <label class="${labelCls}" style="color:var(--color-text-muted)">${t('settings.phoneLabel')}</label>
+      <input type="tel" class="${inputCls} max-w-[300px]" data-field="phone" value="${d.phone}" placeholder="+90 5XX XXX XX XX" />
+    </div>
+    <div class="mb-5">
+      <label class="${labelCls}" style="color:var(--color-text-muted)">${req}${t('settings.countryRegion')}</label>
+      <select class="${inputCls} bg-white cursor-pointer" data-field="country">${countryOptions(d.country)}</select>
+    </div>
+    <div class="mb-5">
+      <label class="${labelCls}" style="color:var(--color-text-muted)">${t('settings.addressLabel')}</label>
+      <input type="text" class="${inputCls}" data-field="address" value="${d.address || ''}" placeholder="${t('settings.addressPlaceholder') || 'Açık adres'}" />
+    </div>
+    <div class="mb-6">
+      <label class="${labelCls}" style="color:var(--color-text-muted)">${t('settings.cityLabel')}</label>
+      <input type="text" class="${inputCls} max-w-[300px]" data-field="city" value="${d.city || ''}" placeholder="${t('settings.cityPlaceholder') || 'Şehir'}" />
+    </div>
+  `;
+}
+
+// ── Render wrappers ──────────────────────────────────────────────
+
+function renderView(d: ProfileData): string {
+  const content = d.account_type === 'seller' ? sellerView(d) : buyerView(d);
+  return `
     <div class="bg-white rounded-lg p-8 max-md:p-5 max-sm:px-4 max-sm:py-4" id="acc-edit-view">
-      <div class="flex items-start justify-between gap-3 max-sm:flex-col max-sm:gap-2">
-        <h2 class="text-lg max-sm:text-base font-semibold m-0" style="color:var(--color-text-heading, #111827)">${t('settings.editAccountTitle')}</h2>
-        <a href="#" class="text-[13px] text-blue-600 no-underline font-medium hover:underline whitespace-nowrap flex-shrink-0">${t('settings.closeAccountLink')}</a>
-      </div>
-      <div class="h-px bg-gray-200 mt-4 mb-1 max-sm:mt-3"></div>
-      <div class="text-xs text-red-500 text-right mb-2">${t('settings.requiredField')}</div>
-
-      <div class="flex flex-col">
-        ${viewRow(t('settings.accountNumber'), data.accountId)}
-        ${viewRow(t('settings.fullName'), fullName)}
-        ${viewRow(t('settings.genderLabel'), data.gender)}
-        ${viewRow(t('settings.emailAddressField'), data.email, verifiedBadge)}
-        ${viewRow(t('settings.altEmailAddress'), data.altEmail)}
-        ${viewRow(t('settings.contactAddressLabel'), address)}
-        ${viewRow(t('settings.postalCodeLabel'), data.postalCode)}
-        ${viewRow(t('settings.telLabel'), phone)}
-        ${viewRow(t('settings.faxLabel'), fax)}
-        ${viewRow(t('settings.mobileLabel'), data.mobile)}
-        ${viewRow(t('settings.departmentLabel'), data.department)}
-        ${viewRow(t('settings.occupationLabel'), data.occupation)}
-      </div>
-
+      <h2 class="text-lg max-sm:text-base font-semibold m-0 mb-4" style="color:var(--color-text-heading, #111827)">${t('settings.editAccountTitle')}</h2>
+      <div class="h-px bg-gray-200 mb-1"></div>
+      ${content}
       <div class="mt-6 max-sm:mt-4">
         <button class="th-btn-outline w-full max-w-[280px] mx-auto block max-sm:max-w-full" type="button" id="acc-edit-toggle">${t('settings.editBtn')}</button>
       </div>
@@ -128,165 +260,18 @@ function renderViewMode(data: AccountData): string {
   `;
 }
 
-// ── Render: Edit Mode ────────────────────────────────────────────
-
-function getDepartments(): { value: string; label: string }[] {
-  return [
-    { value: '', label: t('settings.deptSelectPlaceholder') },
-    { value: t('settings.deptSales'), label: t('settings.deptSales') },
-    { value: t('settings.deptMarketing'), label: t('settings.deptMarketing') },
-    { value: t('settings.deptEngineering'), label: t('settings.deptEngineering') },
-    { value: t('settings.deptManagement'), label: t('settings.deptManagement') },
-    { value: t('settings.deptOther'), label: t('settings.deptOther') },
-  ];
-}
-
-function renderEditMode(data: AccountData): string {
-  const DEPARTMENTS = getDepartments();
-  const deptOptions = DEPARTMENTS.map(d =>
-    `<option value="${d.value}" ${d.value === data.department ? 'selected' : ''}>${d.label}</option>`
-  ).join('');
-
-  const inputCls = "w-full py-2.5 px-3 border border-gray-300 rounded-lg text-sm outline-none transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10";
-  const labelCls = "block text-[13px] font-medium mb-1.5";
-  const reqDot = `<span class="text-red-500">*</span> `;
-  const sectionTitle = (text: string) => `<h3 class="text-[13px] font-semibold uppercase tracking-wide mb-4 max-sm:mb-3" style="color:var(--color-text-muted, #666666)">${text}</h3>`;
-
+function renderEdit(d: ProfileData): string {
+  const content = d.account_type === 'seller' ? sellerEdit(d) : buyerEdit(d);
   return `
     <div class="bg-white rounded-lg p-8 max-md:p-5 max-sm:px-4 max-sm:py-4" id="acc-edit-form" style="display:none">
-      <!-- Header -->
-      <div class="flex items-start justify-between gap-3 max-sm:flex-col max-sm:gap-2">
-        <h2 class="text-lg max-sm:text-base font-semibold m-0" style="color:var(--color-text-heading, #111827)">${t('settings.editAccountTitle')}</h2>
-        <a href="#" class="text-[13px] text-blue-600 no-underline font-medium hover:underline whitespace-nowrap flex-shrink-0">${t('settings.closeAccountLink')}</a>
-      </div>
-      <div class="h-px bg-gray-200 mt-4 mb-6 max-sm:mt-3 max-sm:mb-4"></div>
-
-      <!-- Personal Information -->
-      ${sectionTitle(t('settings.fullName'))}
-      <div class="grid grid-cols-2 max-sm:grid-cols-1 gap-4 mb-6 max-sm:mb-5">
-        <div>
-          <label class="${labelCls}" style="color:var(--color-text-muted, #666666)">${reqDot}${t('settings.firstName')}</label>
-          <input type="text" class="${inputCls}" data-field="firstName" value="${data.firstName}" placeholder="${t('settings.firstName')}" />
-        </div>
-        <div>
-          <label class="${labelCls}" style="color:var(--color-text-muted, #666666)">${reqDot}${t('settings.lastName')}</label>
-          <input type="text" class="${inputCls}" data-field="lastName" value="${data.lastName}" placeholder="${t('settings.lastName')}" />
-        </div>
-      </div>
-
-      <div class="mb-6 max-sm:mb-5">
-        <label class="${labelCls}" style="color:var(--color-text-muted, #666666)">${reqDot}${t('settings.genderLabel')}</label>
-        <div class="flex items-center gap-6 mt-1">
-          <label class="inline-flex items-center gap-2 text-sm cursor-pointer" style="color:var(--color-text-body, #333333)"><input type="radio" name="gender" value="${t('settings.genderMale')}" class="w-4 h-4 m-0" style="accent-color:var(--color-primary-500)" ${data.gender === t('settings.genderMale') ? 'checked' : ''} /> ${t('settings.genderMale')}</label>
-          <label class="inline-flex items-center gap-2 text-sm cursor-pointer" style="color:var(--color-text-body, #333333)"><input type="radio" name="gender" value="${t('settings.genderFemale')}" class="w-4 h-4 m-0" style="accent-color:var(--color-primary-500)" ${data.gender === t('settings.genderFemale') ? 'checked' : ''} /> ${t('settings.genderFemale')}</label>
-        </div>
-      </div>
-
-      <!-- Email -->
-      <div class="h-px bg-gray-100 mb-6 max-sm:mb-4"></div>
-      ${sectionTitle(t('settings.emailAddressField'))}
-
-      <div class="flex items-center gap-2 flex-wrap mb-4 text-sm" style="color:var(--color-text-heading, #111827)">
-        <span class="font-medium">${data.email}</span>
-        ${data.emailVerified ? `<span class="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full" style="color:#22c55e; background:#f0fdf4">${ICONS.verified} ${t('settings.emailVerifiedText')}</span>` : ''}
-        <a href="#" class="text-[13px] text-blue-600 no-underline hover:underline ml-1">${t('settings.changeEmailLink')}</a>
-      </div>
-
-      <div class="mb-6 max-sm:mb-5">
-        <label class="${labelCls}" style="color:var(--color-text-muted, #666666)">${t('settings.altEmailAddress')}</label>
-        <input type="email" class="${inputCls} max-w-[400px]" data-field="altEmail" value="${data.altEmail}" />
-        <p class="text-xs mt-1.5 m-0" style="color:var(--color-text-placeholder, #999999)">${t('settings.altEmailHint')}</p>
-      </div>
-
-      <!-- Address -->
-      <div class="h-px bg-gray-100 mb-6 max-sm:mb-4"></div>
-      ${sectionTitle(t('settings.contactAddressLabel'))}
-
-      <div class="flex flex-col gap-4 mb-6 max-sm:mb-5">
-        <div>
-          <label class="${labelCls}" style="color:var(--color-text-muted, #666666)">${reqDot}${t('settings.streetAddress')}</label>
-          <input type="text" class="${inputCls}" data-field="address" value="${data.address}" />
-        </div>
-        <div class="grid grid-cols-2 max-sm:grid-cols-1 gap-4">
-          <div>
-            <label class="${labelCls}" style="color:var(--color-text-muted, #666666)">${reqDot}${t('settings.cityLabel')}</label>
-            <input type="text" class="${inputCls}" data-field="city" value="${data.city}" />
-          </div>
-          <div>
-            <label class="${labelCls}" style="color:var(--color-text-muted, #666666)">${reqDot}${t('settings.countryRegion')}</label>
-            <select class="${inputCls} bg-white cursor-pointer" data-field="country">
-              <option value="Turkey" ${data.country === 'Turkey' ? 'selected' : ''}>Turkey</option>
-            </select>
-          </div>
-        </div>
-        <div class="max-w-[200px] max-sm:max-w-full">
-          <label class="${labelCls}" style="color:var(--color-text-muted, #666666)">${t('settings.postalCodeLabel')}</label>
-          <input type="text" class="${inputCls}" data-field="postalCode" value="${data.postalCode}" />
-        </div>
-      </div>
-
-      <!-- Phone & Fax -->
-      <div class="h-px bg-gray-100 mb-6 max-sm:mb-4"></div>
-      ${sectionTitle(t('settings.telLabel'))}
-
-      <div class="grid grid-cols-3 max-sm:grid-cols-1 gap-4 mb-6 max-sm:mb-5">
-        <div>
-          <label class="${labelCls}" style="color:var(--color-text-muted, #666666)">${reqDot}${t('settings.countryCodeLabel')}</label>
-          <input type="text" class="${inputCls}" data-field="phoneCountry" value="${data.phoneCountry}" placeholder="+90" />
-        </div>
-        <div>
-          <label class="${labelCls}" style="color:var(--color-text-muted, #666666)">${t('settings.areaCodeLabel')}</label>
-          <input type="text" class="${inputCls}" data-field="phoneArea" value="${data.phoneArea}" placeholder="5XX" />
-        </div>
-        <div>
-          <label class="${labelCls}" style="color:var(--color-text-muted, #666666)">${t('settings.numberLabel')}</label>
-          <input type="text" class="${inputCls}" data-field="phoneNumber" value="${data.phoneNumber}" placeholder="XXX XX XX" />
-        </div>
-      </div>
-
-      <div class="mb-6 max-sm:mb-5">
-        <label class="${labelCls}" style="color:var(--color-text-muted, #666666)">${t('settings.faxLabel')}</label>
-        <div class="grid grid-cols-3 max-sm:grid-cols-1 gap-4">
-          <div>
-            <label class="block text-xs mb-1" style="color:var(--color-text-placeholder, #999999)">${t('settings.countryCodeLabel')}</label>
-            <input type="text" class="${inputCls}" data-field="faxCountry" value="${data.faxCountry}" />
-          </div>
-          <div>
-            <label class="block text-xs mb-1" style="color:var(--color-text-placeholder, #999999)">${t('settings.areaCodeLabel')}</label>
-            <input type="text" class="${inputCls}" data-field="faxArea" value="${data.faxArea}" />
-          </div>
-          <div>
-            <label class="block text-xs mb-1" style="color:var(--color-text-placeholder, #999999)">${t('settings.numberLabel')}</label>
-            <input type="text" class="${inputCls}" data-field="faxNumber" value="${data.faxNumber}" />
-          </div>
-        </div>
-      </div>
-
-      <div class="max-w-[280px] max-sm:max-w-full mb-6 max-sm:mb-5">
-        <label class="${labelCls}" style="color:var(--color-text-muted, #666666)">${t('settings.mobileLabel')}</label>
-        <input type="text" class="${inputCls}" data-field="mobile" value="${data.mobile}" />
-      </div>
-
-      <!-- Work -->
-      <div class="h-px bg-gray-100 mb-6 max-sm:mb-4"></div>
-      <div class="grid grid-cols-2 max-sm:grid-cols-1 gap-4 mb-6 max-sm:mb-5">
-        <div>
-          <label class="${labelCls}" style="color:var(--color-text-muted, #666666)">${t('settings.departmentLabel')}</label>
-          <select class="${inputCls} bg-white cursor-pointer" data-field="department">
-            ${deptOptions}
-          </select>
-        </div>
-        <div>
-          <label class="${labelCls}" style="color:var(--color-text-muted, #666666)">${t('settings.occupationLabel')}</label>
-          <input type="text" class="${inputCls}" data-field="occupation" value="${data.occupation}" />
-        </div>
-      </div>
-
-      <!-- Submit -->
+      <h2 class="text-lg max-sm:text-base font-semibold m-0 mb-6" style="color:var(--color-text-heading, #111827)">${t('settings.editAccountTitle')}</h2>
+      <div class="h-px bg-gray-200 mb-6"></div>
+      ${content}
       <div class="pt-4 border-t border-gray-100 flex items-center gap-3 max-sm:flex-col">
         <button class="th-btn px-8 max-sm:w-full" type="button" id="acc-edit-submit">${t('settings.submitBtn')}</button>
-        <a href="#" class="text-[13px] font-medium no-underline hover:underline max-sm:text-center" style="color:var(--color-text-muted, #666666)">${t('settings.cancelAction')}</a>
+        <button class="text-[13px] font-medium bg-none border-none cursor-pointer hover:underline" style="color:var(--color-text-muted)" type="button" id="acc-edit-cancel">${t('settings.cancelAction')}</button>
       </div>
+      <div id="acc-edit-message" class="mt-3 text-sm hidden"></div>
     </div>
   `;
 }
@@ -294,40 +279,41 @@ function renderEditMode(data: AccountData): string {
 // ── Component Export ─────────────────────────────────────────────
 
 export function SettingsAccountEdit(): string {
-  const data = readAccountData();
-  return `<div id="acc-edit-root">${renderViewMode(data)}${renderEditMode(data)}</div>`;
+  return `<div id="acc-edit-root">
+    <div class="bg-white rounded-lg p-8 max-md:p-5 max-sm:px-4 max-sm:py-4 flex items-center justify-center min-h-[200px]">
+      <span class="text-sm" style="color:var(--color-text-muted)">${t('settings.loading')}</span>
+    </div>
+  </div>`;
 }
 
-// ── Init with CRUD ───────────────────────────────────────────────
+// ── Init ─────────────────────────────────────────────────────────
 
 export function initSettingsAccountEdit(): void {
   const root = document.getElementById('acc-edit-root');
   if (!root) return;
 
-  function rerender() {
-    const data = readAccountData();
-    root!.innerHTML = renderViewMode(data) + renderEditMode(data);
+  let current: ProfileData = { ...emptyProfile };
+
+  async function loadAndRender() {
+    current = await fetchProfile();
+    root!.innerHTML = renderView(current) + renderEdit(current);
     bindEvents();
   }
 
-  function collectFormData(): AccountData {
-    const current = readAccountData();
+  function rerender() {
+    root!.innerHTML = renderView(current) + renderEdit(current);
+    bindEvents();
+  }
+
+  function collectFormData(): Record<string, string> {
     const formEl = document.getElementById('acc-edit-form');
-    if (!formEl) return current;
-
+    if (!formEl) return {};
+    const data: Record<string, string> = {};
     formEl.querySelectorAll<HTMLInputElement | HTMLSelectElement>('[data-field]').forEach(el => {
-      const field = el.dataset.field as keyof AccountData;
-      if (field && field in current) {
-        (current as unknown as Record<string, unknown>)[field] = el.value;
-      }
+      const field = el.dataset.field;
+      if (field) data[field] = el.value;
     });
-
-    const genderRadio = formEl.querySelector<HTMLInputElement>('input[name="gender"]:checked');
-    if (genderRadio) {
-      current.gender = genderRadio.value;
-    }
-
-    return current;
+    return data;
   }
 
   function bindEvents() {
@@ -335,22 +321,46 @@ export function initSettingsAccountEdit(): void {
     const formEl = document.getElementById('acc-edit-form');
     const editBtn = document.getElementById('acc-edit-toggle');
     const submitBtn = document.getElementById('acc-edit-submit');
+    const cancelBtn = document.getElementById('acc-edit-cancel');
 
-    if (editBtn && viewEl && formEl) {
-      editBtn.addEventListener('click', () => {
-        viewEl.style.display = 'none';
-        formEl.style.display = '';
-      });
-    }
+    editBtn?.addEventListener('click', () => {
+      if (viewEl && formEl) { viewEl.style.display = 'none'; formEl.style.display = ''; }
+    });
+    cancelBtn?.addEventListener('click', () => {
+      if (viewEl && formEl) { formEl.style.display = 'none'; viewEl.style.display = ''; }
+    });
 
-    if (submitBtn) {
-      submitBtn.addEventListener('click', () => {
-        const data = collectFormData();
-        saveAccountData(data);
+    submitBtn?.addEventListener('click', async () => {
+      const data = collectFormData();
+      if (!data.first_name?.trim() || !data.last_name?.trim()) {
+        showMessage(t('settings.nameRequired'), 'error');
+        return;
+      }
+      submitBtn.setAttribute('disabled', 'true');
+      submitBtn.textContent = t('settings.saving');
+      const ok = await saveProfile(data);
+      if (ok) {
+        // Merge edits into current
+        Object.entries(data).forEach(([k, v]) => {
+          (current as unknown as Record<string, unknown>)[k] = v;
+        });
         rerender();
-      });
-    }
+      } else {
+        showMessage(t('settings.saveFailed'), 'error');
+        submitBtn.removeAttribute('disabled');
+        submitBtn.textContent = t('settings.submitBtn');
+      }
+    });
   }
 
-  bindEvents();
+  function showMessage(text: string, type: 'error' | 'success') {
+    const el = document.getElementById('acc-edit-message');
+    if (!el) return;
+    el.textContent = text;
+    el.className = `mt-3 text-sm ${type === 'error' ? 'text-red-500' : 'text-green-600'}`;
+    el.classList.remove('hidden');
+    setTimeout(() => el.classList.add('hidden'), 4000);
+  }
+
+  loadAndRender();
 }

@@ -5,7 +5,8 @@
  */
 
 import type { CartSupplier, CartProduct, CartSku, CartSummaryData } from '../../../types/cart';
-import { convertPrice, getSelectedCurrencyInfo } from '../../../services/currencyService';
+import { getSelectedCurrencyInfo, convertPrice } from '../../../services/currencyService';
+import { getCurrencySymbol } from '../../../utils/currency';
 
 export class CartStore {
   private static STORAGE_KEY = 'tradehub_cart';
@@ -13,12 +14,14 @@ export class CartStore {
   private suppliers: CartSupplier[] = [];
   private shippingFee = 0;
   private discount = 0;
-  private currency = '$';
+  private couponDiscount = 0;
+  private couponCode = '';
+  private currency = getCurrencySymbol();
   private listeners = new Set<() => void>();
 
   // ──────────────── INIT ────────────────
 
-  init(suppliers: CartSupplier[], shippingFee = 0, currency = '$', discount = 0): void {
+  init(suppliers: CartSupplier[], shippingFee = 0, currency = getCurrencySymbol(), discount = 0): void {
     this.suppliers = structuredClone(suppliers);
     this.shippingFee = shippingFee;
     this.discount = discount;
@@ -38,13 +41,19 @@ export class CartStore {
         currency: string;
       };
       if (!Array.isArray(data.suppliers) || data.suppliers.length === 0) return false;
+      // Tüm SKU'ların currency alanını güncel sembolle güncelle
+      const sym = getCurrencySymbol();
+      for (const supplier of data.suppliers) {
+        for (const product of supplier.products) {
+          for (const sku of product.skus) {
+            sku.currency = sym;
+          }
+        }
+      }
       this.suppliers = data.suppliers;
       this.shippingFee = data.shippingFee ?? 0;
       this.discount = data.discount ?? 0;
-      // Bozuk veriyi temizle: qty=0 SKU'lar, SKU'suz ürünler, ürünsüz supplier'lar
-      this.sanitize();
-      // Recalculate all prices from base currency for current selected currency
-      this.recalculateAllPrices();
+      this.currency = sym;
       this.notify();
       return true;
     } catch {
@@ -163,24 +172,75 @@ export class CartStore {
     for (const supplier of this.suppliers) {
       for (const product of supplier.products) {
         for (const sku of product.skus) {
-          if (sku.selected) {
+          if (sku.selected && sku.isAvailable !== false) {
             selectedCount++;
-            productSubtotal += sku.unitPrice * sku.quantity;
+            // Fiyatı baz para biriminden seçili para birimine çevir
+            const converted = convertPrice(sku.unitPrice, sku.baseCurrency || 'USD');
+            productSubtotal += converted * sku.quantity;
             items.push({ image: sku.skuImage, quantity: sku.quantity });
           }
         }
       }
     }
 
+    const convertedShipping = convertPrice(this.shippingFee, 'USD');
+    const convertedDiscount = convertPrice(this.discount, 'USD');
+
     return {
       selectedCount,
       items,
       productSubtotal,
-      discount: this.discount,
-      shippingFee: this.shippingFee,
-      subtotal: productSubtotal - this.discount + this.shippingFee,
+      discount: convertedDiscount,
+      couponDiscount: this.couponDiscount,
+      couponCode: this.couponCode,
+      shippingFee: convertedShipping,
+      subtotal: productSubtotal - convertedDiscount - this.couponDiscount + convertedShipping,
       currency: getSelectedCurrencyInfo().symbol,
     };
+  }
+
+  setCouponDiscount(amount: number, code: string): void {
+    this.couponDiscount = amount;
+    this.couponCode = code;
+    this.notify();
+  }
+
+  clearCoupon(): void {
+    this.couponDiscount = 0;
+    this.couponCode = '';
+    this.notify();
+  }
+
+  getCouponCode(): string {
+    return this.couponCode;
+  }
+
+  /** Bir satıcının seçili SKU'larının ara toplamını döndür */
+  getSupplierSubtotal(supplierId: string): number {
+    const supplier = this.getSupplier(supplierId);
+    if (!supplier) return 0;
+    let subtotal = 0;
+    for (const product of supplier.products) {
+      for (const sku of product.skus) {
+        if (sku.selected && sku.isAvailable !== false) {
+          subtotal += sku.unitPrice * sku.quantity;
+        }
+      }
+    }
+    return subtotal;
+  }
+
+  /** Bir satıcıya ait kayıtlı kargo ücretini döndür */
+  getSupplierShippingFee(supplierId: string): number {
+    return this.getSupplier(supplierId)?.shippingFee ?? 0;
+  }
+
+  /** Bir satıcının kargo ücretini güncelle */
+  setSupplierShippingFee(supplierId: string, fee: number): void {
+    const supplier = this.getSupplier(supplierId);
+    if (!supplier) return;
+    supplier.shippingFee = fee;
+    this.notify();
   }
 
   getTotalSkuCount(): number {
@@ -215,7 +275,6 @@ export class CartStore {
     const found = this.getProduct(productId);
     if (!found) return;
     found.product.skus.push(structuredClone(sku));
-    this.recalculateProductPrices(found.product);
     this.notify();
   }
 
@@ -225,7 +284,6 @@ export class CartStore {
     const found = this.getSku(skuId);
     if (!found) return;
     found.sku.quantity = quantity;
-    this.recalculateProductPrices(found.product);
     this.notify();
   }
 
@@ -367,69 +425,6 @@ export class CartStore {
 
   private removeSupplier(supplierId: string): void {
     this.suppliers = this.suppliers.filter((s) => s.id !== supplierId);
-  }
-
-  /** Bozuk veriyi temizle: qty<=0 SKU'lar, SKU'suz ürünler, ürünsüz supplier'lar sil */
-  private sanitize(): void {
-    for (const supplier of this.suppliers) {
-      for (const product of supplier.products) {
-        product.skus = product.skus.filter(s => s.quantity > 0);
-      }
-      supplier.products = supplier.products.filter(p => p.skus.length > 0);
-    }
-    this.suppliers = this.suppliers.filter(s => s.products.length > 0);
-  }
-
-  /** Ürünün toplam miktarına göre tier fiyatını yeniden hesapla (base prices -> selected currency) */
-  private recalculateProductPrices(product: CartProduct): void {
-    const info = getSelectedCurrencyInfo();
-    const baseCur = product.baseCurrency || 'USD';
-
-    // priceTiers yoksa (eski veri) — sadece SKU'ların currency sembolünü güncelle
-    // ve baseUnitPrice varsa dönüşüm yap
-    if (!product.priceTiers || product.priceTiers.length === 0) {
-      for (const sku of product.skus) {
-        sku.currency = info.symbol;
-        if (sku.baseUnitPrice != null && sku.baseCurrency) {
-          sku.unitPrice = convertPrice(sku.baseUnitPrice, sku.baseCurrency);
-          sku.priceAddon = convertPrice(sku.basePriceAddon ?? 0, sku.baseCurrency);
-        }
-      }
-      return;
-    }
-
-    const totalQty = product.skus.reduce((sum, s) => sum + s.quantity, 0);
-
-    // En uygun tier'ı bul (en yüksek minQty'den başlayarak) — tiers store base prices
-    let baseTierPrice = product.priceTiers[0].price;
-    for (let i = product.priceTiers.length - 1; i >= 0; i--) {
-      if (totalQty >= product.priceTiers[i].minQty) {
-        baseTierPrice = product.priceTiers[i].price;
-        break;
-      }
-    }
-
-    // Convert base tier price to selected currency
-    const convertedTierPrice = convertPrice(baseTierPrice, baseCur);
-
-    // Her SKU'nun birim fiyatını güncelle: converted tier + converted addon
-    for (const sku of product.skus) {
-      const convertedAddon = convertPrice(sku.basePriceAddon ?? 0, baseCur);
-      sku.unitPrice = convertedTierPrice + convertedAddon;
-      sku.priceAddon = convertedAddon;
-      sku.currency = info.symbol;
-    }
-  }
-
-  /** Tüm ürünlerin fiyatlarını seçili para birimi için yeniden hesapla */
-  private recalculateAllPrices(): void {
-    const info = getSelectedCurrencyInfo();
-    this.currency = info.symbol;
-    for (const supplier of this.suppliers) {
-      for (const product of supplier.products) {
-        this.recalculateProductPrices(product);
-      }
-    }
   }
 
   /** SKU toggle sonrası parent product/supplier seçim durumunu senkronize et */

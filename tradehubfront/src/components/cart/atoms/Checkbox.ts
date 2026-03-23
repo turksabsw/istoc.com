@@ -9,18 +9,21 @@ export interface CheckboxProps {
   checked: boolean;
   indeterminate?: boolean;
   onChange?: string;
+  disabled?: boolean;
 }
 
-export function Checkbox({ id, checked, indeterminate = false, onChange }: CheckboxProps): string {
+export function Checkbox({ id, checked, indeterminate = false, onChange, disabled = false }: CheckboxProps): string {
   const checkedAttr = checked ? 'checked' : '';
   const indeterminateAttr = indeterminate ? 'data-indeterminate="true"' : '';
   const onChangeAttr = onChange ? `data-onchange="${onChange}"` : '';
+  const disabledAttr = disabled ? 'disabled' : '';
+  const disabledCursor = disabled ? 'cursor-not-allowed opacity-50' : '';
 
   const checkVisible = checked ? 'block' : 'hidden';
   const dashVisible = indeterminate && !checked ? 'block' : 'hidden';
 
   return `
-    <label class="next-checkbox-wrapper inline-flex items-center cursor-pointer select-none" for="${id}"
+    <label class="next-checkbox-wrapper inline-flex items-center cursor-pointer select-none ${disabledCursor}" for="${id}"
       x-data="checkbox">
       <input
         type="checkbox"
@@ -30,6 +33,7 @@ export function Checkbox({ id, checked, indeterminate = false, onChange }: Check
         ${checkedAttr}
         ${indeterminateAttr}
         ${onChangeAttr}
+        ${disabledAttr}
         x-ref="input"
         x-effect="$el.indeterminate = indeterminate"
         @change="handleChange()"
