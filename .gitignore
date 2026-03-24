@@ -24,8 +24,12 @@ tradehubback/config/scheduler_process
 *.rdb
 *.pid
 
+# ── Gizli / Hassas Dosyalar ────────────────────────────────────────────────────
+.env
+.env.*
+tradehubback/sites/*/site_config.json
+
 # ── Frappe Bench — Site runtime dosyaları ─────────────────────────────────────
-# site_config.json kasıtlı olarak burada YOK (paylaşılan DB ayarları)
 tradehubback/sites/*/logs/
 tradehubback/sites/*/locks/
 tradehubback/sites/*/indexes/
