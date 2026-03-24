@@ -456,7 +456,10 @@ Alpine.data('applicationPendingPage', () => ({
     }
 
     // Show the application status dynamically
-    if (user.has_seller_profile) {
+    // Pending application takes priority over profile status
+    if (user.pending_seller_application) {
+      this.status = user.seller_application_status || 'Under Review';
+    } else if (user.has_seller_profile) {
       this.status = 'Approved';
     } else {
       this.status = user.seller_application_status || 'Draft';

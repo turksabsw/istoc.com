@@ -26,13 +26,6 @@ export interface CartDrawerContext {
   unit?: string;
 }
 
-const fallbackColorPalette: Array<{ label: string; hex: string }> = [
-  { label: 'Altin', hex: '#D4AF37' },
-  { label: 'Gumus', hex: '#C0C0C0' },
-  { label: 'Rose Gold', hex: '#B76E79' },
-  { label: 'Siyah', hex: '#6B7280' },
-];
-
 let currentContext: CartDrawerContext | null = null;
 
 function toShippingOptions(product: ProductDetail): CartDrawerShippingOption[] {
@@ -51,13 +44,7 @@ function toShippingOptions(product: ProductDetail): CartDrawerShippingOption[] {
 function toColors(product: ProductDetail): CartDrawerColorModel[] {
   const colorVariant = product.variants.find((variant) => variant.type === 'color');
   if (!colorVariant || colorVariant.options.length === 0) {
-    return fallbackColorPalette.map((entry, index) => ({
-      id: `fallback-color-${index + 1}`,
-      label: entry.label,
-      colorHex: entry.hex,
-      imageKind: 'jewelry',
-      imageUrl: product.images[0]?.src
-    }));
+    return [];
   }
 
   return colorVariant.options.map((option, index) => ({
@@ -65,7 +52,8 @@ function toColors(product: ProductDetail): CartDrawerColorModel[] {
     label: option.label,
     colorHex: option.value,
     imageKind: 'jewelry',
-    imageUrl: option.thumbnail || product.images[0]?.src
+    imageUrl: option.thumbnail || product.images[0]?.src,
+    rawPrice: option.rawPrice ?? undefined,
   }));
 }
 
@@ -74,7 +62,7 @@ function toDrawerItem(product: ProductDetail, context?: CartDrawerContext | null
   const moq = context?.moq && context.moq > 0 ? context.moq : product.moq;
   const tiers: CartDrawerTierModel[] = (context?.priceTiers && context.priceTiers.length > 0)
     ? context.priceTiers.map((tier) => ({ minQty: tier.minQty, maxQty: tier.maxQty, price: tier.price }))
-    : product.priceTiers.map((tier) => ({ minQty: tier.minQty, maxQty: tier.maxQty, price: tier.price }));
+    : product.priceTiers.map((tier) => ({ minQty: tier.minQty, maxQty: tier.maxQty, price: tier.price, rawPrice: tier.basePrice }));
 
   return {
     id: product.id,
@@ -83,6 +71,7 @@ function toDrawerItem(product: ProductDetail, context?: CartDrawerContext | null
     unit,
     moq,
     imageKind: 'jewelry',
+    currency: product.baseCurrency || 'USD',
     priceTiers: tiers,
     colors: toColors(product),
     shippingOptions: toShippingOptions(product),

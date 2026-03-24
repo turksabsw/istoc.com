@@ -12,6 +12,7 @@ export interface CartDrawerTierModel {
   minQty: number;
   maxQty: number | null;
   price: number;
+  rawPrice?: number;
   originalPrice?: number;
 }
 
@@ -29,6 +30,8 @@ export interface CartDrawerColorModel {
   colorHex: string;
   imageKind: ProductImageKind;
   imageUrl?: string;
+  price?: number;
+  rawPrice?: number;
 }
 
 export interface CartDrawerItemModel {
@@ -42,6 +45,7 @@ export interface CartDrawerItemModel {
   colors: CartDrawerColorModel[];
   shippingOptions: CartDrawerShippingOption[];
   samplePrice?: number;
+  currency?: string;
 }
 
 interface DrawerState {
@@ -137,10 +141,20 @@ function getTotals(): {
 } {
   const totalQty = Array.from(state.colorQuantities.values()).reduce((acc, qty) => acc + qty, 0);
   const tierIndex = getActiveTierIndex(totalQty);
+  const activeTier = state.item?.priceTiers[tierIndex];
   const activePrice = state.mode === 'sample'
     ? (state.item?.samplePrice ?? 30)
-    : (state.item?.priceTiers[tierIndex]?.price ?? 0);
-  const itemSubtotal = activePrice * totalQty;
+    : (activeTier?.rawPrice ?? activeTier?.price ?? 0);
+  let itemSubtotal: number;
+  if (state.item && state.item.colors.length > 0) {
+    itemSubtotal = state.item.colors.reduce((sum, color) => {
+      const qty = state.colorQuantities.get(color.id) ?? 0;
+      const price = (color.rawPrice != null && color.rawPrice > 0) ? color.rawPrice : activePrice;
+      return sum + price * qty;
+    }, 0);
+  } else {
+    itemSubtotal = activePrice * totalQty;
+  }
   const shippingCost = state.item?.shippingOptions[state.selectedShippingIndex]?.cost ?? 0;
   const grandTotal = itemSubtotal + shippingCost;
   const variationCount = Array.from(state.colorQuantities.values()).filter((qty) => qty > 0).length;
@@ -247,7 +261,7 @@ function renderPriceSectionHtml(totals: ReturnType<typeof getTotals>): string {
     const activeClass = index === totals.tierIndex ? 'text-error-500' : 'text-text-heading';
     return `<div class="cart-tier-item" data-tier-index="${index}">
           <p class="text-sm text-text-tertiary">${formatTierLabel(tier, state.item!.unit)}</p>
-          <p class="mt-1 text-[22px] font-bold ${activeClass}">${formatCurrency(tier.price, getSelectedCurrency())}</p>
+          <p class="mt-1 text-[22px] font-bold ${activeClass}">${formatCurrency(tier.rawPrice ?? tier.price, state.item?.currency || getSelectedCurrency())}</p>
         </div>`;
   }).join('')}
     </div>
@@ -266,12 +280,15 @@ function renderDrawerBody(): void {
 
     ${priceSection}
 
+    ${state.item.colors.length > 0 ? `
     <div class="mb-5">
       <h5 class="text-base font-bold text-text-heading mb-3">${t('cart.colorLabel')}</h5>
       <div class="divide-y divide-border-default">
         ${state.item.colors.map((color) => {
     const qty = state.colorQuantities.get(color.id) ?? 0;
     const selectedBorder = qty > 0 ? 'border-primary-500' : 'border-border-default';
+    const displayPrice = (color.rawPrice != null && color.rawPrice > 0) ? color.rawPrice : totals.activePrice;
+    const displayCurrency = state.item?.currency || getSelectedCurrency();
     return `
             <div class="flex items-center gap-4 py-3" data-color-id="${escapeHtml(color.id)}">
               <button type="button" data-preview-color="${escapeHtml(color.id)}" class="shrink-0 rounded-full border-2 ${selectedBorder}">
@@ -280,7 +297,7 @@ function renderDrawerBody(): void {
               <div class="flex-1 min-w-0">
                 <p class="text-base font-semibold text-text-heading truncate">${escapeHtml(color.label)}</p>
               </div>
-              <span class="text-[15px] font-semibold text-text-heading whitespace-nowrap">${formatCurrency(totals.activePrice, getSelectedCurrency())}</span>
+              <span class="text-[15px] font-semibold text-text-heading whitespace-nowrap">${formatCurrency(displayPrice, displayCurrency)}</span>
               <div class="inline-flex items-center border border-border-default rounded-full overflow-hidden shrink-0">
                 <button type="button" data-qty-action="minus" data-qty-color="${escapeHtml(color.id)}" class="w-9 h-9 bg-surface text-text-secondary hover:bg-surface-raised transition-colors">−</button>
                 <input type="number" data-qty-input="${escapeHtml(color.id)}" value="${qty}" min="0" class="w-11 h-9 text-center border-x border-border-default bg-surface text-sm font-semibold text-text-heading [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" />
@@ -291,6 +308,19 @@ function renderDrawerBody(): void {
   }).join('')}
       </div>
     </div>
+    ` : `
+    <div class="mb-5">
+      <div class="flex items-center justify-between py-3 border-b border-border-default">
+        <span class="text-base font-semibold text-text-heading">${escapeHtml(state.item.title)}</span>
+        <span class="text-[15px] font-semibold text-text-heading whitespace-nowrap">${formatCurrency(totals.activePrice, state.item?.currency || getSelectedCurrency())}</span>
+        <div class="inline-flex items-center border border-border-default rounded-full overflow-hidden shrink-0">
+          <button type="button" data-qty-action="minus" data-qty-color="__no_variant__" class="w-9 h-9 bg-surface text-text-secondary hover:bg-surface-raised transition-colors">−</button>
+          <input type="number" data-qty-input="__no_variant__" value="${state.colorQuantities.get('__no_variant__') ?? 0}" min="0" class="w-11 h-9 text-center border-x border-border-default bg-surface text-sm font-semibold text-text-heading [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" />
+          <button type="button" data-qty-action="plus" data-qty-color="__no_variant__" class="w-9 h-9 bg-surface text-text-secondary hover:bg-surface-raised transition-colors">+</button>
+        </div>
+      </div>
+    </div>
+    `}
 
     <div class="mt-5 mb-2 rounded-3xl border border-border-default p-5">
       <div class="flex items-start justify-between gap-3">
@@ -310,6 +340,7 @@ function renderDrawerFooter(): void {
 
   const totals = getTotals();
   const perPiece = totals.totalQty > 0 ? totals.grandTotal / totals.totalQty : 0;
+  const itemCurrency = state.item.currency || getSelectedCurrency();
 
   const details = state.footerExpanded
     ? `
@@ -322,17 +353,17 @@ function renderDrawerFooter(): void {
         <div class="space-y-2 text-sm text-text-secondary">
           <div class="flex items-center justify-between">
             <span>${t('cart.productTotal')} (${t('cart.variationItems', { variation: String(totals.variationCount), items: String(totals.totalQty) })})</span>
-            <strong class="text-text-heading">${formatCurrency(totals.itemSubtotal, getSelectedCurrency())}</strong>
+            <strong class="text-text-heading">${formatCurrency(totals.itemSubtotal, itemCurrency)}</strong>
           </div>
           <div class="flex items-center justify-between">
             <span>${t('cart.shippingTotal')}</span>
-            <span>${escapeHtml(state.item.shippingOptions[state.selectedShippingIndex]?.costText ?? formatCurrency(0, getSelectedCurrency()))}</span>
+            <span>${escapeHtml(state.item.shippingOptions[state.selectedShippingIndex]?.costText ?? formatCurrency(0, itemCurrency))}</span>
           </div>
           <div class="flex items-center justify-between border-t border-border-default pt-3 mt-3">
             <strong class="text-text-heading">${t('cart.subtotal')}</strong>
             <div class="text-right">
-              <strong class="text-base text-cta-primary">${formatCurrency(totals.grandTotal, getSelectedCurrency())}</strong>
-              <p class="text-xs text-text-tertiary">(${formatCurrency(perPiece, getSelectedCurrency())}${t('cart.perUnit')})</p>
+              <strong class="text-base text-cta-primary">${formatCurrency(totals.grandTotal, itemCurrency)}</strong>
+              <p class="text-xs text-text-tertiary">(${formatCurrency(perPiece, itemCurrency)}${t('cart.perUnit')})</p>
             </div>
           </div>
         </div>
@@ -342,8 +373,8 @@ function renderDrawerFooter(): void {
       <button type="button" id="shared-cart-footer-toggle" class="w-full flex items-center justify-between mb-4">
         <strong class="text-base text-text-heading">${t('cart.subtotal')}</strong>
         <span class="flex items-center gap-1.5">
-          <strong class="text-[17px] text-cta-primary">${formatCurrency(totals.grandTotal, getSelectedCurrency())}</strong>
-          <span class="text-xs text-text-tertiary">(${formatCurrency(perPiece, getSelectedCurrency())}${t('cart.perUnit')})</span>
+          <strong class="text-[17px] text-cta-primary">${formatCurrency(totals.grandTotal, itemCurrency)}</strong>
+          <span class="text-xs text-text-tertiary">(${formatCurrency(perPiece, itemCurrency)}${t('cart.perUnit')})</span>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-text-tertiary"><path d="m6 9 6 6 6-6"/></svg>
         </span>
       </button>
@@ -569,7 +600,9 @@ function openDrawer(itemId?: string, mode: 'cart' | 'sample' = 'cart'): void {
   state.selectedShippingIndex = 0;
   state.previewColorIndex = 0;
   state.footerExpanded = false;
-  state.colorQuantities = new Map(item.colors.map((color) => [color.id, 0]));
+  state.colorQuantities = item.colors.length > 0
+    ? new Map(item.colors.map((color) => [color.id, 0]))
+    : new Map([['__no_variant__', 0]]);
 
   const heading = document.getElementById('shared-cart-heading');
   if (heading) {
@@ -889,7 +922,9 @@ export function openSharedShippingModal(quantity?: number): void {
     state.selectedShippingIndex = 0;
     state.previewColorIndex = 0;
     state.footerExpanded = false;
-    state.colorQuantities = new Map(fallback.colors.map((color) => [color.id, 0]));
+    state.colorQuantities = fallback.colors.length > 0
+      ? new Map(fallback.colors.map((color) => [color.id, 0]))
+      : new Map([['__no_variant__', 0]]);
   }
   updateShippingModal(quantity);
   setShippingModalOpen(true);

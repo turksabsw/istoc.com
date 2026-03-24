@@ -154,6 +154,25 @@ export async function apiGetOrders(page = 1): Promise<{ orders: BackendOrderItem
   return callMethod('tradehub_core.api.cart.get_orders', { page });
 }
 
+export interface ListingShippingMethod {
+  id: string;
+  method: string;
+  cost: number;
+  minDays: number | null;
+  maxDays: number | null;
+  estimatedDays: string;
+  currency: string;
+}
+
+/** Belirtilen listing için satıcının tanımladığı kargo yöntemlerini getirir. */
+export async function fetchShippingMethodsForListing(listingId: string): Promise<ListingShippingMethod[]> {
+  const result = await callMethod<{ data: ListingShippingMethod[] }>(
+    'tradehub_core.api.listing.get_shipping_methods',
+    { listing_id: listingId }
+  );
+  return result?.data ?? [];
+}
+
 /** Ödeme onayı sonrası siparişleri backend'e kaydeder. */
 export async function apiCreateOrder(
   orders: BackendOrder[],

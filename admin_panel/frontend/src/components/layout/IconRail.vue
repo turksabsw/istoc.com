@@ -55,9 +55,9 @@
 </template>
 
 <script setup>
-import { onMounted, onUnmounted } from 'vue'
+import { computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { railSections } from '@/data/navigation'
+import { adminRailSections, sellerRailSections } from '@/data/navigation'
 import { useNavigationStore } from '@/stores/navigation'
 import { useTenantStore } from '@/stores/tenant'
 import { useAuthStore } from '@/stores/auth'
@@ -72,6 +72,11 @@ import AppIcon from '@/components/common/AppIcon.vue'
 const nav = useNavigationStore()
 const tenant = useTenantStore()
 const auth = useAuthStore()
+
+// Rol bazlı rail sections
+const railSections = computed(() =>
+  auth.isSeller && !auth.isAdmin ? sellerRailSections : adminRailSections
+)
 const toast = useToast()
 const router = useRouter()
 const { currentTheme, setTheme } = useTheme()

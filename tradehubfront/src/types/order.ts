@@ -65,4 +65,8 @@ export interface Order {
   supplier: OrderSupplier;
   paymentMethod: string;
   createdAt: number;
+  remittanceAmount: number;
+  refundStatus: string;
+  refundReason: string;
+  refundAmount: number;
 }

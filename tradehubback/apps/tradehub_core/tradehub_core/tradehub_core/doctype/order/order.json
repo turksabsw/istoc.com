@@ -24,7 +24,17 @@
   "shipping_address",
   "shipping_method",
   "ship_from",
-  "buyer_note"
+  "buyer_note",
+  "remittance_section",
+  "remittance_date",
+  "remittance_amount",
+  "remittance_sender",
+  "receipt_url",
+  "refund_section",
+  "refund_status",
+  "refund_reason",
+  "refund_amount",
+  "refund_requested_at"
  ],
  "fields": [
   {
@@ -159,6 +169,60 @@
    "fieldname": "buyer_note",
    "fieldtype": "Small Text",
    "label": "Alıcı Notu"
+  },
+  {
+   "fieldname": "remittance_section",
+   "fieldtype": "Section Break",
+   "label": "Havale Bilgileri"
+  },
+  {
+   "fieldname": "remittance_date",
+   "fieldtype": "Date",
+   "label": "Havale Tarihi"
+  },
+  {
+   "fieldname": "remittance_amount",
+   "fieldtype": "Currency",
+   "label": "Havale Tutarı"
+  },
+  {
+   "fieldname": "remittance_sender",
+   "fieldtype": "Data",
+   "label": "Gönderen Adı"
+  },
+  {
+   "fieldname": "receipt_url",
+   "fieldtype": "Attach",
+   "label": "Dekont"
+  },
+  {
+   "fieldname": "refund_section",
+   "fieldtype": "Section Break",
+   "label": "İade Bilgileri"
+  },
+  {
+   "default": "",
+   "fieldname": "refund_status",
+   "fieldtype": "Select",
+   "label": "İade Durumu",
+   "options": "\nPending\nApproved\nRejected"
+  },
+  {
+   "fieldname": "refund_reason",
+   "fieldtype": "Small Text",
+   "label": "İade Sebebi"
+  },
+  {
+   "default": "0",
+   "fieldname": "refund_amount",
+   "fieldtype": "Currency",
+   "label": "İade Tutarı"
+  },
+  {
+   "fieldname": "refund_requested_at",
+   "fieldtype": "Datetime",
+   "label": "İade Talep Tarihi",
+   "read_only": 1
   }
  ],
  "links": [],

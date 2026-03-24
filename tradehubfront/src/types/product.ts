@@ -31,6 +31,7 @@ export interface VariantOption {
   thumbnail?: string;
   available: boolean;
   price?: number;
+  rawPrice?: number;
   priceAddon?: number;
   basePriceAddon?: number;
 }

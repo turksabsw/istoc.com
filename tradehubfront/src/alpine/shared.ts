@@ -4,12 +4,28 @@ Alpine.data('floatingPanel', () => ({
   showScrollTop: false,
   chatOpen: false,
   lensOpen: false,
+  isSeller: false,
+  sellerPanelUrl: (import.meta as Record<string, unknown> & { env: Record<string, string> }).env.VITE_SELLER_PANEL_URL || 'http://localhost:8082/',
 
-  init() {
+  async init() {
     this.showScrollTop = window.scrollY > 300;
     window.addEventListener('scroll', () => {
       this.showScrollTop = window.scrollY > 300;
     }, { passive: true });
+
+    try {
+      const res = await fetch('/api/method/tradehub_core.api.v1.auth.get_session_user', {
+        credentials: 'include',
+      });
+      if (res.ok) {
+        const data = await res.json() as { message?: { logged_in?: boolean; user?: { is_seller?: boolean } } };
+        if (data.message?.logged_in && data.message?.user?.is_seller) {
+          this.isSeller = true;
+        }
+      }
+    } catch {
+      // session yüklenemedi, buton gösterilmez
+    }
   },
 
   scrollToTop() {

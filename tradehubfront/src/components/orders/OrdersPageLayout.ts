@@ -58,10 +58,12 @@ function renderAllOrders(): string {
       <!-- Header -->
       <div class="flex items-center justify-between gap-2 px-5 max-sm:px-3 pt-6 max-[480px]:pt-4 pb-5 max-[480px]:pb-3 border-b border-gray-100">
         <h1 class="text-[22px] max-sm:text-lg max-[480px]:text-base font-bold text-gray-900" data-i18n="orders.yourOrders">${t('orders.yourOrders')}</h1>
-        <button @click="document.getElementById('remittance-modal')?.classList.remove('hidden'); document.getElementById('remittance-modal')?.classList.add('flex'); document.body.style.overflow = 'hidden'"
-          class="px-5 max-sm:px-3 max-[480px]:px-2.5 py-2 text-sm max-sm:text-xs text-gray-700 bg-white border border-gray-300 rounded-full cursor-pointer whitespace-nowrap transition-colors hover:border-gray-400 hover:bg-gray-50">
-          ${t('orders.submitRemittanceProof')}
-        </button>
+        <template x-if="filteredOrders.some((o) => o.status === 'Waiting for payment')">
+          <button @click="openRemittanceModal(filteredOrders.find((o) => o.status === 'Waiting for payment')?.orderNumber || '')"
+            class="px-5 max-sm:px-3 max-[480px]:px-2.5 py-2 text-sm max-sm:text-xs text-gray-700 bg-white border border-gray-300 rounded-full cursor-pointer whitespace-nowrap transition-colors hover:border-gray-400 hover:bg-gray-50">
+            ${t('orders.submitRemittanceProof')}
+          </button>
+        </template>
       </div>
 
       <!-- Status Tabs — dynamic counts, horizontal scroll -->
@@ -370,9 +372,11 @@ function renderAllOrders(): string {
                 <button @click="viewDetail(order)" class="h-9 px-5 max-[480px]:px-3 max-[480px]:flex-1 text-[13px] max-[480px]:text-xs text-gray-700 bg-white border border-gray-300 rounded-lg cursor-pointer font-medium whitespace-nowrap transition-colors hover:border-gray-400 hover:bg-gray-50">
                   ${t('orders.viewDetails')}
                 </button>
-                <button @click="window.location.href='${getBaseUrl()}pages/order/order-success.html'" class="h-9 px-5 max-[480px]:px-3 max-[480px]:flex-1 text-[13px] max-[480px]:text-xs font-medium text-white bg-(--color-cta-primary) border border-(--color-cta-primary) rounded-lg cursor-pointer whitespace-nowrap transition-colors hover:bg-(--color-cta-primary-hover)">
-                  ${t('orders.makePayment')}
-                </button>
+                <template x-if="canPay(order)">
+                  <button @click="openRemittanceModal(order.orderNumber)" class="h-9 px-5 max-[480px]:px-3 max-[480px]:flex-1 text-[13px] max-[480px]:text-xs font-medium text-white bg-(--color-cta-primary) border border-(--color-cta-primary) rounded-lg cursor-pointer whitespace-nowrap transition-colors hover:bg-(--color-cta-primary-hover)">
+                    ${t('orders.makePayment')}
+                  </button>
+                </template>
               </div>
             </div>
           </div>
@@ -512,13 +516,21 @@ function renderAllOrders(): string {
               </div>
               <a href="#" class="text-sm text-blue-600 hover:underline">${t('common.learnMore')} &gt;</a>
             </div>
-            <!-- Payment amount -->
-            <div class="flex items-center gap-2">
-              <svg class="w-4 h-4 text-amber-500 shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M10 2a8 8 0 100 16 8 8 0 000-16zm1 11H9v-2h2v2zm0-4H9V5h2v4z"/>
-              </svg>
-              <span class="text-sm text-gray-800">${t('orders.yourPaymentAmount')}: <strong x-text="selectedOrder.currency + ' ' + selectedOrder.total"></strong></span>
-            </div>
+            <!-- Payment amount / Refund status -->
+            <template x-if="selectedOrder.refundStatus === 'Approved'">
+              <div class="flex items-center gap-2">
+                <svg class="w-4 h-4 text-purple-500 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3"/></svg>
+                <span class="text-sm text-purple-700 font-semibold">İade onaylandı — <span x-text="selectedOrder.currency + ' ' + Number(selectedOrder.total).toLocaleString('tr-TR', {minimumFractionDigits: 2})"></span> iade edildi.</span>
+              </div>
+            </template>
+            <template x-if="selectedOrder.refundStatus !== 'Approved'">
+              <div class="flex items-center gap-2">
+                <svg class="w-4 h-4 text-amber-500 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M10 2a8 8 0 100 16 8 8 0 000-16zm1 11H9v-2h2v2zm0-4H9V5h2v4z"/>
+                </svg>
+                <span class="text-sm text-gray-800">${t('orders.yourPaymentAmount')}: <strong x-text="selectedOrder.currency + ' ' + selectedOrder.total"></strong></span>
+              </div>
+            </template>
             <!-- Notes -->
             <ul class="text-xs text-gray-600 space-y-1 pl-4 list-disc">
               <li>${t('orders.orderTermsNote')}</li>
@@ -529,7 +541,7 @@ function renderAllOrders(): string {
           <!-- Action Buttons (status-aware) -->
           <div class="flex items-center gap-3 mt-4 flex-wrap" x-show="isActionable(selectedOrder)">
             <template x-if="canPay(selectedOrder)">
-              <button @click="window.location.href='${getBaseUrl()}pages/order/order-success.html'" class="th-btn th-btn-pill">
+              <button @click="openRemittanceModal(selectedOrder.orderNumber)" class="th-btn th-btn-pill">
                 ${t('orders.makePayment')}
               </button>
             </template>
@@ -654,8 +666,14 @@ function renderAllOrders(): string {
                   <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><circle cx="4" cy="10" r="2"/><circle cx="10" cy="10" r="2"/><circle cx="16" cy="10" r="2"/></svg>
                 </button>
                 <div x-show="moreOpen" @click.outside="moreOpen = false" x-transition class="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg z-20 py-1 min-w-[160px]">
-                  <button class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 bg-transparent border-none cursor-pointer">${t('orders.downloadInvoice')}</button>
-                  <button class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 bg-transparent border-none cursor-pointer">${t('orders.requestRefund')}</button>
+                  <button @click="downloadInvoice(selectedOrder); moreOpen = false" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 bg-transparent border-none cursor-pointer flex items-center gap-2">
+                    <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                    ${t('orders.downloadInvoice')}
+                  </button>
+                  <button @click="openRefundModal(selectedOrder); moreOpen = false" class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 bg-transparent border-none cursor-pointer flex items-center gap-2">
+                    <svg class="w-3.5 h-3.5 text-red-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg>
+                    ${t('orders.requestRefund')}
+                  </button>
                 </div>
               </div>
             </div>
@@ -673,8 +691,10 @@ function renderAllOrders(): string {
                   <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"
                        x-show="selectedOrder.payment.status === 'Paid'"><path stroke-linecap="round" d="M5 13l4 4L19 7"/></svg>
                   <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"
-                       x-show="selectedOrder.payment.status !== 'Paid'"><path stroke-linecap="round" d="M12 8v4m0 4h.01"/><circle cx="12" cy="12" r="10"/></svg>
-                  <span x-text="selectedOrder.payment.status"></span>
+                       x-show="selectedOrder.payment.status === 'Refunded'"><path stroke-linecap="round" stroke-linejoin="round" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg>
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"
+                       x-show="selectedOrder.payment.status !== 'Paid' && selectedOrder.payment.status !== 'Refunded'"><path stroke-linecap="round" d="M12 8v4m0 4h.01"/><circle cx="12" cy="12" r="10"/></svg>
+                  <span x-text="selectedOrder.payment.status === 'Paid' ? 'Ödendi' : selectedOrder.payment.status === 'Refunded' ? 'İade Edildi' : selectedOrder.payment.status === 'Unpaid' ? 'Ödenmedi' : selectedOrder.payment.status"></span>
                 </span>
               </div>
               <template x-if="selectedOrder.payment.hasRecord">
@@ -887,6 +907,32 @@ function renderAllOrders(): string {
                         <p class="text-xs text-gray-400 mt-1">${t('orders.orderCompletedMessage')}</p>
                       </div>
                     </template>
+                    <!-- Refund: Pending -->
+                    <template x-if="selectedOrder.refundStatus === 'Pending'">
+                      <div class="relative">
+                        <div class="absolute -left-[25px] top-1 w-3 h-3 bg-amber-400 rounded-full border-2 border-white"></div>
+                        <p class="text-sm font-medium text-amber-700">İade talebi inceleniyor</p>
+                        <p class="text-xs text-gray-400 mt-1" x-text="selectedOrder.refundReason || 'Satıcı tarafından inceleniyor.'"></p>
+                      </div>
+                    </template>
+                    <!-- Refund: Approved -->
+                    <template x-if="selectedOrder.refundStatus === 'Approved'">
+                      <div class="relative">
+                        <div class="absolute -left-[25px] top-1 w-3 h-3 bg-purple-500 rounded-full border-2 border-white"></div>
+                        <p class="text-sm font-medium text-purple-700">İade onaylandı</p>
+                        <p class="text-xs text-gray-400 mt-1">
+                          <span x-text="selectedOrder.currency + ' ' + Number(selectedOrder.total).toLocaleString('tr-TR', {minimumFractionDigits: 2})"></span> tutarında iade satıcı tarafından onaylandı.
+                        </p>
+                      </div>
+                    </template>
+                    <!-- Refund: Rejected -->
+                    <template x-if="selectedOrder.refundStatus === 'Rejected'">
+                      <div class="relative">
+                        <div class="absolute -left-[25px] top-1 w-3 h-3 bg-red-400 rounded-full border-2 border-white"></div>
+                        <p class="text-sm font-medium text-red-600">İade talebi reddedildi</p>
+                        <p class="text-xs text-gray-400 mt-1">Satıcı iade talebini reddetti.</p>
+                      </div>
+                    </template>
                   </div>
                 </template>
               </div>
@@ -1066,35 +1112,41 @@ function renderAllOrders(): string {
                 </div>
                 <!-- Wire transfer tab -->
                 <div x-show="paymentHistoryTab === 'wire'">
-                  <table class="w-full text-sm">
-                    <thead>
-                      <tr class="border-b border-gray-200">
-                        <th class="text-left text-xs font-semibold text-gray-500 uppercase pb-3 pr-4">${t('orders.date')}</th>
-                        <th class="text-left text-xs font-semibold text-gray-500 uppercase pb-3 pr-4">${t('orders.reference')}</th>
-                        <th class="text-right text-xs font-semibold text-gray-500 uppercase pb-3 pr-4">${t('orders.amount')}</th>
-                        <th class="text-right text-xs font-semibold text-gray-500 uppercase pb-3">${t('orders.status')}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <template x-if="wireRecords.length === 0">
-                        <tr>
-                          <td colspan="4" class="py-12 text-center text-gray-400 text-sm">${t('orders.noWireTransferRecords')}</td>
-                        </tr>
-                      </template>
-                      <template x-for="rec in wireRecords" :key="rec.name">
-                        <tr class="border-b border-gray-100">
-                          <td class="py-3 pr-4 text-gray-700" x-text="rec.payment_date ? new Date(rec.payment_date).toLocaleDateString('tr-TR') : '-'"></td>
-                          <td class="py-3 pr-4 text-gray-700 font-mono text-xs" x-text="rec.reference || '-'"></td>
-                          <td class="py-3 pr-4 text-right font-medium text-gray-900" x-text="(rec.currency || 'USD') + ' ' + Number(rec.amount || 0).toFixed(2)"></td>
-                          <td class="py-3 text-right">
-                            <span class="inline-flex px-2 py-0.5 text-xs font-medium rounded-full"
-                                  :class="rec.status === 'Completed' ? 'bg-green-50 text-green-700' : rec.status === 'Failed' ? 'bg-red-50 text-red-700' : 'bg-amber-50 text-amber-700'"
-                                  x-text="rec.status"></span>
-                          </td>
-                        </tr>
-                      </template>
-                    </tbody>
-                  </table>
+                  <template x-if="wireRecords.length === 0">
+                    <p class="py-12 text-center text-gray-400 text-sm">${t('orders.noWireTransferRecords')}</p>
+                  </template>
+                  <template x-for="rec in wireRecords" :key="rec.name">
+                    <div class="border border-gray-100 rounded-xl p-5 mb-3 space-y-3">
+                      <div class="flex items-center justify-between">
+                        <span class="text-xs font-semibold text-gray-500 uppercase">Havale / EFT</span>
+                        <span class="inline-flex px-2.5 py-0.5 text-xs font-medium rounded-full"
+                              :class="rec.status === 'Completed' ? 'bg-green-50 text-green-700' : 'bg-amber-50 text-amber-700'"
+                              x-text="rec.status === 'Completed' ? 'Onaylandı' : 'Beklemede'"></span>
+                      </div>
+                      <div class="grid grid-cols-2 gap-3 text-sm">
+                        <div>
+                          <p class="text-xs text-gray-400 mb-0.5">Havale Tarihi</p>
+                          <p class="font-medium text-gray-800" x-text="rec.payment_date ? new Date(rec.payment_date).toLocaleDateString('tr-TR') : '-'"></p>
+                        </div>
+                        <div>
+                          <p class="text-xs text-gray-400 mb-0.5">Gönderen</p>
+                          <p class="font-medium text-gray-800" x-text="rec.reference || '-'"></p>
+                        </div>
+                        <div>
+                          <p class="text-xs text-gray-400 mb-0.5">Tutar</p>
+                          <p class="font-semibold text-gray-900" x-text="(rec.currency || 'USD') + ' ' + Number(rec.amount || 0).toLocaleString('tr-TR', {minimumFractionDigits: 2})"></p>
+                        </div>
+                        <div x-show="rec.receipt_url">
+                          <p class="text-xs text-gray-400 mb-0.5">Dekont</p>
+                          <a :href="rec.receipt_url" target="_blank"
+                            class="inline-flex items-center gap-1 text-xs font-medium text-violet-600 hover:underline">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>
+                            Dekontu görüntüle
+                          </a>
+                        </div>
+                      </div>
+                    </div>
+                  </template>
                 </div>
               </div>
             </div>
@@ -1104,6 +1156,82 @@ function renderAllOrders(): string {
                 ${t('common.close')}
               </button>
             </div>
+          </div>
+        </div>
+      </template>
+
+      <!-- Modal: Refund Request -->
+      <template x-if="showRefundModal">
+        <div class="fixed inset-0 z-50 flex items-center justify-center p-4" @keydown.escape.window="closeModal('showRefundModal')">
+          <div class="absolute inset-0 bg-black/50" @click="closeModal('showRefundModal')"></div>
+          <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden" @click.stop>
+            <!-- Header -->
+            <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+              <h3 class="text-base font-bold text-gray-900">İade Talebi</h3>
+              <button @click="closeModal('showRefundModal')" class="flex items-center justify-center w-8 h-8 text-gray-400 hover:text-gray-600 bg-transparent border-none cursor-pointer rounded-full hover:bg-gray-100 transition-colors">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M6 18L18 6M6 6l12 12"/></svg>
+              </button>
+            </div>
+            <!-- Blocked: aktif iade talebi var -->
+            <template x-if="refundBlocked">
+              <div class="px-6 py-10 text-center">
+                <div class="w-14 h-14 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <svg class="w-7 h-7 text-amber-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+                </div>
+                <h4 class="text-base font-semibold text-gray-900 mb-2">İade talebi oluşturulamaz</h4>
+                <p class="text-sm text-gray-500 mb-6" x-text="refundError"></p>
+                <button @click="closeModal('showRefundModal')" class="px-6 py-2 text-sm font-medium text-white bg-amber-600 hover:bg-amber-700 rounded-full border-none cursor-pointer transition-colors">Kapat</button>
+              </div>
+            </template>
+            <!-- Success state -->
+            <template x-if="refundSuccess">
+              <div class="px-6 py-10 text-center">
+                <div class="w-14 h-14 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <svg class="w-7 h-7 text-green-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                </div>
+                <h4 class="text-base font-semibold text-gray-900 mb-2">İade talebiniz alındı</h4>
+                <p class="text-sm text-gray-500 mb-6">Satıcı talebinizi inceleyecek ve en kısa sürede geri dönüş yapacaktır.</p>
+                <button @click="closeModal('showRefundModal')" class="px-6 py-2 text-sm font-medium text-white bg-violet-600 hover:bg-violet-700 rounded-full border-none cursor-pointer transition-colors">Kapat</button>
+              </div>
+            </template>
+            <!-- Form -->
+            <template x-if="!refundSuccess && !refundBlocked">
+              <div class="px-6 py-5">
+                <p class="text-sm text-gray-500 mb-5">
+                  <strong x-text="selectedOrder?.orderNumber"></strong> numaralı sipariş için iade talebinizi aşağıda açıklayın. Satıcı tarafından incelenecektir.
+                </p>
+                <!-- Refund amount -->
+                <div class="mb-4">
+                  <label class="block text-xs font-semibold text-gray-600 mb-1.5">İade tutarı</label>
+                  <div class="relative">
+                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-400" x-text="selectedOrder?.currency || 'TRY'"></span>
+                    <input type="text" :value="Number(refundForm.amount).toLocaleString('tr-TR', {minimumFractionDigits: 2})" readonly
+                      class="w-full border border-gray-100 bg-gray-50 rounded-lg py-2.5 pl-12 pr-3 text-sm text-gray-700 cursor-default select-none" />
+                  </div>
+                </div>
+                <!-- Reason -->
+                <div class="mb-5">
+                  <label class="block text-xs font-semibold text-gray-600 mb-1.5">İade sebebi <span class="text-red-500">*</span></label>
+                  <textarea x-model="refundForm.reason" rows="4"
+                    class="w-full border border-gray-200 rounded-lg py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300 focus:border-violet-400 resize-none"
+                    placeholder="Ürün beklentilerinizi karşılamadıysa veya bir sorun yaşadıysanız lütfen açıklayın..."></textarea>
+                </div>
+                <!-- Error -->
+                <p x-show="refundError" x-text="refundError" class="text-xs text-red-500 mb-3"></p>
+                <!-- Actions -->
+                <div class="flex gap-3 justify-end">
+                  <button @click="closeModal('showRefundModal')" class="px-5 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-full cursor-pointer hover:bg-gray-50 transition-colors">İptal</button>
+                  <button @click="submitRefundRequest()"
+                    :disabled="submittingRefund || !refundForm.reason.trim()"
+                    class="px-5 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-full border-none cursor-pointer transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
+                    <template x-if="submittingRefund">
+                      <svg class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                    </template>
+                    İade Talebi Gönder
+                  </button>
+                </div>
+              </div>
+            </template>
           </div>
         </div>
       </template>
@@ -1195,11 +1323,24 @@ function renderAllOrders(): string {
               <!-- Service line -->
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1.5">${t('orders.shippingServiceLine')}</label>
-                <select class="w-full h-10 px-3 text-sm border border-gray-300 rounded-lg outline-none bg-white text-gray-700 focus:border-amber-400 focus:ring-1 focus:ring-amber-200 cursor-pointer">
-                  <option>${t('orders.standardShipping')}</option>
-                  <option>${t('orders.expressShipping')}</option>
-                  <option>${t('orders.economyShipping')}</option>
-                </select>
+                <template x-if="shippingMethodsLoading">
+                  <div class="w-full h-10 px-3 flex items-center text-sm border border-gray-200 rounded-lg bg-gray-50 text-gray-400">
+                    ${t('common.loading') || 'Yükleniyor...'}
+                  </div>
+                </template>
+                <template x-if="!shippingMethodsLoading">
+                  <select
+                    x-model="selectedShippingMethod"
+                    class="w-full h-10 px-3 text-sm border border-gray-300 rounded-lg outline-none bg-white text-gray-700 focus:border-amber-400 focus:ring-1 focus:ring-amber-200 cursor-pointer"
+                  >
+                    <template x-if="shippingMethods.length === 0">
+                      <option value="">${t('orders.noShippingMethods') || 'Kargo yöntemi bulunamadı'}</option>
+                    </template>
+                    <template x-for="method in shippingMethods" :key="method.id">
+                      <option :value="method.id" x-text="method.estimatedDays ? method.method + ' (' + method.estimatedDays + ')' : method.method"></option>
+                    </template>
+                  </select>
+                </template>
               </div>
               <!-- Fee info -->
               <div class="bg-amber-50 border border-amber-200 rounded-lg p-3">
@@ -1313,8 +1454,9 @@ function renderAllOrders(): string {
           <div class="flex items-center justify-between px-6 pt-5 pb-4 border-b border-gray-100 sticky top-0 bg-white z-10 rounded-t-xl">
             <div class="flex items-center gap-3">
               <h3 class="text-lg font-bold text-gray-900">${t('orders.submitRemittanceProof')}</h3>
-              <!-- Step indicator -->
+              <!-- Step indicator (3 steps) -->
               <div class="flex items-center gap-1.5" x-show="step !== 'success'">
+                <span class="w-2 h-2 rounded-full transition-colors" :class="step === 'iban' ? 'bg-amber-500' : 'bg-gray-300'"></span>
                 <span class="w-2 h-2 rounded-full transition-colors" :class="step === 'upload' ? 'bg-amber-500' : 'bg-gray-300'"></span>
                 <span class="w-2 h-2 rounded-full transition-colors" :class="step === 'form' || step === 'submitting' ? 'bg-amber-500' : 'bg-gray-300'"></span>
               </div>
@@ -1322,6 +1464,77 @@ function renderAllOrders(): string {
             <button @click="reset()" class="os-modal__close bg-transparent border-none cursor-pointer p-1.5 rounded-lg flex items-center justify-center transition-colors hover:bg-gray-100" aria-label="${t('common.close')}">
               <svg width="18" height="18" viewBox="0 0 16 16" fill="none"><path d="M12 4L4 12M4 4l8 8" stroke="#666" stroke-width="1.5" stroke-linecap="round"/></svg>
             </button>
+          </div>
+
+          <!-- ═══ STEP 0: Satıcı IBAN Bilgileri ═══ -->
+          <div x-show="step === 'iban'" x-transition class="p-6">
+            <!-- Loading -->
+            <template x-if="loadingBank">
+              <div class="flex items-center justify-center py-12 gap-3 text-gray-400">
+                <svg class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/></svg>
+                <span class="text-sm">Banka bilgileri yükleniyor...</span>
+              </div>
+            </template>
+
+            <template x-if="!loadingBank">
+              <div>
+                <!-- Title -->
+                <p class="text-sm text-gray-600 mb-5">Aşağıdaki banka hesabına havale/EFT yapın, ardından <strong>"Ödeme Yaptım"</strong> butonuna tıklayın.</p>
+
+                <!-- IBAN Card -->
+                <div class="bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200 rounded-xl p-5 mb-5">
+                  <div class="flex items-center gap-2 mb-4">
+                    <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
+                    <h4 class="font-bold text-amber-900 text-sm">Ödeme Bilgileri</h4>
+                  </div>
+
+                  <template x-if="!sellerIban">
+                    <p class="text-sm text-red-500">Bu satıcı henüz banka bilgisi girmemiş. Satıcıyla iletişime geçin.</p>
+                  </template>
+
+                  <template x-if="sellerIban">
+                    <div class="space-y-3">
+                      <div class="flex items-start justify-between gap-3">
+                        <span class="text-xs text-amber-700 font-medium w-28 shrink-0 pt-0.5">Hesap Sahibi</span>
+                        <span class="text-sm font-semibold text-gray-900 text-right" x-text="sellerAccountHolder || sellerName || '—'"></span>
+                      </div>
+                      <div class="border-t border-amber-200"></div>
+                      <div class="flex items-start justify-between gap-3">
+                        <span class="text-xs text-amber-700 font-medium w-28 shrink-0 pt-0.5">Banka Adı</span>
+                        <span class="text-sm font-semibold text-gray-900 text-right" x-text="sellerBankName || '—'"></span>
+                      </div>
+                      <div class="border-t border-amber-200"></div>
+                      <div class="flex items-start justify-between gap-3">
+                        <span class="text-xs text-amber-700 font-medium w-28 shrink-0 pt-0.5">IBAN</span>
+                        <div class="flex items-center gap-2 flex-wrap justify-end">
+                          <span class="text-sm font-mono font-bold text-gray-900 tracking-wider" x-text="sellerIban"></span>
+                          <button type="button" @click="navigator.clipboard.writeText(sellerIban); $el.textContent='Kopyalandı!'; setTimeout(() => $el.textContent='Kopyala', 2000)"
+                            class="text-xs text-amber-700 hover:text-amber-900 bg-amber-100 hover:bg-amber-200 px-2 py-0.5 rounded-full border border-amber-300 transition-colors cursor-pointer whitespace-nowrap">
+                            Kopyala
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </template>
+                </div>
+
+                <!-- Warning note -->
+                <div class="flex items-start gap-2.5 bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 mb-6">
+                  <svg class="w-4 h-4 text-blue-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                  <p class="text-xs text-blue-700">Havaleyi yaptıktan sonra <strong>"Ödeme Yaptım"</strong> butonuna tıklayın ve dekontunuzu yükleyin. Satıcı ödemeyi onayladıktan sonra siparişiniz hazırlanmaya başlayacaktır.</p>
+                </div>
+
+                <!-- Actions -->
+                <div class="flex items-center justify-between gap-3">
+                  <button @click="reset()" class="text-sm text-gray-500 hover:text-gray-700 bg-transparent border-none cursor-pointer transition-colors">İptal</button>
+                  <button @click="goToUpload()" :disabled="!sellerIban"
+                    class="flex items-center gap-2 px-7 py-3 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl cursor-pointer transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                    Ödeme Yaptım — Dekont Yükle
+                  </button>
+                </div>
+              </div>
+            </template>
           </div>
 
           <!-- ═══ STEP 1: Upload ═══ -->
@@ -1452,18 +1665,6 @@ function renderAllOrders(): string {
                 </div>
 
                 <div class="space-y-4">
-                  <!-- Beneficiary Account -->
-                  <div>
-                    <label class="block text-sm text-gray-700 mb-1.5">
-                      <span class="text-red-500">*</span> ${t('orders.remitBeneficiaryAccount')}
-                    </label>
-                    <input type="text" x-model="form.beneficiaryAccount"
-                      @blur="submitted && validateField('beneficiaryAccount')"
-                      :class="errors.beneficiaryAccount ? 'border-red-400! ring-1! ring-red-200!' : ''"
-                      placeholder="${t('orders.remitPlaceholderEnter')}"
-                      class="w-full h-10 px-3 text-sm border border-gray-300 rounded-lg outline-none bg-white text-gray-700 transition-colors focus:border-amber-400 focus:ring-1 focus:ring-amber-200" />
-                    <p x-show="errors.beneficiaryAccount" class="text-xs text-red-500 mt-1">${t('common.required')}</p>
-                  </div>
 
                   <!-- Remittance Date -->
                   <div>
@@ -1580,6 +1781,7 @@ function renderAllOrders(): string {
 
 function renderRefunds(): string {
   return `
+    <div x-data="refundsComponent()" x-cloak>
     <div class="flex items-center justify-between px-7 max-sm:px-3 pt-6 pb-5 border-b border-(--color-border-light,#f0f0f0)">
       <h1 class="text-[22px] font-bold text-(--color-text-heading,#111827)">${t('orders.refundsAfterSalesTitle')}</h1>
     </div>
@@ -1589,12 +1791,54 @@ function renderRefunds(): string {
       <button class="os-tabs__tab py-3 px-4 text-sm bg-transparent border-none border-b-2 border-b-transparent cursor-pointer whitespace-nowrap transition-colors text-(--color-text-muted,#666)" data-tab="refund-after">${t('orders.afterSalesServicesTab')}</button>
     </div>
 
-    <!-- Tab: Para İadeleri (empty) -->
+    <!-- Tab: Para İadeleri (dynamic) -->
     <div class="os-tab-content os-tab-content--active" data-content="refund-returns">
-      <div class="flex flex-col items-center justify-center gap-3 px-10 max-sm:px-4 py-20 text-center">
-        ${EMPTY_RECEIPT_ICON}
-        <p class="text-sm text-(--color-text-muted,#666)">${t('orders.noAfterSalesRequest')}</p>
-      </div>
+      <!-- Loading -->
+      <template x-if="loading">
+        <div class="flex items-center justify-center py-16">
+          <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-amber-500"></div>
+        </div>
+      </template>
+      <!-- Empty -->
+      <template x-if="!loading && refunds.length === 0">
+        <div class="flex flex-col items-center justify-center gap-3 px-10 max-sm:px-4 py-20 text-center">
+          ${EMPTY_RECEIPT_ICON}
+          <p class="text-sm text-(--color-text-muted,#666)">${t('orders.noAfterSalesRequest')}</p>
+        </div>
+      </template>
+      <!-- Refund list -->
+      <template x-if="!loading && refunds.length > 0">
+        <div class="px-7 max-sm:px-3 py-5">
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm border-collapse">
+              <thead>
+                <tr class="border-b border-gray-200">
+                  <th class="text-left text-xs font-semibold text-gray-500 uppercase pb-3 pr-4">Sipariş No</th>
+                  <th class="text-left text-xs font-semibold text-gray-500 uppercase pb-3 pr-4">Tarih</th>
+                  <th class="text-left text-xs font-semibold text-gray-500 uppercase pb-3 pr-4">Satıcı</th>
+                  <th class="text-left text-xs font-semibold text-gray-500 uppercase pb-3 pr-4">Sebep</th>
+                  <th class="text-right text-xs font-semibold text-gray-500 uppercase pb-3 pr-4">İade Tutarı</th>
+                  <th class="text-center text-xs font-semibold text-gray-500 uppercase pb-3">Durum</th>
+                </tr>
+              </thead>
+              <tbody>
+                <template x-for="r in refunds" :key="r.order_number">
+                  <tr class="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                    <td class="py-3 pr-4 font-mono text-xs font-semibold text-gray-800" x-text="r.order_number"></td>
+                    <td class="py-3 pr-4 text-gray-500 text-xs" x-text="r.refund_requested_at || r.order_date"></td>
+                    <td class="py-3 pr-4 text-gray-700 text-xs" x-text="r.seller_name || '-'"></td>
+                    <td class="py-3 pr-4 text-gray-600 text-xs max-w-[200px] truncate" :title="r.refund_reason" x-text="r.refund_reason || '-'"></td>
+                    <td class="py-3 pr-4 text-right font-semibold text-gray-900 text-xs" x-text="r.refund_amount > 0 ? r.currency + ' ' + Number(r.refund_amount).toLocaleString('tr-TR', {minimumFractionDigits: 2}) : '-'"></td>
+                    <td class="py-3 text-center">
+                      <span class="inline-flex px-2.5 py-0.5 text-xs font-medium rounded-full" :class="statusClass(r.refund_status)" x-text="r.refund_status_label"></span>
+                    </td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </template>
     </div>
 
     <!-- Tab: Vergi iadeleri (table) -->
@@ -1629,6 +1873,7 @@ function renderRefunds(): string {
         ${EMPTY_RECEIPT_ICON}
         <p class="text-sm text-(--color-text-muted,#666)">${t('orders.noAfterSalesRequest')}</p>
       </div>
+    </div>
     </div>
   `;
 }

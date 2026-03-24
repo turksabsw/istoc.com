@@ -748,3 +748,38 @@ def validate_coupon(code, order_total=0):
 		"minOrder": float(coupon.min_order or 0),
 		"description": coupon.description or "",
 	}
+
+
+@frappe.whitelist()
+def get_buyer_coupons():
+	"""Sisteme tanımlı aktif kuponları ve durumlarını döndürür."""
+	import datetime
+	today = datetime.date.today()
+
+	coupons = frappe.get_all(
+		"Coupon",
+		filters={"is_active": 1},
+		fields=["name", "code", "coupon_type", "value", "min_order", "max_uses", "used_count", "description", "expires_at"],
+		order_by="creation desc",
+	)
+
+	result = []
+	for c in coupons:
+		if c.expires_at and c.expires_at < today:
+			status = "expired"
+		elif int(c.max_uses or 0) > 0 and int(c.used_count or 0) >= int(c.max_uses or 0):
+			status = "used"
+		else:
+			status = "available"
+
+		result.append({
+			"code": c.code,
+			"type": c.coupon_type,
+			"value": float(c.value or 0),
+			"minOrder": float(c.min_order or 0),
+			"description": c.description or "",
+			"status": status,
+			"expiresAt": str(c.expires_at) + "T23:59:59Z" if c.expires_at else "",
+		})
+
+	return {"coupons": result}

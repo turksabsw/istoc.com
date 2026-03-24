@@ -36,12 +36,32 @@ def get_sellers(search=None, page=1, page_size=20):
             listings = frappe.get_all(
                 "Listing",
                 filters={"seller_profile": seller_code, "status": "Active"},
-                fields=["name", "title", "primary_image", "selling_price", "base_price", "min_order_qty"],
+                fields=["name", "title", "primary_image", "selling_price", "base_price", "min_order_qty", "b2b_enabled"],
                 limit=4
             )
-            products = [{"name": l.name, "product_name": l.title, "image": l.primary_image,
-                         "price_min": l.selling_price or l.base_price, "price_max": l.base_price,
-                         "moq": l.min_order_qty or 1, "moq_unit": "Adet"} for l in listings]
+            products = []
+            for l in listings:
+                price_min = l.selling_price or l.base_price or 0
+                price_max = l.base_price or l.selling_price or 0
+                if l.get("b2b_enabled"):
+                    tiers = frappe.get_all(
+                        "Listing Bulk Pricing Tier",
+                        filters={"parent": l.name, "parenttype": "Listing"},
+                        fields=["price"],
+                        order_by="price ASC",
+                    )
+                    if tiers:
+                        price_min = min(t.price for t in tiers)
+                        price_max = max(t.price for t in tiers)
+                products.append({
+                    "name": l.name,
+                    "product_name": l.title,
+                    "image": l.primary_image,
+                    "price_min": price_min,
+                    "price_max": price_max,
+                    "moq": l.min_order_qty or 1,
+                    "moq_unit": "Adet"
+                })
             s["products"] = products
             s["product_images"] = [p["image"] for p in products if p.get("image")]
         except Exception:
@@ -105,16 +125,113 @@ def get_my_admin_seller_profile():
 
 @frappe.whitelist(allow_guest=True)
 def get_seller_categories(seller_code):
-    # Admin Seller Profile'da name = seller_code (autoname: field:seller_code)
+    """Public: Sadece onaylanmış kategorileri döndür."""
     if not frappe.db.exists("Admin Seller Profile", seller_code):
         return {"categories": []}
     cats = frappe.get_all(
         "Seller Category",
-        filters={"seller": seller_code},
+        filters={"seller": seller_code, "status": "Active"},
         fields=["name", "category_name", "image", "sort_order"],
         order_by="sort_order asc, category_name asc"
     )
     return {"categories": cats}
+
+
+@frappe.whitelist()
+def add_seller_category(category_name, description="", image="", sort_order=0):
+    """Satıcı: yeni kategori ekle (Pending olarak)."""
+    seller_profile = _get_seller_profile_for_session()
+    if not seller_profile:
+        frappe.throw(_("Satıcı profili bulunamadı."))
+    doc = frappe.get_doc({
+        "doctype": "Seller Category",
+        "seller": seller_profile,
+        "category_name": category_name,
+        "description": description,
+        "image": image,
+        "sort_order": int(sort_order or 0),
+        "status": "Pending",
+    })
+    doc.insert(ignore_permissions=True)
+    return {"success": True, "name": doc.name}
+
+
+@frappe.whitelist()
+def get_my_seller_categories():
+    """Satıcı: kendi tüm kategorilerini (tüm statüler) döndür."""
+    seller_profile = _get_seller_profile_for_session()
+    if not seller_profile:
+        return {"success": True, "categories": []}
+    cats = frappe.get_all(
+        "Seller Category",
+        filters={"seller": seller_profile},
+        fields=["name", "category_name", "status", "description", "image", "sort_order", "reject_reason"],
+        order_by="creation desc",
+    )
+    return {"success": True, "categories": cats}
+
+
+@frappe.whitelist()
+def delete_seller_category(category_name):
+    """Satıcı: kendi kategorisini sil (Pending veya Rejected olabilir)."""
+    seller_profile = _get_seller_profile_for_session()
+    if not seller_profile:
+        frappe.throw(_("Satıcı profili bulunamadı."))
+    cat = frappe.get_doc("Seller Category", category_name)
+    if cat.seller != seller_profile:
+        frappe.throw(_("Bu kategori size ait değil."), frappe.PermissionError)
+    cat.delete(ignore_permissions=True)
+    return {"success": True}
+
+
+@frappe.whitelist()
+def get_pending_seller_categories(page=1, page_size=20):
+    """Admin: Onay bekleyen kategorileri listele."""
+    if "System Manager" not in frappe.get_roles() and frappe.session.user != "Administrator":
+        frappe.throw(_("Yetki hatası"), frappe.PermissionError)
+    page = int(page)
+    page_size = int(page_size)
+    total = frappe.db.count("Seller Category", {"status": "Pending"})
+    cats = frappe.get_all(
+        "Seller Category",
+        filters={"status": "Pending"},
+        fields=["name", "category_name", "seller", "description", "image", "creation"],
+        order_by="creation asc",
+        start=(page - 1) * page_size,
+        page_length=page_size,
+    )
+    for c in cats:
+        if c.get("seller"):
+            c["seller_name"] = frappe.db.get_value("Admin Seller Profile", c["seller"], "seller_name") or c["seller"]
+        else:
+            c["seller_name"] = "-"
+    return {"success": True, "categories": cats, "total": total}
+
+
+@frappe.whitelist()
+def approve_seller_category(category_name, action="approve", reject_reason=""):
+    """Admin: kategoriyi onayla veya reddet."""
+    if "System Manager" not in frappe.get_roles() and frappe.session.user != "Administrator":
+        frappe.throw(_("Yetki hatası"), frappe.PermissionError)
+    cat = frappe.get_doc("Seller Category", category_name)
+    if action == "approve":
+        cat.status = "Active"
+        cat.reject_reason = ""
+    elif action == "reject":
+        cat.status = "Rejected"
+        cat.reject_reason = reject_reason
+    else:
+        frappe.throw(_("Geçersiz işlem"))
+    cat.save(ignore_permissions=True)
+    return {"success": True, "status": cat.status}
+
+
+def _get_seller_profile_for_session():
+    user = frappe.session.user
+    profile = frappe.db.get_value("Admin Seller Profile", {"owner": user}, "name")
+    if not profile:
+        profile = frappe.db.get_value("Admin Seller Profile", {"email": user}, "name")
+    return profile
 
 
 @frappe.whitelist(allow_guest=True)
@@ -129,7 +246,7 @@ def get_seller_products(seller_code, category=None, page=1, page_size=40):
         "Listing",
         filters=filters,
         fields=["name", "title", "primary_image", "selling_price", "base_price",
-                "min_order_qty", "category", "short_description"],
+                "min_order_qty", "category", "short_description", "b2b_enabled"],
         limit_start=(int(page)-1)*int(page_size),
         limit_page_length=int(page_size),
         order_by="creation desc"
@@ -138,8 +255,20 @@ def get_seller_products(seller_code, category=None, page=1, page_size=40):
         l["id"] = l.get("name", "")
         l["product_name"] = l.get("title", "")
         l["image"] = l.get("primary_image", "")
-        l["price_min"] = l.get("selling_price") or l.get("base_price", 0)
-        l["price_max"] = l.get("base_price", 0)
+        price_min = l.get("selling_price") or l.get("base_price") or 0
+        price_max = l.get("base_price") or l.get("selling_price") or 0
+        if l.get("b2b_enabled"):
+            tiers = frappe.get_all(
+                "Listing Bulk Pricing Tier",
+                filters={"parent": l.get("name"), "parenttype": "Listing"},
+                fields=["price"],
+                order_by="price ASC",
+            )
+            if tiers:
+                price_min = min(t.price for t in tiers)
+                price_max = max(t.price for t in tiers)
+        l["price_min"] = price_min
+        l["price_max"] = price_max
         l["moq"] = l.get("min_order_qty", 1)
         l["moq_unit"] = "Adet"
     total = frappe.db.count("Listing", filters=filters)

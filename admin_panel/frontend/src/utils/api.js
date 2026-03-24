@@ -42,11 +42,27 @@ async function request(method, endpoint, data = null) {
   }
 
   if (!response.ok) {
-    // Try to extract Frappe error message
-    const msg = result?.message
-      || (result?._server_messages ? JSON.parse(result._server_messages)?.[0] : null)
-      || result?.exc_type
-      || `HTTP ${response.status}`
+    // Frappe hata mesajını düzgün çözümle
+    let msg = result?.message || ''
+
+    // _server_messages: JSON-encoded array of JSON-encoded message objects
+    if (!msg && result?._server_messages) {
+      try {
+        const msgs = JSON.parse(result._server_messages)
+        const first = msgs?.[0]
+        if (first) {
+          const parsed = typeof first === 'string' ? JSON.parse(first) : first
+          msg = parsed?.message || parsed?.title || String(first)
+        }
+      } catch { /* ignore */ }
+    }
+
+    // exception field (stack trace summary)
+    if (!msg && result?.exception) {
+      msg = result.exception.split('\n').pop()?.trim() || result.exception
+    }
+
+    msg = msg || result?.exc_type || `HTTP ${response.status}`
     throw new Error(msg)
   }
   return result
@@ -127,6 +143,23 @@ export default {
     return request('GET', '/api/method/tradehub_core.api.v1.auth.get_session_user')
   },
   async getMeta(doctype) {
-    return request('GET', `/api/method/frappe.client.get_meta?doctype=${encodeURIComponent(doctype)}`)
+    // frappe.desk.form.load.getdoctype — tüm authenticated user'lar için çalışır
+    // Yanıt formatı: { "docs": [{ name, fields, ... }], "message": null }
+    const qs = new URLSearchParams({ doctype, with_parent: 0, cached_timestamp: '' })
+    const res = await request('GET', `/api/method/frappe.desk.form.load.getdoctype?${qs}`)
+    // docs top-level'da gelir, message içinde değil
+    const meta = res.docs?.[0] || res.message?.docs?.[0] || {}
+    return { message: meta }
+  },
+
+  /** Link alanı için bağlı DocType'ta arama yapar */
+  async searchLink(doctype, query = '', filters = []) {
+    const qs = new URLSearchParams({
+      doctype,
+      txt: query,
+      page_length: 10,
+      filters: JSON.stringify(filters),
+    })
+    return request('GET', `/api/method/frappe.desk.search.search_link?${qs}`)
   },
 }

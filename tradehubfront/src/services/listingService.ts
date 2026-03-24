@@ -322,6 +322,7 @@ function mapListingDetail(raw: any): ProductDetail {
         value: o.value,
         thumbnail: o.image || undefined,
         available: o.available !== false,
+        rawPrice: o.price || undefined,
         price: o.price ? convertPrice(o.price, baseCur) : undefined,
         priceAddon: o.priceAddon ? convertPrice(o.priceAddon, baseCur) : 0,
         basePriceAddon: o.priceAddon || 0,

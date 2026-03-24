@@ -881,3 +881,138 @@ def _get_price_range(listing):
             return f"${min_p:.2f}"
 
     return _format_price(listing.selling_price, listing.currency)
+
+
+# ─── Moderasyon Endpoint'leri ──────────────────────────
+
+@frappe.whitelist()
+def get_pending_listings(page=1, page_size=20):
+    """Admin: Onay bekleyen listing'leri listele."""
+    if "System Manager" not in frappe.get_roles() and frappe.session.user != "Administrator":
+        frappe.throw(_("Yetki hatası"), frappe.PermissionError)
+
+    page = int(page)
+    page_size = int(page_size)
+    total = frappe.db.count("Listing", {"status": "Pending"})
+    listings = frappe.get_all(
+        "Listing",
+        filters={"status": "Pending"},
+        fields=["name", "title", "status", "seller_profile", "creation", "modified",
+                "selling_price", "currency", "stock_qty", "listing_code"],
+        order_by="creation asc",
+        start=(page - 1) * page_size,
+        page_length=page_size,
+    )
+    for l in listings:
+        if l.get("seller_profile"):
+            l["seller_name"] = frappe.db.get_value(
+                "Admin Seller Profile", l["seller_profile"], "seller_name"
+            ) or l["seller_profile"]
+        else:
+            l["seller_name"] = "-"
+    return {"success": True, "listings": listings, "total": total}
+
+
+@frappe.whitelist()
+def approve_listing(listing_name, action="approve", reject_reason=""):
+    """Admin: listing'i onayla (Active) veya reddet (Rejected)."""
+    if "System Manager" not in frappe.get_roles() and frappe.session.user != "Administrator":
+        frappe.throw(_("Yetki hatası"), frappe.PermissionError)
+
+    listing = frappe.get_doc("Listing", listing_name)
+    if action == "approve":
+        listing.status = "Active"
+        listing.flags.ignore_validate = False
+    elif action == "reject":
+        listing.status = "Rejected"
+        if reject_reason:
+            listing.add_comment("Comment", text=f"Ret sebebi: {reject_reason}")
+    else:
+        frappe.throw(_("Geçersiz işlem"))
+
+    listing.flags.from_admin = True
+    listing.save(ignore_permissions=True)
+    return {"success": True, "status": listing.status}
+
+
+@frappe.whitelist()
+def get_seller_listings(page=1, page_size=20):
+    """Satıcı: kendi listing'lerini listele (tüm durumlar)."""
+    seller_profile = frappe.db.get_value(
+        "Admin Seller Profile", {"owner": frappe.session.user}, "name"
+    ) or frappe.db.get_value(
+        "Admin Seller Profile", {"email": frappe.session.user}, "name"
+    )
+    if not seller_profile:
+        return {"success": True, "listings": [], "total": 0}
+
+    page = int(page)
+    page_size = int(page_size)
+    total = frappe.db.count("Listing", {"seller_profile": seller_profile})
+    listings = frappe.get_all(
+        "Listing",
+        filters={"seller_profile": seller_profile},
+        fields=["name", "title", "status", "selling_price", "currency",
+                "stock_qty", "available_qty", "creation", "listing_code"],
+        order_by="creation desc",
+        start=(page - 1) * page_size,
+        page_length=page_size,
+    )
+    return {"success": True, "listings": listings, "total": total}
+
+
+@frappe.whitelist()
+def update_listing_status(listing_name, status):
+    """Satıcı: onaylanan listing'in durumunu değiştir."""
+    allowed = {"Active", "Paused", "Out of Stock"}
+    if status not in allowed:
+        frappe.throw(_("Geçersiz durum"))
+
+    listing = frappe.get_doc("Listing", listing_name)
+    if listing.status in ("Pending", "Rejected", "Draft"):
+        frappe.throw(_("Bu listing henüz onaylanmamış."))
+
+    # Sahiplik kontrolü
+    seller_profile = frappe.db.get_value(
+        "Admin Seller Profile", {"owner": frappe.session.user}, "name"
+    ) or frappe.db.get_value(
+        "Admin Seller Profile", {"email": frappe.session.user}, "name"
+    )
+    if listing.seller_profile != seller_profile:
+        frappe.throw(_("Bu listing size ait değil."), frappe.PermissionError)
+
+    frappe.db.set_value("Listing", listing_name, "status", status)
+    return {"success": True}
+
+
+@frappe.whitelist()
+def get_listing_meta():
+    """Satıcı için Listing doctype meta verilerini döndür (field tanımları)."""
+    from frappe.model.meta import get_meta
+    meta = get_meta("Listing")
+    # Sadece UI'da gösterilecek alanları filtrele
+    skip_types = {"Section Break", "Tab Break", "Column Break", "HTML", "Button"}
+    skip_fields = {"listing_code", "seller_profile", "supplier_display_name",
+                   "status", "reserved_qty", "available_qty", "published_at",
+                   "erpnext_item", "naming_series", "variants_html",
+                   "view_count", "wishlist_count", "order_count",
+                   "average_rating", "review_count"}
+    fields = []
+    for f in meta.fields:
+        if f.fieldtype in skip_types:
+            continue
+        if f.fieldname in skip_fields:
+            continue
+        if f.read_only:
+            continue
+        fields.append({
+            "fieldname": f.fieldname,
+            "fieldtype": f.fieldtype,
+            "label": f.label,
+            "reqd": f.reqd,
+            "options": f.options,
+            "default": f.default,
+            "depends_on": f.depends_on,
+            "description": f.description,
+        })
+    return {"success": True, "fields": fields}

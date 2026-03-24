@@ -208,10 +208,11 @@ Alpine.data('checkoutOrderSummary', (props?: { itemSubtotal?: number; discount?:
       const validateFn = (window as unknown as Record<string, unknown>).__validateCoupon as
         ((code: string, total: number) => Promise<{ code: string; type: string; value: number; minOrder: number; description: string }>) | undefined;
 
-      const orderTotal = this.itemSubtotal + this.shippingFee - this.discount;
+      // Min sipariş kontrolü kargo hariç ürün toplamı üzerinden yapılır
+      const productTotal = this.itemSubtotal - this.discount;
 
       if (validateFn) {
-        const coupon = await validateFn(code, orderTotal);
+        const coupon = await validateFn(code, productTotal);
         this.couponApplied = { code: coupon.code, type: coupon.type, value: coupon.value, description: coupon.description };
         this.couponError = '';
         this.recalcCouponDiscount();
@@ -243,11 +244,12 @@ Alpine.data('checkoutOrderSummary', (props?: { itemSubtotal?: number; discount?:
 
   recalcCouponDiscount() {
     if (!this.couponApplied) { this.couponDiscount = 0; return; }
-    const subtotalBeforeCoupon = this.itemSubtotal + this.shippingFee - this.discount;
+    // Kargo ücreti indirim hesabına dahil edilmez — sadece ürün toplamı üzerinden indirim
+    const productSubtotal = this.itemSubtotal - this.discount;
     if (this.couponApplied.type === 'percent') {
-      this.couponDiscount = Number((subtotalBeforeCoupon * this.couponApplied.value / 100).toFixed(2));
+      this.couponDiscount = Number((productSubtotal * this.couponApplied.value / 100).toFixed(2));
     } else if (this.couponApplied.type === 'fixed') {
-      this.couponDiscount = Math.min(this.couponApplied.value, subtotalBeforeCoupon);
+      this.couponDiscount = Math.min(this.couponApplied.value, productSubtotal);
     } else if (this.couponApplied.type === 'shipping') {
       this.couponDiscount = this.shippingFee;
     }

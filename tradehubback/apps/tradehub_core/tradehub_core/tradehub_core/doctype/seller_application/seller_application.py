@@ -57,6 +57,9 @@ class SellerApplication(Document):
 			admin_profile.tax_id = self.tax_id or ""
 			admin_profile.phone = self.contact_phone or ""
 			admin_profile.country = self.country or "Turkey"
+			admin_profile.bank_name = self.bank_name or ""
+			admin_profile.iban = self.iban or ""
+			admin_profile.account_holder = self.account_holder_name or ""
 			admin_profile.status = "Active"
 			admin_profile.flags.ignore_permissions = True
 			admin_profile.owner = user

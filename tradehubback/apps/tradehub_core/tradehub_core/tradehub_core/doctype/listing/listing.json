@@ -165,13 +165,13 @@
    "fieldtype": "Column Break"
   },
   {
-   "default": "Draft",
+   "default": "Pending",
    "fieldname": "status",
    "fieldtype": "Select",
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Status",
-   "options": "Draft\nActive\nPaused\nOut of Stock\nArchived",
+   "options": "Pending\nDraft\nActive\nPaused\nOut of Stock\nArchived\nRejected",
    "reqd": 1
   },
   {

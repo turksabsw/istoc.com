@@ -134,9 +134,22 @@ Alpine.data('ordersListComponent', () => ({
   showModifyShipping: false,
   showAddServices: false,
   showCancelOrder: false,
+  showRefundModal: false,
   paymentHistoryTab: 'records',
   cancelReason: '',
   cancellingOrder: null as any,
+
+  // Kargo hizmet türü — dinamik
+  shippingMethods: [] as { id: string; method: string; estimatedDays: string; baseCost: number; currency: string }[],
+  shippingMethodsLoading: false,
+  selectedShippingMethod: '',
+
+  // Refund form
+  refundForm: { reason: '', amount: '' },
+  submittingRefund: false,
+  refundSuccess: false,
+  refundError: '',
+  refundBlocked: false,
 
   // Payment history data (API-driven)
   paymentRecords: [] as any[],
@@ -151,6 +164,30 @@ Alpine.data('ordersListComponent', () => ({
     // Ödeme geçmişi modal'ı açılırken API'den veri çek
     if (name === 'showPaymentHistory' && this.selectedOrder) {
       this.fetchPaymentRecords((this.selectedOrder as any).orderNumber);
+    }
+
+    // Kargo değişiklik modal'ı açılırken kargo hizmet türlerini backend'den çek
+    if (name === 'showModifyShipping') {
+      this.fetchShippingMethods();
+    }
+  },
+
+  async fetchShippingMethods() {
+    this.shippingMethodsLoading = true;
+    this.shippingMethods = [];
+    try {
+      const result = await callMethod<{ data: { id: string; method: string; estimatedDays: string; baseCost: number; currency: string }[] }>(
+        'tradehub_core.api.listing.get_shipping_methods',
+      );
+      this.shippingMethods = result?.data ?? [];
+      // Mevcut siparişin kargo yöntemini seç, yoksa ilki
+      const currentMethod = (this.selectedOrder as any)?.shipping?.method ?? '';
+      const match = this.shippingMethods.find((m) => m.method === currentMethod || m.id === currentMethod);
+      this.selectedShippingMethod = match ? match.id : (this.shippingMethods[0]?.id ?? '');
+    } catch (err) {
+      console.warn('[Orders] Kargo yöntemleri alınamadı:', err);
+    } finally {
+      this.shippingMethodsLoading = false;
     }
   },
 
@@ -225,6 +262,73 @@ Alpine.data('ordersListComponent', () => ({
     return order && (order.status === 'Waiting for payment');
   },
 
+  openRemittanceModal(orderNumber: string) {
+    document.dispatchEvent(new CustomEvent('remittance:open', { detail: { orderNumber } }));
+  },
+
+  async downloadInvoice(order: any) {
+    if (!order) return;
+    try {
+      const res = await callMethod<{ html: string; filename: string }>(
+        'tradehub_core.api.order.download_invoice',
+        { order_number: order.orderNumber },
+      );
+      if (res?.html) {
+        const blob = new Blob([res.html], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        const w = window.open(url, '_blank');
+        if (w) { setTimeout(() => URL.revokeObjectURL(url), 10000); }
+      }
+    } catch (err: any) {
+      console.warn('[Orders] Invoice download failed:', err);
+    }
+  },
+
+  openRefundModal(order: any) {
+    if (!order) return;
+    // Bekleyen veya onaylanmış iade varsa yeni talep açılamaz
+    if (['Pending', 'Approved'].includes(order.refundStatus)) {
+      this.refundBlocked = true;
+      this.refundError = order.refundStatus === 'Approved'
+        ? 'Bu sipariş için iade talebiniz zaten onaylanmıştır.'
+        : 'Bu sipariş için bekleyen bir iade talebiniz zaten bulunmaktadır.';
+      this.refundSuccess = false;
+      this.showRefundModal = true;
+      document.body.style.overflow = 'hidden';
+      return;
+    }
+    const grandTotal = order.payment?.grandTotal || order.grandTotal || '';
+    this.refundForm = { reason: '', amount: String(grandTotal) };
+    this.refundBlocked = false;
+    this.refundSuccess = false;
+    this.refundError = '';
+    this.showRefundModal = true;
+    document.body.style.overflow = 'hidden';
+  },
+
+  async submitRefundRequest() {
+    const order = this.selectedOrder as any;
+    if (!order || !this.refundForm.reason.trim()) return;
+    this.submittingRefund = true;
+    this.refundError = '';
+    try {
+      await callMethod<{ success: boolean }>(
+        'tradehub_core.api.order.submit_refund_request',
+        {
+          order_number: order.orderNumber,
+          reason: this.refundForm.reason,
+          amount: this.refundForm.amount,
+        },
+        true,
+      );
+      this.refundSuccess = true;
+    } catch (err: any) {
+      this.refundError = err?.message || 'Bir hata oluştu.';
+    } finally {
+      this.submittingRefund = false;
+    }
+  },
+
   canCancel(order: any) {
     return order && order.status !== 'Cancelled' && order.status !== 'Completed' && order.status !== 'Delivering';
   }
@@ -252,5 +356,29 @@ Alpine.data('ordersSection', () => ({
   selectFilter(filterId: string) {
     this.selectedFilterId = filterId;
     this.dropdownOpen = false;
+  },
+}));
+
+Alpine.data('refundsComponent', () => ({
+  refunds: [] as any[],
+  loading: true,
+
+  async init() {
+    try {
+      const res = await callMethod<{ success: boolean; refunds: any[] }>(
+        'tradehub_core.api.order.get_my_refunds',
+      );
+      this.refunds = res?.refunds || [];
+    } catch (err) {
+      console.warn('[Refunds] fetch failed:', err);
+    } finally {
+      this.loading = false;
+    }
+  },
+
+  statusClass(status: string) {
+    if (status === 'Approved' || status === 'Onaylandı') return 'bg-green-50 text-green-700 border border-green-200';
+    if (status === 'Rejected' || status === 'Reddedildi') return 'bg-red-50 text-red-700 border border-red-200';
+    return 'bg-amber-50 text-amber-700 border border-amber-200';
   },
 }));

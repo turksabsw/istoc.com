@@ -83,6 +83,24 @@ def get_session_user():
 		or None
 	)
 
+	# Admin Seller Profile — satıcının mağaza profili (filtreleme için seller_code gerekli)
+	admin_seller_profile = None
+	if is_seller:
+		try:
+			asp = frappe.db.get_value(
+				"Admin Seller Profile",
+				{"seller_profile": frappe.session.user},
+				["name", "seller_code"],
+				as_dict=True,
+			)
+			if asp:
+				admin_seller_profile = {
+					"name": asp.name,
+					"seller_code": asp.seller_code or asp.name,
+				}
+		except Exception:
+			pass
+
 	member_id = _generate_member_id(user_data.email, user_data.creation)
 
 	return {
@@ -102,6 +120,7 @@ def get_session_user():
 			"rejected_seller_application": rejected_seller_application,
 			"seller_application_status": seller_application_status,
 			"seller_profile": seller_profile,
+			"admin_seller_profile": admin_seller_profile,
 		},
 	}
 

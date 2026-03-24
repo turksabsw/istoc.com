@@ -1,7 +1,11 @@
 import { defineStore } from 'pinia'
-import { ref, computed, watch } from 'vue'
-import { panelSections, sectionTitles } from '@/data/navigation'
+import { ref, computed } from 'vue'
+import {
+  adminPanelSections, adminSectionTitles,
+  sellerPanelSections, sellerSectionTitles,
+} from '@/data/navigation'
 import { useSidebarStore } from '@/stores/sidebar'
+import { useAuthStore } from '@/stores/auth'
 
 const STORAGE_KEY = 'th_nav_state'
 
@@ -28,19 +32,33 @@ export const useNavigationStore = defineStore('navigation', () => {
   const activePanelItem = ref(null)
   const openGroups = ref(new Set(saved?.groups || []))
 
-  const sectionTitle = computed(() => sectionTitles[activeSection.value] || 'TradeHub')
-  const currentGroups = computed(() => panelSections[activeSection.value] || [])
+  // Role-aware panel sections — auth store'dan dinamik okuma
+  function getActiveSections() {
+    const auth = useAuthStore()
+    return auth.isSeller && !auth.isAdmin ? sellerPanelSections : adminPanelSections
+  }
 
-  // If no saved groups, auto-open first collapsible group
+  function getActiveSectionTitles() {
+    const auth = useAuthStore()
+    return auth.isSeller && !auth.isAdmin ? sellerSectionTitles : adminSectionTitles
+  }
+
+  const sectionTitle = computed(() => getActiveSectionTitles()[activeSection.value] || 'TradeHub')
+
+  const currentGroups = computed(() => getActiveSections()[activeSection.value] || [])
+
+  // İlk açılışta kaydedilmiş grup yoksa ilk grubu aç
   if (!saved?.groups?.length) {
-    const groups = panelSections[activeSection.value] || []
+    const sections = getActiveSections()
+    const groups = sections[activeSection.value] || []
     const first = groups.find(g => g.title)
     if (first) openGroups.value.add(first.title)
   }
 
-  // Auto-open the group containing the current URL's item on page load
+  // URL'e göre aktif grubu ve section'ı geri yükle
   function restoreFromUrl(path) {
-    const groups = panelSections[activeSection.value] || []
+    const sections = getActiveSections()
+    const groups = sections[activeSection.value] || []
     for (const group of groups) {
       if (!group.title) continue
       for (const item of group.items) {
@@ -59,7 +77,8 @@ export const useNavigationStore = defineStore('navigation', () => {
   function switchSection(sectionId) {
     activeSection.value = sectionId
     openGroups.value = new Set()
-    const groups = panelSections[sectionId] || []
+    const sections = getActiveSections()
+    const groups = sections[sectionId] || []
     const firstCollapsible = groups.find(g => g.title)
     if (firstCollapsible) {
       openGroups.value.add(firstCollapsible.title)

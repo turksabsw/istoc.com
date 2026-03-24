@@ -9,7 +9,8 @@ import { t } from '../i18n'
 import { getBaseUrl } from '../utils/url'
 import { initCurrency } from '../services/currencyService'
 import { isLoggedIn } from '../utils/auth'
-import { apiCreateOrder, apiValidateCoupon } from '../services/cartService'
+import { apiCreateOrder, apiValidateCoupon, fetchShippingMethodsForListing } from '../services/cartService'
+import type { ListingShippingMethod } from '../services/cartService'
 import { showToast } from '../utils/toast'
 
 // Header components (reuse from main page)
@@ -35,7 +36,7 @@ import { cartStore } from '../components/cart/state/CartStore'
 import { getSelectedCurrencyInfo } from '../services/currencyService'
 import type { OrderSummary as OrderSummaryData } from '../types/checkout'
 import type { CartProduct, CartSku, CartShippingMethod } from '../types/cart'
-import type { CheckoutDeliveryOrderGroup } from '../components/checkout'
+import type { CheckoutDeliveryOrderGroup, CheckoutDeliveryMethod } from '../components/checkout'
 import { initStickyHeights } from '../utils/stickyHeights'
 import { orderStore } from '../components/orders/state/OrderStore'
 import type { Order } from '../types/order'
@@ -115,9 +116,62 @@ function buildProductCard(product: CartProduct): { card: CheckoutDeliveryOrderGr
   };
 }
 
-/** Fetch missing shipping methods from backend for suppliers that don't have them */
+/** Backend'den her tedarikçinin listing kargo yöntemlerini çekip supplierShippingMethods'u doldurur */
 async function enrichMissingShippingMethods(): Promise<void> {
-  // Stub: shipping methods are already built client-side via buildDeliveryOrders
+  if (isSampleMode) return;
+
+  const suppliers = cartStore.getSuppliers();
+  const selectedSuppliers = suppliers.filter((s) =>
+    s.products.some((p) => p.skus.some((sku) => sku.selected))
+  );
+
+  await Promise.all(
+    selectedSuppliers.map(async (supplier) => {
+      const selectedProducts = supplier.products.filter((p) =>
+        p.skus.some((sku) => sku.selected)
+      );
+
+      // Her listing için kargo yöntemlerini paralel çek
+      const allMethodsPerListing = await Promise.all(
+        selectedProducts.map((p) =>
+          fetchShippingMethodsForListing(p.id).catch(() => [] as ListingShippingMethod[])
+        )
+      );
+
+      // Aynı method id'si için max maliyet al (birden fazla listing varsa birleştir)
+      const methodMap = new Map<string, ListingShippingMethod>();
+      for (const methods of allMethodsPerListing) {
+        for (const m of methods) {
+          const existing = methodMap.get(m.id);
+          if (!existing || m.cost > existing.cost) {
+            methodMap.set(m.id, m);
+          }
+        }
+      }
+
+      if (methodMap.size === 0) return; // Kargo tanımlanmamış → fallback devreye girer
+
+      const now = new Date();
+      const deliveryMethods: CheckoutDeliveryMethod[] = Array.from(methodMap.values()).map((m, i) => {
+        let etaLabel: string;
+        if (m.minDays && m.maxDays) {
+          const start = addDays(now, m.minDays);
+          const end = addDays(now, m.maxDays);
+          etaLabel = `${m.method} – Estimated delivery by ${formatMonthDay(start)}-${formatMonthDay(end)}`;
+        } else {
+          etaLabel = m.method;
+        }
+        return {
+          id: `method-${supplier.id}-${m.id}`,
+          etaLabel,
+          shippingFee: m.cost,
+          isDefault: i === 0,
+        };
+      });
+
+      supplierShippingMethods[supplier.id] = deliveryMethods;
+    })
+  );
 }
 
 /** Build delivery orders for sample mode checkout */
@@ -179,20 +233,22 @@ function buildDeliveryOrders(): CheckoutDeliveryOrderGroup[] {
   const now = new Date();
 
   return selectedSuppliers.map((row, index) => {
-    const shippingShare = subtotalTotal > 0 ? (cartSummary.shippingFee * row.subtotal) / subtotalTotal : 0;
-    const method1Fee = Number(Math.max(5, shippingShare).toFixed(2));
-    const method2Fee = Number(Math.max(method1Fee + 5, shippingShare * 1.35).toFixed(2));
-    const start1 = addDays(now, 10 + (index * 2));
-    const end1 = addDays(now, 24 + (index * 2));
-    const start2 = addDays(now, 14 + (index * 2));
-    const end2 = addDays(now, 24 + (index * 2));
+    // Backend'den çekilen gerçek kargo yöntemlerini kullan; yoksa fallback
+    const fetchedMethods = supplierShippingMethods[row.supplier.id];
+    let methods: CheckoutDeliveryMethod[];
 
-    return {
-      orderId: `order-${index + 1}`,
-      orderLabel: `Order ${index + 1}`,
-      sellerId: row.supplier.id,
-      sellerName: row.supplier.name,
-      methods: [
+    if (fetchedMethods && fetchedMethods.length > 0) {
+      methods = fetchedMethods;
+    } else {
+      // Fallback: listing'de kargo tanımlanmamışsa hesaplanmış tahmini değerler
+      const shippingShare = subtotalTotal > 0 ? (cartSummary.shippingFee * row.subtotal) / subtotalTotal : 0;
+      const method1Fee = Number(Math.max(5, shippingShare).toFixed(2));
+      const method2Fee = Number(Math.max(method1Fee + 5, shippingShare * 1.35).toFixed(2));
+      const start1 = addDays(now, 10 + (index * 2));
+      const end1 = addDays(now, 24 + (index * 2));
+      const start2 = addDays(now, 14 + (index * 2));
+      const end2 = addDays(now, 24 + (index * 2));
+      methods = [
         {
           id: `method-${row.supplier.id}-1`,
           etaLabel: `Estimated delivery by ${formatMonthDay(start1)}-${formatMonthDay(end1)}`,
@@ -204,11 +260,22 @@ function buildDeliveryOrders(): CheckoutDeliveryOrderGroup[] {
           etaLabel: `Estimated delivery by ${formatMonthDay(start2)}-${formatMonthDay(end2)}`,
           shippingFee: method2Fee,
         },
-      ],
+      ];
+    }
+
+    return {
+      orderId: `order-${index + 1}`,
+      orderLabel: `Order ${index + 1}`,
+      sellerId: row.supplier.id,
+      sellerName: row.supplier.name,
+      methods,
       products: row.products,
     };
   });
 }
+
+// Tedarikçi bazlı gerçek kargo yöntemleri — enrichMissingShippingMethods ile doldurulur
+const supplierShippingMethods: Record<string, CheckoutDeliveryMethod[]> = {};
 
 // Modül düzeyinde tutulan checkout durumu — renderCheckout sonrası doldurulur
 let checkoutDeliveryOrders: CheckoutDeliveryOrderGroup[] = [];

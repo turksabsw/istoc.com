@@ -8,8 +8,11 @@
  "field_order": [
   "seller",
   "category_name",
+  "status",
+  "description",
   "image",
-  "sort_order"
+  "sort_order",
+  "reject_reason"
  ],
  "fields": [
   {
@@ -28,6 +31,21 @@
    "in_list_view": 1
   },
   {
+   "default": "Pending",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Durum",
+   "options": "Pending\nActive\nRejected",
+   "reqd": 1
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Small Text",
+   "label": "Açıklama"
+  },
+  {
    "fieldname": "image",
    "fieldtype": "Attach Image",
    "label": "Görsel"
@@ -37,6 +55,12 @@
    "fieldname": "sort_order",
    "fieldtype": "Int",
    "label": "Sıralama"
+  },
+  {
+   "fieldname": "reject_reason",
+   "fieldtype": "Small Text",
+   "label": "Red Sebebi",
+   "read_only": 1
   }
  ],
  "links": [],

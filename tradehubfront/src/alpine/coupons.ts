@@ -1,35 +1,44 @@
 import Alpine from 'alpinejs'
 import { t, getCurrentLang } from '../i18n'
-import { couponStore } from '../components/orders/state/CouponStore'
-import type { CouponData, CreditHistoryEntry } from '../data/mockCheckout'
+import { callMethod } from '../utils/api'
+
+interface CouponData {
+  code: string;
+  type: 'percent' | 'fixed' | 'shipping';
+  value: number;
+  minOrder: number;
+  description: string;
+  status: 'available' | 'used' | 'expired';
+  expiresAt: string;
+}
 
 Alpine.data('couponsPageComponent', () => ({
   activeTab: 'coupons-list' as string,
   activePill: 'available' as string,
   coupons: [] as CouponData[],
-  creditBalance: 0,
-  creditHistory: [] as CreditHistoryEntry[],
+  loading: false,
 
-  init() {
-    couponStore.load();
-    this.coupons = couponStore.getCoupons();
-    this.creditBalance = couponStore.getCreditBalance();
-    this.creditHistory = couponStore.getCreditHistory();
-    couponStore.subscribe(() => {
-      this.coupons = couponStore.getCoupons();
-      this.creditBalance = couponStore.getCreditBalance();
-      this.creditHistory = couponStore.getCreditHistory();
-    });
+  async init() {
+    await this.fetchCoupons();
+  },
+
+  async fetchCoupons() {
+    this.loading = true;
+    try {
+      const result = await callMethod<{ coupons: CouponData[] }>(
+        'tradehub_core.api.cart.get_buyer_coupons',
+      );
+      this.coupons = result?.coupons ?? [];
+    } catch (err) {
+      console.warn('[Coupons] Kuponlar alınamadı:', err);
+      this.coupons = [];
+    } finally {
+      this.loading = false;
+    }
   },
 
   get filteredCoupons(): CouponData[] {
-    const statusMap: Record<string, CouponData['status']> = {
-      available: 'available',
-      used: 'used',
-      expired: 'expired',
-    };
-    const status = statusMap[this.activePill] ?? 'available';
-    return this.coupons.filter((c: CouponData) => c.status === status);
+    return this.coupons.filter((c: CouponData) => c.status === this.activePill);
   },
 
   switchTab(tab: string) {
