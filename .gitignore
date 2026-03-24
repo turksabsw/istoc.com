@@ -30,6 +30,8 @@ tradehubback/config/scheduler_process
 tradehubback/sites/*/site_config.json
 
 # ── Frappe Bench — Site runtime dosyaları ─────────────────────────────────────
+tradehubback/sites/assets/assets.json
+tradehubback/sites/assets/assets-rtl.json
 tradehubback/sites/*/logs/
 tradehubback/sites/*/locks/
 tradehubback/sites/*/indexes/
